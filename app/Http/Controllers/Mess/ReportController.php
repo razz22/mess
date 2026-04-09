@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Mess;
 use App\Http\Controllers\Controller;
 use App\Models\MealAttendance;
 use App\Models\MealSchedule;
-use App\Models\MemberCategoryExclusion;
+use App\Models\MemberExpenseExclusion as MemberCategoryExclusion;
 use App\Models\MemberDeposit;
 use App\Models\MemberMonthlySummary;
 use App\Models\Mess;
@@ -84,7 +84,14 @@ class ReportController extends Controller
             ->groupBy('category_id')
             ->map(fn($g) => ['name' => $g->first()->category?->name ?? 'Uncategorized', 'amount' => $g->sum('amount')]);
 
-        $member = Auth::user()->getMembershipIn($mess->id);
+        $member        = Auth::user()->getMembershipIn($mess->id);
+        $allCategories = $mess->expenseCategories()->where('is_active', true)->get();
+
+        $categoriesForModal = $allCategories->map(fn($c) => [
+            'id'     => $c->id,
+            'name'   => $c->name,
+            'amount' => $expensesByCategory[$c->id]['amount'] ?? 0,
+        ])->values();
 
         // Category exclusions per member: [userId => [categoryId, ...]]
         $memberCategoryExclusions = MemberCategoryExclusion::where('mess_id', $mess->id)
@@ -94,11 +101,17 @@ class ReportController extends Controller
             ->groupBy('user_id')
             ->map(fn($g) => $g->pluck('category_id')->toArray());
 
+        // Extra stats for top summary block
+        $totalNonMarket = $totalExpenses - $totalMarket;
+        $totalDue       = $summaries->sum(fn($s) => max(0, $s->due_amount));
+        $totalExtra     = $summaries->sum(fn($s) => max(0, -$s->due_amount));
+
         return view('mess.monthly-report', compact(
             'mess', 'members', 'summaries', 'month', 'year',
             'totalExpenses', 'totalDeposits', 'totalMeals',
-            'mealByMember', 'perMealCost', 'cashInHand', 'costMode',
-            'expensesByCategory', 'member', 'memberCategoryExclusions'
+            'mealByMember', 'totalMealCount', 'perMealCost', 'cashInHand', 'costMode',
+            'totalMarket', 'totalNonMarket', 'totalDue', 'totalExtra',
+            'expensesByCategory', 'member', 'memberCategoryExclusions', 'allCategories', 'categoriesForModal'
         ));
     }
 

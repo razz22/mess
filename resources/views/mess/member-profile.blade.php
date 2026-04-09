@@ -200,32 +200,14 @@
                 </div>
 
                 <!-- Tenant Registration Form -->
-                @php $tenantForm = \App\Models\TenantRegistrationForm::where(['mess_id'=>$mess->id,'member_id'=>$member->id])->first(); @endphp
                 <div class="card mb-4">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h6 class="mb-0"><i class="ti ti-file-description me-2 text-primary"></i>ভাড়াটিয়া নিবন্ধন ফরম</h6>
-                        @if($tenantForm && $tenantForm->isSubmitted())
-                        <span class="badge bg-success"><i class="ti ti-circle-check me-1"></i>Submitted</span>
-                        @elseif($tenantForm)
-                        <span class="badge bg-warning text-dark">Draft</span>
-                        @else
-                        <span class="badge bg-secondary">Not started</span>
-                        @endif
                     </div>
                     <div class="card-body">
-                        @if($member->user_id === Auth::id())
-                        <a href="{{ route('mess.tenant-form.edit', $mess->id) }}" class="btn btn-primary btn-sm me-2">
-                            <i class="ti ti-edit me-1"></i>{{ $tenantForm ? 'Edit Form' : 'Fill Form' }}
-                        </a>
-                        @endif
-                        @if($tenantForm)
-                        <a href="{{ route('mess.tenant-forms.view', [$mess->id, $tenantForm->id]) }}" class="btn btn-outline-primary btn-sm me-2">
-                            <i class="ti ti-eye me-1"></i>View
-                        </a>
-                        <a href="{{ route('mess.tenant-forms.download', [$mess->id, $tenantForm->id]) }}" class="btn btn-success btn-sm">
+                        <a href="{{ asset('build/doc/Tenant-Registration-Form.pdf') }}" download="Tenant-Registration-Form.pdf" class="btn btn-success btn-sm">
                             <i class="ti ti-download me-1"></i>Download PDF
                         </a>
-                        @endif
                     </div>
                 </div>
 

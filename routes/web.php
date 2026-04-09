@@ -715,9 +715,10 @@ Route::get('/profit-and-loss', function () {
     return view('profit-and-loss');
 })->name('profit-and-loss');
 
-Route::get('/profile', function () {
-    return view('profile');
-})->name('profile');
+Route::middleware('auth')->group(function () {
+    Route::get('/profile', [\App\Http\Controllers\ProfileController::class, 'edit'])->name('profile');
+    Route::post('/profile', [\App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
+});
 
 Route::get('/under-maintenance', function () {
     return view('under-maintenance');

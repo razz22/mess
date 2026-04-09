@@ -144,7 +144,7 @@ class MessController extends Controller
             ->get();
 
         $todayRoutine = $mess->marketRoutines()
-            ->where('date', $today)
+            ->where('start_date', $today)
             ->with('assignedTo')
             ->first();
 

@@ -5,7 +5,7 @@
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
-    font-family: 'DejaVu Sans', sans-serif;
+    font-family: 'kalpurush', 'DejaVu Sans', sans-serif;
     font-size: 10pt;
     color: #000;
     background: #fff;

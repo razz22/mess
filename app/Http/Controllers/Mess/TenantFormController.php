@@ -149,17 +149,47 @@ class TenantFormController extends Controller
         if (!$canView) abort(403);
 
         $form->load('member.user');
+
+        $fontDir = storage_path('fonts');
+        $this->ensureKalpurushRegistered($fontDir);
+
         $pdf = Pdf::loadView('mess.tenant-form-pdf', compact('mess', 'form'))
             ->setPaper('a4', 'portrait')
             ->setOptions([
-                'defaultFont'    => 'DejaVu Sans',
+                'defaultFont'          => 'kalpurush',
                 'isHtml5ParserEnabled' => true,
-                'isRemoteEnabled' => false,
-                'dpi'            => 150,
+                'isRemoteEnabled'      => false,
+                'isPhpEnabled'         => false,
+                'fontDir'              => $fontDir,
+                'fontCache'            => $fontDir,
+                'dpi'                  => 150,
             ]);
 
         $name = 'tenant-form-' . str_replace(' ', '-', $form->member->user->name) . '.pdf';
         return $pdf->download($name);
+    }
+
+    private function ensureKalpurushRegistered(string $fontDir): void
+    {
+        $cacheFile = $fontDir . '/installed-fonts.json';
+        $cached = is_file($cacheFile) ? json_decode(file_get_contents($cacheFile), true) : [];
+        if (isset($cached['kalpurush'])) {
+            return;
+        }
+
+        $options = new \Dompdf\Options([
+            'fontDir'         => $fontDir,
+            'fontCache'       => $fontDir,
+            'isRemoteEnabled' => true,
+            'chroot'          => [$fontDir],
+        ]);
+        $dompdf = new \Dompdf\Dompdf($options);
+        $fontUrl = 'file://' . str_replace('\\', '/', $fontDir) . '/kalpurush.ttf';
+        $dompdf->getFontMetrics()->registerFont(
+            ['family' => 'kalpurush', 'weight' => 'normal', 'style' => 'normal'],
+            $fontUrl
+        );
+        $dompdf->getFontMetrics()->saveFontFamilies();
     }
 
     private function prefillFromProfile(MessMember $member): array

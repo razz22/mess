@@ -25,7 +25,7 @@
                                     <input type="radio" name="LayoutTheme" id="defaultLayout" value="default" checked>
                                     <label for="defaultLayout">
                                         <span class="d-block mb-2 layout-img">
-                                            <img src="{{URL::asset('build/img/theme/default.svg')}}" alt="img">
+                                            <img src="{{asset('build/img/theme/default.svg')}}" alt="img">
                                         </span>                                     
                                         <span class="layout-type">Default</span>
                                     </label>
@@ -434,9 +434,9 @@
             <div class="col-6">
                 <a href="#" id="resetbutton" class="btn btn-light close-theme w-100"><i class="ti ti-restore me-1"></i>Reset</a>
             </div>
-            <div class="col-6">
+            <!-- <div class="col-6">
                 <a href="#" class="btn btn-primary w-100" data-bs-dismiss="offcanvas"><i class="ti ti-shopping-cart-plus me-1"></i>Buy Product</a>
-            </div>
+            </div> -->
         </div>
     </div>    
 </div>

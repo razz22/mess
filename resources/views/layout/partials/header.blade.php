@@ -73,7 +73,7 @@
 
 
             <!-- Select Store -->
-            <li class="nav-item dropdown has-arrow main-drop select-store-dropdown">
+            <!-- <li class="nav-item dropdown has-arrow main-drop select-store-dropdown">
                 <a href="javascript:void(0);" class="dropdown-toggle nav-link select-store"
                     data-bs-toggle="dropdown">
                     <span class="user-info">
@@ -99,10 +99,10 @@
                         <img src="{{URL::asset('build/img/store/store-04.png')}}" alt="Store Logo" class="img-fluid">Grocery Eden
                     </a>
                 </div>
-            </li>
+            </li> -->
             <!-- /Select Store -->
 
-            <li class="nav-item dropdown link-nav">
+            <!-- <li class="nav-item dropdown link-nav">
                 <a href="javascript:void(0);" class="btn btn-primary btn-md d-inline-flex align-items-center" data-bs-toggle="dropdown">
                     <i class="ti ti-circle-plus me-1"></i>Add New
                 </a>
@@ -212,7 +212,7 @@
                 <a href="{{url('pos')}}" class="btn btn-dark btn-md d-inline-flex align-items-center">
                     <i class="ti ti-device-laptop me-1"></i>POS
                 </a>
-            </li>
+            </li> -->
 
             <!-- Flag -->
             <li class="nav-item dropdown has-arrow flag-nav nav-item-box">
@@ -323,25 +323,35 @@
                 <a href="javascript:void(0);" class="nav-link userset" data-bs-toggle="dropdown">
                     <span class="user-info p-0">
                         <span class="user-letter">
+                            @auth
+                            <img src="{{ Auth::user()->avatar_url }}" alt="Img" class="img-fluid rounded-circle" style="width:34px;height:34px;object-fit:cover">
+                            @else
                             <img src="{{URL::asset('build/img/profiles/avator1.jpg')}}" alt="Img" class="img-fluid">
+                            @endauth
                         </span>
                     </span>
                 </a>
                 <div class="dropdown-menu menu-drop-user">
                     <div class="profileset d-flex align-items-center">
                         <span class="user-img me-2">
+                            @auth
+                            <img src="{{ Auth::user()->avatar_url }}" alt="Img" class="rounded-circle" style="width:40px;height:40px;object-fit:cover">
+                            @else
                             <img src="{{URL::asset('build/img/profiles/avator1.jpg')}}" alt="Img">
+                            @endauth
                         </span>
                         <div>
-                            <h6 class="fw-medium">John Smilga</h6>
-                            <p>Admin</p>
+                            @auth
+                            <h6 class="fw-medium">{{ Auth::user()->name }}</h6>
+                            <p>{{ Auth::user()->email }}</p>
+                            @else
+                            <h6 class="fw-medium">Guest</h6>
+                            @endauth
                         </div>
                     </div>
-                    <a class="dropdown-item" href="{{url('profile')}}"><i class="ti ti-user-circle me-2"></i>MyProfile</a>
-                    <a class="dropdown-item" href="{{url('sales-report')}}"><i class="ti ti-file-text me-2"></i>Reports</a>
-                    <a class="dropdown-item" href="{{url('general-settings')}}"><i class="ti ti-settings-2 me-2"></i>Settings</a>
+                    <a class="dropdown-item" href="{{ route('profile') }}"><i class="ti ti-user-circle me-2"></i>My Profile</a>
                     <hr class="my-2">
-                    <a class="dropdown-item logout pb-0" href="{{url('signin')}}"><i class="ti ti-logout me-2"></i>Logout</a>
+                    <a class="dropdown-item logout pb-0" href="{{ route('signout') }}"><i class="ti ti-logout me-2"></i>Logout</a>
                 </div>
             </li>
         </ul>
@@ -352,9 +362,8 @@
             <a href="javascript:void(0);" class="nav-link dropdown-toggle" data-bs-toggle="dropdown"
                 aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
             <div class="dropdown-menu dropdown-menu-right">
-                <a class="dropdown-item" href="{{url('profile')}}">My Profile</a>
-                <a class="dropdown-item" href="{{url('general-settings')}}">Settings</a>
-                <a class="dropdown-item" href="{{url('signin')}}">Logout</a>
+                <a class="dropdown-item" href="{{ route('profile') }}">My Profile</a>
+                <a class="dropdown-item" href="{{ route('signout') }}">Logout</a>
             </div>
         </div>
         <!-- /Mobile Menu -->

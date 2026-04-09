@@ -39,40 +39,83 @@
 
         <!-- Overview Stats -->
         <div class="row g-3 mb-4">
+            {{-- Row 1: Cost breakdown --}}
             <div class="col-6 col-md-3">
-                <div class="card text-center">
-                    <div class="card-body py-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body py-3 text-center">
+                        <div class="text-muted small mb-1"><i class="ti ti-shopping-cart me-1"></i>Market Cost</div>
+                        <div class="fs-4 fw-bold text-primary">৳{{ number_format($totalMarket, 2) }}</div>
+                        <div class="text-muted" style="font-size:11px">Food / Bazaar expenses</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body py-3 text-center">
+                        <div class="text-muted small mb-1"><i class="ti ti-receipt me-1"></i>Other Expenses</div>
+                        <div class="fs-4 fw-bold text-warning">৳{{ number_format($totalNonMarket, 2) }}</div>
+                        <div class="text-muted" style="font-size:11px">Cook, bills, utilities…</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body py-3 text-center">
+                        <div class="text-muted small mb-1"><i class="ti ti-report-money me-1"></i>Total Expenses</div>
                         <div class="fs-4 fw-bold text-danger">৳{{ number_format($totalExpenses, 2) }}</div>
-                        <div class="text-muted small">Total Expenses</div>
+                        <div class="text-muted" style="font-size:11px">Market + Other</div>
                     </div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="card text-center">
-                    <div class="card-body py-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body py-3 text-center">
+                        <div class="text-muted small mb-1"><i class="ti ti-cash me-1"></i>Total Deposits</div>
                         <div class="fs-4 fw-bold text-success">৳{{ number_format($totalDeposits, 2) }}</div>
-                        <div class="text-muted small">Total Deposits</div>
+                        <div class="text-muted" style="font-size:11px">All members combined</div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Row 2: Meal & balance stats --}}
+            <div class="col-6 col-md-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body py-3 text-center">
+                        <div class="text-muted small mb-1"><i class="ti ti-bowl me-1"></i>Total Meals</div>
+                        <div class="fs-4 fw-bold text-info">{{ number_format($totalMealCount, 1) }}</div>
+                        <div class="text-muted" style="font-size:11px">All members combined</div>
                     </div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="card text-center">
-                    <div class="card-body py-3">
-                        <div class="fs-4 fw-bold text-{{ $cashInHand >= 0 ? 'info' : 'danger' }}">৳{{ number_format($cashInHand, 2) }}</div>
-                        <div class="text-muted small">Cash in Hand</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="card text-center">
-                    <div class="card-body py-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body py-3 text-center">
+                        <div class="text-muted small mb-1"><i class="ti ti-coin me-1"></i>Per Meal Rate</div>
                         @if($costMode === 'daily')
-                        <div class="fs-5 fw-bold text-primary">Daily Rate</div>
-                        <div class="text-muted small">Per Meal Cost (varies by day)</div>
+                        <div class="fs-5 fw-bold text-primary">Daily</div>
+                        <div class="text-muted" style="font-size:11px">Rate varies by day</div>
                         @else
                         <div class="fs-4 fw-bold text-primary">৳{{ number_format($perMealCost, 2) }}</div>
-                        <div class="text-muted small">Per Meal Cost (monthly avg)</div>
+                        <div class="text-muted" style="font-size:11px">Market ÷ Total meals</div>
                         @endif
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body py-3 text-center">
+                        <div class="text-muted small mb-1"><i class="ti ti-alert-triangle me-1"></i>Total Due</div>
+                        <div class="fs-4 fw-bold {{ $totalDue > 0 ? 'text-danger' : 'text-success' }}">৳{{ number_format($totalDue, 2) }}</div>
+                        <div class="text-muted" style="font-size:11px">Members who owe</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body py-3 text-center">
+                        <div class="text-muted small mb-1"><i class="ti ti-wallet me-1"></i>Cash in Hand</div>
+                        <div class="fs-4 fw-bold text-{{ $cashInHand >= 0 ? 'teal' : 'danger' }}" style="{{ $cashInHand >= 0 ? 'color:#0d9488' : '' }}">৳{{ number_format(abs($cashInHand), 2) }}</div>
+                        <div class="text-muted" style="font-size:11px">{{ $cashInHand >= 0 ? 'Surplus' : 'Deficit' }}</div>
                     </div>
                 </div>
             </div>
@@ -88,8 +131,8 @@
                         <tr>
                             <th>Member</th>
                             <th class="text-center">Meals</th>
+                            <th class="text-center">Per Meal Rate</th>
                             <th>Meal Cost</th>
-                            <th>Shared Exp.</th>
                             <th>Market Exp.</th>
                             <th>Total Payable</th>
                             <th>Deposited</th>
@@ -121,18 +164,24 @@
                                 </div>
                             </td>
                             @if($summary)
-                            <td class="text-center fw-bold">{{ $summary->total_meal_days }}</td>
+                            @php
+                                $memberMeals = (float)$summary->total_meal_days;
+                                $memberRate  = ($costMode === 'daily')
+                                    ? ($memberMeals > 0 ? $summary->meal_cost / $memberMeals : 0)
+                                    : $perMealCost;
+                            @endphp
+                            <td class="text-center fw-bold">{{ number_format($memberMeals, 1) }}</td>
+                            <td class="text-center">
+                                @if($costMode === 'daily')
+                                <span class="text-muted small">৳{{ number_format($memberRate, 2) }}</span>
+                                @else
+                                <span class="badge bg-primary-subtle text-primary">৳{{ number_format($perMealCost, 2) }}</span>
+                                @endif
+                            </td>
                             <td>৳{{ number_format($summary->meal_cost, 2) }}</td>
-                            <td class="align-middle">
-                                <div class="d-flex align-items-center gap-2 flex-wrap">
-                                    @if($excluded)
-                                    <span class="text-muted small fst-italic">Excluded</span>
-                                    @else
-                                    <span>৳{{ number_format($summary->total_expenses, 2) }}</span>
-                                    @if($catExclCount > 0)
-                                    <span class="badge bg-warning text-dark" title="{{ $catExclCount }} category(s) excluded">-{{ $catExclCount }} cat.</span>
-                                    @endif
-                                    @endif
+                            <td>
+                                <div class="d-flex align-items-center gap-1 flex-wrap">
+                                    <span>৳{{ number_format($summary->market_expense, 2) }}</span>
                                     @if($isManager)
                                     <button class="btn btn-xs {{ $excluded ? 'btn-outline-success' : 'btn-outline-warning' }} py-0 px-1"
                                         id="toggle-btn-{{ $m->user->id }}"
@@ -148,9 +197,14 @@
                                     </button>
                                     @endif
                                     @endif
+                                    @if($catExclCount > 0)
+                                    <span class="badge bg-warning text-dark" title="{{ $catExclCount }} shared expense category(s) excluded">-{{ $catExclCount }} cat.</span>
+                                    @endif
+                                    @if($excluded)
+                                    <span class="badge bg-secondary" title="Excluded from all shared expenses">No shared</span>
+                                    @endif
                                 </div>
                             </td>
-                            <td>৳{{ number_format($summary->market_expense, 2) }}</td>
                             <td class="fw-bold">৳{{ number_format($summary->total_payable, 2) }}</td>
                             <td class="text-success fw-bold">৳{{ number_format($summary->total_deposit, 2) }}</td>
                             <td class="fw-bold {{ $summary->due_amount > 0 ? 'text-danger' : 'text-success' }}">
@@ -359,11 +413,8 @@ var csrf   = document.querySelector('meta[name="csrf-token"]').content;
 var month  = {{ $month }};
 var year   = {{ $year }};
 
-// Category data passed from PHP: {categoryId: {name, amount}}
+var expenseCategories = @json($categoriesForModal);
 var expenseCategoriesRaw = @json($expensesByCategory);
-var expenseCategories = Object.keys(expenseCategoriesRaw).map(function(id) {
-    return { id: parseInt(id), name: expenseCategoriesRaw[id].name, amount: expenseCategoriesRaw[id].amount };
-});
 var memberCatExclusions = @json($memberCategoryExclusions);
 
 function toggleShared(userId, currentlyExcluded) {
