@@ -95,10 +95,25 @@
                                     value="{{ $settings->dinner_close ?? '21:00' }}">
                             </div>
                             <div class="mb-3">
-                                <label class="form-label fw-semibold">Monthly Rate per Person (৳)</label>
-                                <input type="number" name="monthly_rate" class="form-control" step="0.01" min="0"
-                                    value="{{ $settings->monthly_rate ?? 0 }}">
-                                <div class="form-text">Optional fixed monthly rate</div>
+                                <label class="form-label fw-semibold">Meal Cost Calculation Mode</label>
+                                <div class="d-flex flex-column gap-2 mt-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="meal_cost_mode" id="modeMonthly" value="monthly"
+                                            {{ ($settings->meal_cost_mode ?? 'monthly') === 'monthly' ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="modeMonthly">
+                                            <span class="fw-semibold">Monthly</span>
+                                            <div class="text-muted small">Total monthly expenses ÷ total meals = per meal rate</div>
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="meal_cost_mode" id="modeDaily" value="daily"
+                                            {{ ($settings->meal_cost_mode ?? 'monthly') === 'daily' ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="modeDaily">
+                                            <span class="fw-semibold">Daily</span>
+                                            <div class="text-muted small">Each day's market expenses ÷ that day's total meals = daily meal rate</div>
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
                             <div class="mb-3">
                                 <div class="form-check form-switch">

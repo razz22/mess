@@ -9,13 +9,13 @@ class MessSetting extends Model
 {
     protected $fillable = [
         'mess_id', 'breakfast_close', 'lunch_close', 'dinner_close',
-        'monthly_rate', 'allow_meal_off', 'auto_meal_on',
+        'monthly_rate', 'meal_cost_mode', 'allow_meal_off', 'auto_meal_on',
     ];
 
     protected $casts = [
-        'monthly_rate' => 'decimal:2',
+        'monthly_rate'  => 'decimal:2',
         'allow_meal_off' => 'boolean',
-        'auto_meal_on' => 'boolean',
+        'auto_meal_on'  => 'boolean',
     ];
 
     public function mess(): BelongsTo

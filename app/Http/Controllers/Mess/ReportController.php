@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Mess;
 use App\Http\Controllers\Controller;
 use App\Models\MealAttendance;
 use App\Models\MealSchedule;
+use App\Models\MemberCategoryExclusion;
 use App\Models\MemberDeposit;
 use App\Models\MemberMonthlySummary;
 use App\Models\Mess;
@@ -63,8 +64,14 @@ class ReportController extends Controller
             ->groupBy('user_id')
             ->pluck('meal_count', 'user_id');
 
-        $totalMealCount = $mealByMember->sum();
-        $perMealCost    = $totalMealCount > 0 ? ($totalExpenses / $totalMealCount) : 0;
+        $totalMealCount  = $mealByMember->sum();
+        $costMode        = $mess->settings?->meal_cost_mode ?? 'monthly';
+        $totalMarket     = $mess->expenses()
+            ->whereMonth('expense_date', $month)->whereYear('expense_date', $year)
+            ->where('is_market_expense', true)->sum('amount');
+        $perMealCost     = ($costMode === 'monthly' && $totalMealCount > 0)
+            ? ($totalMarket / $totalMealCount)
+            : 0; // daily mode: no single rate to display
 
         // Cash in hand = total deposits - total expenses
         $cashInHand = $totalDeposits - $totalExpenses;
@@ -79,11 +86,19 @@ class ReportController extends Controller
 
         $member = Auth::user()->getMembershipIn($mess->id);
 
+        // Category exclusions per member: [userId => [categoryId, ...]]
+        $memberCategoryExclusions = MemberCategoryExclusion::where('mess_id', $mess->id)
+            ->where('month', $month)
+            ->where('year', $year)
+            ->get()
+            ->groupBy('user_id')
+            ->map(fn($g) => $g->pluck('category_id')->toArray());
+
         return view('mess.monthly-report', compact(
             'mess', 'members', 'summaries', 'month', 'year',
             'totalExpenses', 'totalDeposits', 'totalMeals',
-            'mealByMember', 'perMealCost', 'cashInHand',
-            'expensesByCategory', 'member'
+            'mealByMember', 'perMealCost', 'cashInHand', 'costMode',
+            'expensesByCategory', 'member', 'memberCategoryExclusions'
         ));
     }
 
@@ -123,16 +138,133 @@ class ReportController extends Controller
         return response()->json(['success' => true, 'excluded' => $summary->fresh()->exclude_from_shared]);
     }
 
+    public function toggleCategoryExpense(Request $request, Mess $mess)
+    {
+        if (!Auth::user()->isManagerOf($mess->id)) abort(403);
+
+        $request->validate([
+            'user_id'     => 'required|exists:users,id',
+            'category_id' => 'required|exists:expense_categories,id',
+            'month'       => 'required|integer|min:1|max:12',
+            'year'        => 'required|integer',
+        ]);
+
+        $existing = MemberCategoryExclusion::where([
+            'mess_id'     => $mess->id,
+            'user_id'     => $request->user_id,
+            'category_id' => $request->category_id,
+            'month'       => $request->month,
+            'year'        => $request->year,
+        ])->first();
+
+        if ($existing) {
+            $existing->delete();
+            $excluded = false;
+        } else {
+            MemberCategoryExclusion::create([
+                'mess_id'     => $mess->id,
+                'user_id'     => $request->user_id,
+                'category_id' => $request->category_id,
+                'month'       => $request->month,
+                'year'        => $request->year,
+            ]);
+            $excluded = true;
+        }
+
+        $this->doGenerate($mess, $request->month, $request->year);
+
+        return response()->json(['success' => true, 'excluded' => $excluded]);
+    }
+
+    public function payExtra(Request $request, Mess $mess)
+    {
+        if (!Auth::user()->isManagerOf($mess->id)) abort(403);
+
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'month'   => 'required|integer|min:1|max:12',
+            'year'    => 'required|integer',
+        ]);
+
+        $summary = MemberMonthlySummary::where([
+            'mess_id' => $mess->id,
+            'user_id' => $request->user_id,
+            'month'   => $request->month,
+            'year'    => $request->year,
+        ])->firstOrFail();
+
+        if ($summary->due_amount >= 0) {
+            return response()->json(['success' => false, 'message' => 'No extra balance to pay out.'], 422);
+        }
+
+        $summary->update(['status' => 'paid_out']);
+
+        return response()->json(['success' => true, 'message' => 'Extra amount marked as paid out to member.']);
+    }
+
+    public function carryExtraAsDeposit(Request $request, Mess $mess)
+    {
+        if (!Auth::user()->isManagerOf($mess->id)) abort(403);
+
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'month'   => 'required|integer|min:1|max:12',
+            'year'    => 'required|integer',
+            'note'    => 'nullable|string|max:255',
+        ]);
+
+        $summary = MemberMonthlySummary::where([
+            'mess_id' => $mess->id,
+            'user_id' => $request->user_id,
+            'month'   => $request->month,
+            'year'    => $request->year,
+        ])->firstOrFail();
+
+        if ($summary->due_amount >= 0) {
+            return response()->json(['success' => false, 'message' => 'No extra balance to carry forward.'], 422);
+        }
+
+        $extraAmount = abs($summary->due_amount);
+        $nextMonth   = $request->month == 12 ? 1  : $request->month + 1;
+        $nextYear    = $request->month == 12 ? $request->year + 1 : $request->year;
+
+        MemberDeposit::create([
+            'mess_id'      => $mess->id,
+            'user_id'      => $request->user_id,
+            'amount'       => $extraAmount,
+            'month'        => $nextMonth,
+            'year'         => $nextYear,
+            'deposit_date' => \Carbon\Carbon::create($nextYear, $nextMonth, 1)->toDateString(),
+            'note'         => $request->note ?? 'Carried forward from ' . date('F Y', mktime(0, 0, 0, $request->month, 1, $request->year)),
+            'received_by'  => Auth::id(),
+        ]);
+
+        $summary->update(['status' => 'carried_forward']);
+
+        return response()->json(['success' => true, 'message' => '৳' . number_format($extraAmount, 2) . ' added as deposit for ' . date('F Y', mktime(0, 0, 0, $nextMonth, 1, $nextYear)) . '.']);
+    }
+
     private function doGenerate(Mess $mess, int $month, int $year): void
     {
         $memberIds = $mess->activeMembers()->pluck('user_id');
 
-        // Load existing exclusion flags (persisted per member per month)
+        // Load existing global exclusion flags (persisted per member per month)
         $exclusions = MemberMonthlySummary::where('mess_id', $mess->id)
             ->where('month', $month)
             ->where('year', $year)
             ->whereIn('user_id', $memberIds)
             ->pluck('exclude_from_shared', 'user_id');
+
+        // Load per-category exclusions: [userId => [categoryId, ...]]
+        $categoryExclusions = MemberCategoryExclusion::where('mess_id', $mess->id)
+            ->where('month', $month)
+            ->where('year', $year)
+            ->whereIn('user_id', $memberIds)
+            ->get()
+            ->groupBy('user_id')
+            ->map(fn($g) => $g->pluck('category_id')->toArray());
+
+        $costMode = $mess->settings?->meal_cost_mode ?? 'monthly';
 
         $totalExpenses = $mess->expenses()
             ->whereMonth('expense_date', $month)
@@ -149,25 +281,100 @@ class ReportController extends Controller
             ->pluck('meal_count', 'user_id');
 
         $totalMealCount = $mealByMember->sum();
-        $perMealCost    = $totalMealCount > 0 ? ($totalExpenses / $totalMealCount) : 0;
 
-        $totalMarketExpenses = $mess->expenses()
-            ->where('is_market_expense', true)
+        // --- Meal cost calculation ---
+        // Monthly mode: total market expenses / total meals = uniform per-meal rate
+        // Daily mode:   for each day, (market expenses that day / meals that day) × member's meals = member's cost
+        $memberMealCosts = [];
+
+        if ($costMode === 'daily') {
+            // Load schedules for this month
+            $monthSchedules = MealSchedule::where('mess_id', $mess->id)
+                ->whereMonth('date', $month)
+                ->whereYear('date', $year)
+                ->select('id', 'date')
+                ->get()
+                ->keyBy('id');
+
+            // Load all attendances for those schedules
+            $monthAttendances = MealAttendance::whereIn('meal_schedule_id', $monthSchedules->keys())
+                ->select('meal_schedule_id', 'user_id', DB::raw('SUM(quantity) as qty'))
+                ->groupBy('meal_schedule_id', 'user_id')
+                ->get();
+
+            // Daily total meals across all members
+            $dailyTotalMeals = [];
+            foreach ($monthAttendances as $att) {
+                $d = \Carbon\Carbon::parse($monthSchedules[$att->meal_schedule_id]->date)->toDateString();
+                $dailyTotalMeals[$d] = ($dailyTotalMeals[$d] ?? 0) + $att->qty;
+            }
+
+            // Daily market expenses
+            $dailyMarket = $mess->expenses()
+                ->whereMonth('expense_date', $month)
+                ->whereYear('expense_date', $year)
+                ->where('is_market_expense', true)
+                ->select('expense_date', DB::raw('SUM(amount) as total'))
+                ->groupBy('expense_date')
+                ->get()
+                ->mapWithKeys(fn($r) => [\Carbon\Carbon::parse($r->expense_date)->toDateString() => (float)$r->total]);
+
+            // Per-member meal cost = sum over days of (member meals that day × daily rate)
+            foreach ($monthAttendances as $att) {
+                $d          = \Carbon\Carbon::parse($monthSchedules[$att->meal_schedule_id]->date)->toDateString();
+                $dayTotal   = $dailyTotalMeals[$d] ?? 0;
+                $dayMarket  = $dailyMarket[$d] ?? 0;
+                $dailyRate  = $dayTotal > 0 ? ($dayMarket / $dayTotal) : 0;
+                $memberMealCosts[$att->user_id] = ($memberMealCosts[$att->user_id] ?? 0) + ($att->qty * $dailyRate);
+            }
+            $perMealCost = 0; // not a single rate in daily mode
+        } else {
+            // Monthly: total market expenses / total meals
+            $totalMarketForMeal = $mess->expenses()
+                ->whereMonth('expense_date', $month)
+                ->whereYear('expense_date', $year)
+                ->where('is_market_expense', true)
+                ->sum('amount');
+            $perMealCost = $totalMealCount > 0 ? ($totalMarketForMeal / $totalMealCount) : 0;
+        }
+
+        // Non-market expenses grouped by category
+        $expensesByCategory = $mess->expenses()
             ->whereMonth('expense_date', $month)
             ->whereYear('expense_date', $year)
-            ->sum('amount');
+            ->where('is_market_expense', false)
+            ->select('category_id', DB::raw('SUM(amount) as total'))
+            ->groupBy('category_id')
+            ->pluck('total', 'category_id');
 
-        $sharedBase = $totalExpenses - $totalMarketExpenses;
-
-        // Only members NOT excluded count towards shared expense division
-        $includedCount = $memberIds->filter(fn($id) => !($exclusions[$id] ?? false))->count();
-        $sharedPerHead = $includedCount > 0 ? ($sharedBase / $includedCount) : 0;
+        // Per-category per-head cost: only members not globally excluded AND not category-excluded pay
+        $categoryPerHead = [];
+        foreach ($expensesByCategory as $catId => $total) {
+            $payingCount = $memberIds->filter(function ($id) use ($exclusions, $categoryExclusions, $catId) {
+                if ($exclusions[$id] ?? false) return false;
+                return !in_array($catId, $categoryExclusions[$id] ?? []);
+            })->count();
+            $categoryPerHead[$catId] = $payingCount > 0 ? ($total / $payingCount) : 0;
+        }
 
         foreach ($memberIds as $userId) {
-            $excluded      = (bool)($exclusions[$userId] ?? false);
-            $memberMeals   = (float)($mealByMember[$userId] ?? 0);
-            $mealCost      = $memberMeals * $perMealCost;
-            $memberShared  = $excluded ? 0 : $sharedPerHead;
+            $excluded    = (bool)($exclusions[$userId] ?? false);
+            $memberMeals = (float)($mealByMember[$userId] ?? 0);
+            $mealCost    = $costMode === 'daily'
+                ? (float)($memberMealCosts[$userId] ?? 0)
+                : $memberMeals * $perMealCost;
+
+            if ($excluded) {
+                $memberShared = 0;
+            } else {
+                $memberCatExcls = $categoryExclusions[$userId] ?? [];
+                $memberShared   = 0;
+                foreach ($categoryPerHead as $catId => $perHead) {
+                    if (!in_array($catId, $memberCatExcls)) {
+                        $memberShared += $perHead;
+                    }
+                }
+            }
 
             $marketExpense = $mess->expenses()
                 ->where('member_id', $userId)
@@ -188,7 +395,11 @@ class ReportController extends Controller
                 'month'   => $month == 1 ? 12 : $month - 1,
                 'year'    => $month == 1 ? $year - 1 : $year,
             ])->first();
-            $carryIn = $prevSummary ? -$prevSummary->due_amount : 0;
+            // If previous month extra was paid out or carried forward as a deposit, don't double-carry it
+            $carryIn = 0;
+            if ($prevSummary && !in_array($prevSummary->status, ['paid_out', 'carried_forward'])) {
+                $carryIn = -$prevSummary->due_amount;
+            }
 
             $totalPayable    = $mealCost + $memberShared + $marketExpense;
             $netAfterDeposit = $totalDeposit + $carryIn - $totalPayable;
@@ -198,17 +409,17 @@ class ReportController extends Controller
             MemberMonthlySummary::updateOrCreate(
                 ['mess_id' => $mess->id, 'user_id' => $userId, 'month' => $month, 'year' => $year],
                 [
-                    'total_meal_days'    => $memberMeals,
-                    'meal_cost'          => round($mealCost, 2),
-                    'total_expenses'     => round($memberShared, 2),
-                    'market_expense'     => round($marketExpense, 2),
-                    'total_deposit'      => round($totalDeposit, 2),
-                    'carry_forward_in'   => round(max(0, $carryIn), 2),
-                    'total_payable'      => round($totalPayable, 2),
-                    'due_amount'         => round(max(0, $dueAmount), 2),
-                    'carry_forward_out'  => round($carryOut, 2),
-                    'exclude_from_shared'=> $excluded,
-                    'generated_at'       => now(),
+                    'total_meal_days'     => $memberMeals,
+                    'meal_cost'           => round($mealCost, 2),
+                    'total_expenses'      => round($memberShared, 2),
+                    'market_expense'      => round($marketExpense, 2),
+                    'total_deposit'       => round($totalDeposit, 2),
+                    'carry_forward_in'    => round(max(0, $carryIn), 2),
+                    'total_payable'       => round($totalPayable, 2),
+                    'due_amount'          => round($dueAmount, 2),
+                    'carry_forward_out'   => round($carryOut, 2),
+                    'exclude_from_shared' => $excluded,
+                    'generated_at'        => now(),
                 ]
             );
         }

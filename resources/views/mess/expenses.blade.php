@@ -77,7 +77,7 @@
                             <thead>
                                 <tr>
                                     <th>Date</th>
-                                    <th>Title</th>
+                                    <th>Remarks</th>
                                     <th>Category</th>
                                     <th>Amount</th>
                                     <th>Added By</th>
@@ -107,10 +107,17 @@
                                     <td class="text-muted small">{{ $expense->addedBy->name }}</td>
                                     @if($member->canManage())
                                     <td>
-                                        <form action="{{ route('mess.expenses.destroy', [$mess->id, $expense->id]) }}" method="POST" onsubmit="return confirm('Delete?')">
-                                            @csrf @method('DELETE')
-                                            <button type="submit" class="btn btn-xs btn-outline-danger"><i class="ti ti-trash"></i></button>
-                                        </form>
+                                        <div class="d-flex gap-1">
+                                            <button class="btn btn-xs btn-outline-primary"
+                                                onclick="openEditModal({{ $expense->id }}, '{{ addslashes($expense->title) }}', {{ $expense->amount }}, '{{ $expense->expense_date->format('Y-m-d') }}', {{ $expense->category_id ?? 'null' }})"
+                                                title="Edit">
+                                                <i class="ti ti-pencil"></i>
+                                            </button>
+                                            <form action="{{ route('mess.expenses.destroy', [$mess->id, $expense->id]) }}" method="POST" onsubmit="return confirm('Delete?')">
+                                                @csrf @method('DELETE')
+                                                <button type="submit" class="btn btn-xs btn-outline-danger" title="Delete"><i class="ti ti-trash"></i></button>
+                                            </form>
+                                        </div>
                                     </td>
                                     @endif
                                 </tr>
@@ -205,7 +212,7 @@
                 @csrf
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">Title <span class="text-danger">*</span></label>
+                        <label class="form-label">Remarks <span class="text-danger">*</span></label>
                         <input type="text" name="title" class="form-control" required placeholder="e.g. Monthly electricity bill">
                     </div>
                     <div class="mb-3">
@@ -238,6 +245,62 @@
         </div>
     </div>
 </div>
+
+<!-- Edit Expense Modal -->
+<div class="modal fade" id="editExpenseModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Expense</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editExpenseForm" method="POST">
+                @csrf @method('PUT')
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Remarks <span class="text-danger">*</span></label>
+                        <input type="text" name="title" id="editTitle" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Amount (৳) <span class="text-danger">*</span></label>
+                        <input type="number" name="amount" id="editAmount" class="form-control" required step="0.01" min="0.01">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Date</label>
+                        <input type="date" name="expense_date" id="editDate" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Category</label>
+                        <select name="category_id" id="editCategory" class="form-select">
+                            <option value="">-- No Category --</option>
+                            @foreach($categories as $cat)
+                            <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function openEditModal(id, title, amount, date, categoryId) {
+    var baseUrl = '{{ route('mess.expenses.update', [$mess->id, '__ID__']) }}';
+    document.getElementById('editExpenseForm').action = baseUrl.replace('__ID__', id);
+    document.getElementById('editTitle').value   = title;
+    document.getElementById('editAmount').value  = amount;
+    document.getElementById('editDate').value    = date;
+    var sel = document.getElementById('editCategory');
+    sel.value = categoryId !== null ? categoryId : '';
+    var modal = new bootstrap.Modal(document.getElementById('editExpenseModal'));
+    modal.show();
+}
+</script>
 
 <!-- Add Category Modal -->
 <div class="modal fade" id="addCategoryModal" tabindex="-1">

@@ -56,9 +56,11 @@
                         <tr>
                             <td>
                                 <div class="d-flex align-items-center gap-2">
-                                    <div class="avatar avatar-sm">
-                                        <span class="avatar-title rounded-circle bg-primary text-white">{{ strtoupper(substr($m->user->name, 0, 1)) }}</span>
-                                    </div>
+                                    @if($m->user->avatar)
+                                    <img src="{{ asset('storage/'.$m->user->avatar) }}" class="rounded-circle" style="width:34px;height:34px;object-fit:cover;flex-shrink:0;" alt="">
+                                    @else
+                                    <span class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-semibold" style="width:34px;height:34px;font-size:13px;flex-shrink:0;">{{ strtoupper(substr($m->user->name, 0, 1)) }}</span>
+                                    @endif
                                     <span>{{ $m->user->name }}</span>
                                 </div>
                             </td>

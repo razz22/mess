@@ -121,7 +121,6 @@
                                 @endphp
                                 <th class="text-center {{ $closed ? 'bg-secondary bg-opacity-10' : 'bg-light' }}" style="min-width:140px;">
                                     <div class="fw-semibold">{{ $mt->name }}</div>
-                                    @if($mt->rate > 0)<div class="text-muted" style="font-size:10px">৳{{ number_format($mt->rate,2) }}/meal</div>@endif
                                     @if($closed)
                                         <span class="badge bg-secondary" style="font-size:10px">Closed</span>
                                     @elseif($expired)
@@ -171,7 +170,7 @@
                                                  || (!$isManager && $mt->isExpired());
                                     $canChange = $canEdit && !$locked;
                                     $totalQty += $qty;
-                                    $cost      = $mt->rate > 0 ? $qty * $mt->rate : null;
+                                    $cost      = null; // rate calculated from market expenses, not meal type
                                 @endphp
                                 <td class="text-center align-middle p-1 {{ $locked ? 'bg-light' : '' }}">
                                     @if($sch)
@@ -183,7 +182,6 @@
                                                    border-color:{{ $qty == 0 ? '#dc3545' : ($qty > 1 ? '#0d6efd' : '#198754') }};"
                                             data-schedule="{{ $sch->id }}"
                                             data-user="{{ $mem->user_id }}"
-                                            data-rate="{{ $mt->rate }}"
                                             {{ !$canChange ? 'disabled' : '' }}
                                             onchange="{{ $canChange ? 'changeMealQty(this)' : '' }}"
                                             title="{{ $locked ? ($isPast ? 'Past date' : ($sch->status==='closed' ? 'Meal closed' : 'Time expired')) : '' }}"
@@ -204,13 +202,9 @@
                                             value="{{ $isCustom ? $qty : '' }}"
                                             data-schedule="{{ $sch->id }}"
                                             data-user="{{ $mem->user_id }}"
-                                            data-rate="{{ $mt->rate }}"
                                             {{ !$canChange ? 'disabled' : '' }}
                                             onkeydown="if(event.key==='Enter'){event.preventDefault();submitCustomQty(this);}"
                                             onblur="submitCustomQty(this)">
-                                        @if($cost !== null && $qty > 0)
-                                        <span class="text-muted qty-cost" style="font-size:10px">৳{{ number_format($cost,2) }}</span>
-                                        @endif
                                     </div>
                                     @else
                                     <span class="text-muted small">—</span>
@@ -230,17 +224,14 @@
                                 <td class="bg-light small" style="position:sticky;left:0;z-index:1;">Total meals</td>
                                 @foreach($mealTypes as $mt)
                                 @php
-                                    $sch    = $schedules[$mt->name] ?? null;
-                                    $sumQ   = 0;
-                                    $sumCost = 0;
+                                    $sch  = $schedules[$mt->name] ?? null;
+                                    $sumQ = 0;
                                     if ($sch) {
-                                        $sumQ    = $allAttendances->filter(fn($g,$k) => str_starts_with($k, $sch->id.'_'))->flatten()->sum('quantity');
-                                        $sumCost = $mt->rate > 0 ? $sumQ * $mt->rate : 0;
+                                        $sumQ = $allAttendances->filter(fn($g, $k) => str_starts_with($k, $sch->id.'_'))->flatten()->sum('quantity');
                                     }
                                 @endphp
                                 <td class="text-center" id="foot-{{ $sch?->id ?? 'none' }}">
                                     <span class="badge bg-primary rounded-pill">{{ $sumQ }}</span>
-                                    @if($sumCost > 0)<div class="text-muted foot-cost" style="font-size:10px">৳{{ number_format($sumCost,2) }}</div>@endif
                                 </td>
                                 @endforeach
                                 <td></td>
@@ -264,7 +255,6 @@
                         <thead class="table-light">
                             <tr>
                                 <th>Name</th>
-                                <th>Rate (৳/meal)</th>
                                 <th>Closes At</th>
                                 <th>Status</th>
                                 <th class="text-center" style="width:120px">Actions</th>
@@ -277,14 +267,13 @@
                                     {{ $mt->name }}
                                     @if(!$mt->is_active)<span class="badge bg-secondary ms-1" style="font-size:10px">Disabled</span>@endif
                                 </td>
-                                <td class="align-middle">{{ $mt->rate > 0 ? '৳'.number_format($mt->rate,2) : '—' }}</td>
                                 <td class="align-middle">{{ $mt->close_time ? \Carbon\Carbon::parse($mt->close_time)->format('g:i A') : '—' }}</td>
                                 <td class="align-middle">
                                     <span class="badge bg-{{ $mt->is_active ? 'success' : 'secondary' }}">{{ $mt->is_active ? 'Active' : 'Disabled' }}</span>
                                 </td>
                                 <td class="text-center align-middle">
                                     <button class="btn btn-xs btn-outline-primary py-0"
-                                        onclick="openEditMealType({{ $mt->id }},'{{ addslashes($mt->name) }}','{{ $mt->rate }}','{{ $mt->close_time ? substr($mt->close_time,0,5) : '' }}',{{ $mt->is_active ? 'true' : 'false' }})"
+                                        onclick="openEditMealType({{ $mt->id }},'{{ addslashes($mt->name) }}','{{ $mt->close_time ? substr($mt->close_time,0,5) : '' }}',{{ $mt->is_active ? 'true' : 'false' }})"
                                         title="Edit">
                                         <i class="ti ti-edit" style="font-size:11px"></i>
                                     </button>
@@ -298,7 +287,7 @@
                                     </form>
                                     @else
                                     <button class="btn btn-xs btn-outline-success py-0 ms-1"
-                                        onclick="openEditMealType({{ $mt->id }},'{{ addslashes($mt->name) }}','{{ $mt->rate }}','{{ $mt->close_time ? substr($mt->close_time,0,5) : '' }}',false,'enable')"
+                                        onclick="openEditMealType({{ $mt->id }},'{{ addslashes($mt->name) }}','{{ $mt->close_time ? substr($mt->close_time,0,5) : '' }}',false,'enable')"
                                         title="Re-enable">
                                         <i class="ti ti-eye" style="font-size:11px"></i>
                                     </button>
@@ -332,11 +321,6 @@
                         <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
                         <input type="text" name="name" class="form-control" placeholder="e.g. Snacks, Brunch" required maxlength="50">
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Rate per Meal (৳)</label>
-                        <input type="number" name="rate" class="form-control" placeholder="0" min="0" step="0.01">
-                        <div class="form-text">Cost per 1 meal unit. Leave 0 if not applicable.</div>
-                    </div>
                     <div class="mb-0">
                         <label class="form-label fw-semibold">Attendance Closes At</label>
                         <input type="time" name="close_time" class="form-control">
@@ -366,10 +350,6 @@
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
                         <input type="text" name="name" id="edit-mt-name" class="form-control" required maxlength="50">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Rate per Meal (৳)</label>
-                        <input type="number" name="rate" id="edit-mt-rate" class="form-control" min="0" step="0.01">
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Attendance Closes At</label>
@@ -492,10 +472,9 @@ function changeMealQty(select) {
 
     var scheduleId = select.getAttribute('data-schedule');
     var userId     = select.getAttribute('data-user');
-    var rate       = parseFloat(select.getAttribute('data-rate')) || 0;
     var quantity   = parseFloat(select.value);
 
-    sendMealQty(select, null, scheduleId, userId, rate, quantity);
+    sendMealQty(select, null, scheduleId, userId, quantity);
 }
 
 // Custom input: submitted on Enter or blur
@@ -517,16 +496,15 @@ function submitCustomQty(input) {
 
     var scheduleId = input.getAttribute('data-schedule');
     var userId     = input.getAttribute('data-user');
-    var rate       = parseFloat(input.getAttribute('data-rate')) || 0;
 
     // Find the sibling select to sync its visual state
     var wrap   = input.closest('.d-flex.flex-column');
     var select = wrap ? wrap.querySelector('.meal-qty-select') : null;
 
-    sendMealQty(select, input, scheduleId, userId, rate, quantity);
+    sendMealQty(select, input, scheduleId, userId, quantity);
 }
 
-function sendMealQty(select, customInput, scheduleId, userId, rate, quantity) {
+function sendMealQty(select, customInput, scheduleId, userId, quantity) {
     // Lock both controls while sending
     if (select)      select.disabled = true;
     if (customInput) customInput.disabled = true;
@@ -569,30 +547,9 @@ function sendMealQty(select, customInput, scheduleId, userId, rate, quantity) {
             if (ci) ci.classList.add('d-none');
         }
 
-        // Update cost label
-        var container = (customInput || select).closest('td');
-        var costSpan  = container ? container.querySelector('.qty-cost') : null;
-        if (rate > 0 && quantity > 0) {
-            var cost = (quantity * rate).toFixed(2);
-            if (costSpan) {
-                costSpan.textContent = '৳' + cost;
-            } else {
-                var wrap2 = (customInput || select).closest('.d-flex.flex-column');
-                if (wrap2) {
-                    var s = document.createElement('span');
-                    s.className = 'text-muted qty-cost';
-                    s.style.fontSize = '10px';
-                    s.textContent = '৳' + cost;
-                    wrap2.appendChild(s);
-                }
-            }
-        } else if (costSpan) {
-            costSpan.textContent = '';
-        }
-
         // Live totals
         updateHeaderQty(scheduleId, data.totalQty);
-        updateFooterQty(scheduleId, data.totalQty, rate);
+        updateFooterQty(scheduleId, data.totalQty);
         updateRowTotalById(userId);
 
         // Toast
@@ -641,26 +598,11 @@ function updateHeaderQty(scheduleId, totalQty) {
     }
 }
 
-function updateFooterQty(scheduleId, totalQty, rate) {
+function updateFooterQty(scheduleId, totalQty) {
     var cell = document.getElementById('foot-' + scheduleId);
     if (!cell) return;
     var badge = cell.querySelector('.badge');
     if (badge) badge.textContent = totalQty;
-    var costDiv = cell.querySelector('.foot-cost');
-    if (rate > 0) {
-        var cost = (totalQty * rate).toFixed(2);
-        if (costDiv) {
-            costDiv.textContent = '৳' + cost;
-        } else {
-            var d = document.createElement('div');
-            d.className = 'text-muted foot-cost';
-            d.style.fontSize = '10px';
-            d.textContent = '৳' + cost;
-            cell.appendChild(d);
-        }
-    } else if (costDiv) {
-        costDiv.textContent = '';
-    }
 }
 
 function updateRowTotalById(userId) {
@@ -707,11 +649,10 @@ function disableMySelects() {
     showToast('You have used all 3 changes for today. Contact your manager.', 'danger');
 }
 
-function openEditMealType(id, name, rate, closeTime, isActive, action) {
+function openEditMealType(id, name, closeTime, isActive, action) {
     var base = '/mess/' + messId + '/meal-types/' + id;
     document.getElementById('editMealTypeForm').action = base;
     document.getElementById('edit-mt-name').value  = name;
-    document.getElementById('edit-mt-rate').value  = rate || 0;
     document.getElementById('edit-mt-close').value = closeTime || '';
     document.getElementById('edit-mt-active').value = (action === 'enable' || isActive) ? '1' : '0';
     var modal = new bootstrap.Modal(document.getElementById('editMealTypeModal'));

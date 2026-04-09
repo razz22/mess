@@ -209,7 +209,8 @@ class MessController extends Controller
             'breakfast_close' => $request->breakfast_close ?? '09:00:00',
             'lunch_close'     => $request->lunch_close ?? '14:00:00',
             'dinner_close'    => $request->dinner_close ?? '21:00:00',
-            'monthly_rate'    => $request->monthly_rate ?? 0,
+            'monthly_rate'    => 0,
+            'meal_cost_mode'  => in_array($request->meal_cost_mode, ['monthly', 'daily']) ? $request->meal_cost_mode : 'monthly',
             'allow_meal_off'  => $request->boolean('allow_meal_off'),
             'auto_meal_on'    => $request->boolean('auto_meal_on'),
         ]);

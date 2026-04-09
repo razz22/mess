@@ -10,11 +10,12 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class MarketRoutine extends Model
 {
     protected $fillable = [
-        'mess_id', 'date', 'assigned_to', 'assigned_by', 'status', 'notes', 'total_spent',
+        'mess_id', 'start_date', 'end_date', 'assigned_to', 'assigned_by', 'status', 'notes', 'total_spent',
     ];
 
     protected $casts = [
-        'date' => 'date',
+        'start_date'  => 'date',
+        'end_date'    => 'date',
         'total_spent' => 'decimal:2',
     ];
 

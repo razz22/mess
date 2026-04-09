@@ -1,6 +1,7 @@
 <?php $page = "mess-members" ?>
 @extends('layout.mainlayout')
 @section('content')
+@php $isManager = Auth::user()->isManagerOf($mess->id); @endphp
 <div class="page-wrapper">
     <div class="content">
         <div class="page-header">
@@ -12,7 +13,7 @@
                 <a href="{{ route('mess.dashboard', $mess->id) }}" class="btn btn-outline-secondary btn-sm">
                     <i class="ti ti-arrow-left me-1"></i>Back
                 </a>
-                @if($members->count() < $mess->getEffectiveMaxMembers() && Auth::user()->isManagerOf($mess->id))
+                @if($members->count() < $mess->getEffectiveMaxMembers() && $isManager)
                 <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addMemberModal">
                     <i class="ti ti-user-plus me-1"></i>Add Member
                 </button>
@@ -26,7 +27,6 @@
         @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show">{{ session('error') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
         @endif
-
         @if($errors->any())
         <div class="alert alert-danger alert-dismissible fade show">
             <ul class="mb-0">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
@@ -39,166 +39,291 @@
             <div class="card-body py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <div>
                     <i class="ti ti-link me-2 text-primary"></i>
-                    <span>Share invite code: <strong class="fs-5">{{ $mess->invite_code }}</strong> for members to join</span>
+                    <span>Share invite code: <strong class="fs-5 font-monospace">{{ $mess->invite_code }}</strong> for members to join</span>
                 </div>
-                <button class="btn btn-sm btn-outline-primary" onclick="navigator.clipboard.writeText('{{ $mess->invite_code }}');this.textContent='Copied!'">
+                <button class="btn btn-sm btn-outline-primary" onclick="navigator.clipboard.writeText('{{ $mess->invite_code }}');this.innerHTML='<i class=\'ti ti-check me-1\'></i>Copied!'">
                     <i class="ti ti-copy me-1"></i>Copy Code
                 </button>
             </div>
         </div>
 
-        <!-- Members Table -->
-        <div class="card">
-            <div class="card-header">
-                <h6 class="card-title mb-0">All Members</h6>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Member</th>
-                            <th>Phone</th>
-                            <th>NID</th>
-                            <th>Role</th>
-                            <th>Joined</th>
-                            <th>Carry Forward</th>
-                            <th>Status</th>
-                            @if(Auth::user()->isManagerOf($mess->id))
-                            <th>Actions</th>
-                            @endif
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($members as $i => $member)
-                        <tr>
-                            <td>{{ $i + 1 }}</td>
-                            <td>
-                                <div class="d-flex align-items-center gap-2">
-                                    <div class="avatar avatar-sm" style="width:36px;height:36px;flex-shrink:0;">
-                                        @if($member->user->avatar)
-                                        <img src="{{ asset('storage/'.$member->user->avatar) }}" class="img-fluid rounded-circle" style="width:36px;height:36px;object-fit:cover;" alt="">
-                                        @else
-                                        <span class="avatar-title rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-semibold" style="width:36px;height:36px;font-size:15px;">{{ strtoupper(substr($member->user->name, 0, 1)) }}</span>
-                                        @endif
-                                    </div>
-                                    <div>
-                                        <div class="fw-semibold">{{ $member->user->name }}</div>
-                                        <div class="text-muted small">{{ $member->user->email }}</div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="text-muted small">{{ $member->user->phone ?? '—' }}</td>
-                            <td>
-                                @if($member->user->nid_document)
-                                <a href="{{ asset('storage/'.$member->user->nid_document) }}" target="_blank" class="btn btn-xs btn-outline-info">
-                                    <i class="ti ti-file me-1"></i>View
-                                </a>
+        <!-- Member Cards -->
+        <div class="row g-3">
+            @foreach($members as $m)
+            @php
+                $u = $m->user;
+                $roleColor = match($m->role) { 'owner'=>'danger','manager'=>'warning','author'=>'info', default=>'secondary' };
+                $bgMap = ['A+'=>'danger','A-'=>'danger','B+'=>'primary','B-'=>'primary','AB+'=>'purple','AB-'=>'purple','O+'=>'success','O-'=>'success'];
+                $bgColor = $bgMap[$u->blood_group ?? ''] ?? 'secondary';
+            @endphp
+            <div class="col-xl-4 col-lg-6">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body p-3">
+                        <div class="d-flex align-items-start gap-3">
+                            <!-- Avatar -->
+                            <div style="flex-shrink:0">
+                                @if($u->avatar)
+                                <img src="{{ asset('storage/'.$u->avatar) }}" alt="{{ $u->name }}"
+                                    style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #e9ecef">
                                 @else
-                                <span class="text-muted small">—</span>
+                                <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;border:2px solid #e9ecef">
+                                    {{ strtoupper(substr($u->name,0,1)) }}
+                                </div>
                                 @endif
-                            </td>
-                            <td>
-                                <span class="badge bg-{{ $member->role === 'owner' ? 'danger' : ($member->role === 'manager' ? 'warning' : ($member->role === 'author' ? 'info' : 'secondary')) }}">
-                                    {{ ucfirst($member->role) }}
-                                </span>
-                            </td>
-                            <td class="text-muted small">{{ $member->joined_at ? $member->joined_at->format('d M Y') : 'N/A' }}</td>
-                            <td>
-                                <span class="{{ $member->carry_forward >= 0 ? 'text-success' : 'text-danger' }}">
-                                    ৳{{ number_format(abs($member->carry_forward), 2) }}
-                                    {{ $member->carry_forward < 0 ? '(Owe)' : '' }}
-                                </span>
-                            </td>
-                            <td>
-                                <span class="badge bg-{{ $member->is_active ? 'success' : 'danger' }}">
-                                    {{ $member->is_active ? 'Active' : 'Inactive' }}
-                                </span>
-                            </td>
-                            @if(Auth::user()->isManagerOf($mess->id))
-                            <td>
-                                <div class="d-flex gap-1">
-                                    @if($member->role !== 'owner' && Auth::user()->isOwnerOf($mess->id))
-                                    <button class="btn btn-xs btn-outline-secondary"
-                                        onclick="openEditModal(
-                                            {{ $member->id }},
-                                            '{{ addslashes($member->user->name) }}',
-                                            '{{ addslashes($member->user->email) }}',
-                                            '{{ addslashes($member->user->phone ?? '') }}',
-                                            '{{ $member->role }}',
-                                            '{{ $member->user->nid_document ? asset('storage/'.$member->user->nid_document) : '' }}'
-                                        )">
-                                        <i class="ti ti-edit"></i>
-                                    </button>
-                                    <form action="{{ route('mess.members.remove', [$mess->id, $member->id]) }}" method="POST" class="remove-member-form">
-                                        @csrf @method('DELETE')
-                                        <button type="button" class="btn btn-xs btn-outline-danger" onclick="confirmRemove(this)" data-name="{{ $member->user->name }}"><i class="ti ti-user-minus"></i></button>
-                                    </form>
+                            </div>
+                            <!-- Info -->
+                            <div class="flex-grow-1 min-w-0">
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <h6 class="mb-0 fw-bold text-truncate">{{ $u->name }}</h6>
+                                    <span class="badge bg-{{ $roleColor }}">{{ ucfirst($m->role) }}</span>
+                                    @if($u->blood_group)
+                                    <span class="badge bg-{{ $bgColor }}-subtle text-{{ $bgColor }} border border-{{ $bgColor }}" style="font-size:10px">
+                                        <i class="ti ti-droplet me-1"></i>{{ $u->blood_group }}
+                                    </span>
                                     @endif
                                 </div>
-                            </td>
+                                <div class="text-muted small mt-1">{{ $u->email }}</div>
+                                @if($u->phone)
+                                <div class="text-muted small"><i class="ti ti-phone me-1"></i>{{ $u->phone }}</div>
+                                @endif
+                                @if($u->occupation_type)
+                                <div class="small mt-1">
+                                    <i class="ti ti-{{ $u->occupation_type === 'student' ? 'school' : 'briefcase' }} me-1 text-muted"></i>
+                                    <span class="text-capitalize">{{ $u->occupation_type }}</span>
+                                    @if($u->organization) — <span class="text-muted">{{ $u->organization }}</span>@endif
+                                </div>
+                                @endif
+                            </div>
+                        </div>
+
+                        <!-- Stats Row -->
+                        <div class="row g-2 mt-2">
+                            <div class="col-4 text-center">
+                                <div class="bg-light rounded p-1">
+                                    <div class="fw-bold small">{{ $m->joined_at ? $m->joined_at->format('d M Y') : '—' }}</div>
+                                    <div style="font-size:10px" class="text-muted">Joined</div>
+                                </div>
+                            </div>
+                            <div class="col-4 text-center">
+                                <div class="bg-light rounded p-1">
+                                    <div class="fw-bold small {{ $m->carry_forward < 0 ? 'text-danger' : 'text-success' }}">
+                                        {{ $m->carry_forward < 0 ? '-' : '' }}৳{{ number_format(abs($m->carry_forward),0) }}
+                                    </div>
+                                    <div style="font-size:10px" class="text-muted">Balance</div>
+                                </div>
+                            </div>
+                            <div class="col-4 text-center">
+                                <div class="bg-light rounded p-1">
+                                    <div class="fw-bold small">
+                                        @if($m->house_rent > 0) ৳{{ number_format($m->house_rent,0) }}
+                                        @else <span class="text-muted">—</span>
+                                        @endif
+                                    </div>
+                                    <div style="font-size:10px" class="text-muted">Rent/mo</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="d-flex gap-2 mt-3">
+                            <a href="{{ route('mess.members.profile', [$mess->id, $m->id]) }}"
+                               class="btn btn-sm btn-outline-primary flex-grow-1">
+                                <i class="ti ti-user me-1"></i>Profile
+                            </a>
+                            @if($isManager && $m->role !== 'owner')
+                            <button class="btn btn-sm btn-outline-secondary"
+                                onclick="openEditModal({{ $m->id }}, {{ json_encode($u) }}, {{ json_encode($m) }})"
+                                title="Edit">
+                                <i class="ti ti-edit"></i>
+                            </button>
+                            @if($mess->owner_id === Auth::id())
+                            <form action="{{ route('mess.members.remove', [$mess->id, $m->id]) }}" method="POST" class="remove-form">
+                                @csrf @method('DELETE')
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmRemove(this, '{{ addslashes($u->name) }}')" title="Remove">
+                                    <i class="ti ti-user-minus"></i>
+                                </button>
+                            </form>
                             @endif
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+                            @endif
+                        </div>
+                    </div>
+                </div>
             </div>
+            @endforeach
         </div>
     </div>
 </div>
 
-<!-- Add Member Modal -->
-<div class="modal fade" id="addMemberModal" tabindex="-1" aria-labelledby="addMemberModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+<!-- ===================== ADD MEMBER MODAL ===================== -->
+<div class="modal fade" id="addMemberModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="addMemberModalLabel"><i class="ti ti-user-plus me-2"></i>Add New Member</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="ti ti-user-plus me-2"></i>Add New Member</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form action="{{ route('mess.members.store', $mess->id) }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 <div class="modal-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label>
-                            <input type="text" name="name" class="form-control" placeholder="Enter full name" value="{{ old('name') }}" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Email Address <span class="text-danger">*</span></label>
-                            <input type="email" name="email" class="form-control" placeholder="Enter email" value="{{ old('email') }}" required>
-                            <div class="form-text">Used to log in to the system.</div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Password <span class="text-danger">*</span></label>
-                            <div class="input-group">
-                                <input type="password" name="password" id="memberPassword" class="form-control" placeholder="Set a password" required minlength="6">
-                                <button class="btn btn-outline-secondary" type="button" onclick="togglePass()">
-                                    <i class="ti ti-eye" id="eyeIcon"></i>
-                                </button>
+                    <!-- Avatar Preview -->
+                    <div class="text-center mb-4">
+                        <div id="addAvatarPreview" style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:inline-flex;align-items:center;justify-content:center;font-size:28px;color:#fff;margin-bottom:8px">
+                            <i class="ti ti-user"></i>
+                        </div><br>
+                        <label class="btn btn-sm btn-outline-primary mt-1">
+                            <i class="ti ti-camera me-1"></i>Upload Photo
+                            <input type="file" name="avatar" accept="image/*" class="d-none" onchange="previewAvatar(this,'addAvatarPreview')">
+                        </label>
+                        <div class="form-text">JPG/PNG max 3MB</div>
+                    </div>
+
+                    <!-- Section: Account -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light py-2"><h6 class="mb-0 text-primary"><i class="ti ti-lock me-2"></i>Account Credentials</h6></div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label>
+                                    <input type="text" name="name" class="form-control" value="{{ old('name') }}" required placeholder="Full name">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Email <span class="text-danger">*</span></label>
+                                    <input type="email" name="email" class="form-control" value="{{ old('email') }}" required placeholder="email@example.com">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Password <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <input type="password" name="password" id="addPass" class="form-control" required minlength="6" placeholder="Min 6 chars">
+                                        <button class="btn btn-outline-secondary" type="button" onclick="toggleVis('addPass','addPassIcon')"><i id="addPassIcon" class="ti ti-eye"></i></button>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Phone</label>
+                                    <input type="text" name="phone" class="form-control" value="{{ old('phone') }}" placeholder="01XXXXXXXXX">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Role</label>
+                                    <select name="role" class="form-select">
+                                        <option value="member">Member</option>
+                                        <option value="author">Author</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">NID / Document</label>
+                                    <input type="file" name="nid_document" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
+                                    <div class="form-text">JPG, PNG or PDF — max 3MB</div>
+                                </div>
                             </div>
-                            <div class="form-text">Minimum 6 characters.</div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Phone Number</label>
-                            <input type="text" name="phone" class="form-control" placeholder="e.g. 01XXXXXXXXX" value="{{ old('phone') }}">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Role</label>
-                            <select name="role" class="form-select">
-                                <option value="member">Member</option>
-                                <option value="author">Author</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">NID / Document</label>
-                            <input type="file" name="nid_document" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
-                            <div class="form-text">JPG, PNG or PDF — max 2MB.</div>
                         </div>
                     </div>
 
-                    <div class="alert alert-info mt-3 mb-0 py-2">
-                        <i class="ti ti-info-circle me-1"></i>
-                        A new account will be created. The member can sign in using their email and password.
+                    <!-- Section: Personal -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light py-2"><h6 class="mb-0 text-success"><i class="ti ti-id-badge me-2"></i>Personal Information</h6></div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold">Gender</label>
+                                    <select name="gender" class="form-select">
+                                        <option value="">— Select —</option>
+                                        <option value="male">Male</option>
+                                        <option value="female">Female</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold">Date of Birth</label>
+                                    <input type="date" name="date_of_birth" class="form-control" value="{{ old('date_of_birth') }}">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold">Blood Group</label>
+                                    <select name="blood_group" class="form-select">
+                                        <option value="">— Select —</option>
+                                        @foreach(['A+','A-','B+','B-','AB+','AB-','O+','O-'] as $bg)
+                                        <option value="{{ $bg }}">{{ $bg }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold">Join Date</label>
+                                    <input type="date" name="joined_at" class="form-control" value="{{ now()->toDateString() }}">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold">Home Address</label>
+                                    <textarea name="address" class="form-control" rows="2" placeholder="Permanent home address...">{{ old('address') }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: Occupation -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light py-2"><h6 class="mb-0 text-info"><i class="ti ti-briefcase me-2"></i>Occupation / Education</h6></div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Occupation Type</label>
+                                    <select name="occupation_type" class="form-select" id="addOccType" onchange="toggleOrg('addOccType','addOrgLabel')">
+                                        <option value="">— Select —</option>
+                                        <option value="student">Student</option>
+                                        <option value="employed">Employed</option>
+                                        <option value="business">Business</option>
+                                        <option value="freelance">Freelance</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="form-label fw-semibold" id="addOrgLabel">School / University / Company</label>
+                                    <input type="text" name="organization" class="form-control" placeholder="Organization name" value="{{ old('organization') }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: Emergency Contact -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light py-2"><h6 class="mb-0 text-warning"><i class="ti ti-phone-call me-2"></i>Emergency Contact</h6></div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Contact Name</label>
+                                    <input type="text" name="emergency_contact_name" class="form-control" placeholder="Full name" value="{{ old('emergency_contact_name') }}">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Contact Phone</label>
+                                    <input type="text" name="emergency_contact_phone" class="form-control" placeholder="01XXXXXXXXX" value="{{ old('emergency_contact_phone') }}">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Relation</label>
+                                    <input type="text" name="emergency_contact_relation" class="form-control" placeholder="e.g. Father, Mother, Spouse" value="{{ old('emergency_contact_relation') }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: Housing / Mess -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light py-2"><h6 class="mb-0 text-danger"><i class="ti ti-home me-2"></i>Housing & Financial</h6></div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Monthly House Rent (৳)</label>
+                                    <input type="number" name="house_rent" class="form-control" step="0.01" min="0" value="0" placeholder="0.00">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Advance Amount (৳)</label>
+                                    <input type="number" name="advance_amount" class="form-control" step="0.01" min="0" value="0" placeholder="0.00">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Advance Date</label>
+                                    <input type="date" name="advance_date" class="form-control">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold">Internal Notes</label>
+                                    <textarea name="notes" class="form-control" rows="2" placeholder="Private notes visible only to managers...">{{ old('notes') }}</textarea>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -210,58 +335,185 @@
     </div>
 </div>
 
-<!-- Edit Member Modal -->
-<div class="modal fade" id="editMemberModal" tabindex="-1" aria-labelledby="editMemberModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+<!-- ===================== EDIT MEMBER MODAL ===================== -->
+<div class="modal fade" id="editMemberModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editMemberModalLabel"><i class="ti ti-user-edit me-2"></i>Edit Member</h5>
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="ti ti-user-edit me-2"></i>Edit Member</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="editMemberForm" method="POST" enctype="multipart/form-data">
                 @csrf @method('PUT')
                 <div class="modal-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label>
-                            <input type="text" name="name" id="editName" class="form-control" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Email Address <span class="text-danger">*</span></label>
-                            <input type="email" name="email" id="editEmail" class="form-control" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">New Password</label>
-                            <div class="input-group">
-                                <input type="password" name="password" id="editPassword" class="form-control" placeholder="Leave blank to keep current" minlength="6">
-                                <button class="btn btn-outline-secondary" type="button" onclick="toggleEditPass()">
-                                    <i class="ti ti-eye" id="editEyeIcon"></i>
-                                </button>
+                    <!-- Avatar Preview -->
+                    <div class="text-center mb-4">
+                        <div id="editAvatarWrap">
+                            <div id="editAvatarPlaceholder" style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:inline-flex;align-items:center;justify-content:center;font-size:28px;color:#fff">
+                                <i class="ti ti-user"></i>
                             </div>
-                            <div class="form-text">Leave blank to keep the current password.</div>
+                            <img id="editAvatarImg" src="" alt="" style="width:80px;height:80px;border-radius:50%;object-fit:cover;display:none">
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Phone Number</label>
-                            <input type="text" name="phone" id="editPhone" class="form-control" placeholder="e.g. 01XXXXXXXXX">
+                        <br>
+                        <label class="btn btn-sm btn-outline-warning mt-1">
+                            <i class="ti ti-camera me-1"></i>Change Photo
+                            <input type="file" name="avatar" accept="image/*" class="d-none" onchange="previewAvatar(this,'editAvatarImg','editAvatarPlaceholder')">
+                        </label>
+                    </div>
+
+                    <!-- Account -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light py-2"><h6 class="mb-0 text-primary"><i class="ti ti-lock me-2"></i>Account Credentials</h6></div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label>
+                                    <input type="text" name="name" id="eName" class="form-control" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Email <span class="text-danger">*</span></label>
+                                    <input type="email" name="email" id="eEmail" class="form-control" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">New Password</label>
+                                    <div class="input-group">
+                                        <input type="password" name="password" id="ePass" class="form-control" placeholder="Leave blank to keep current" minlength="6">
+                                        <button class="btn btn-outline-secondary" type="button" onclick="toggleVis('ePass','ePassIcon')"><i id="ePassIcon" class="ti ti-eye"></i></button>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Phone</label>
+                                    <input type="text" name="phone" id="ePhone" class="form-control">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Role</label>
+                                    <select name="role" id="eRole" class="form-select">
+                                        <option value="member">Member</option>
+                                        <option value="author">Author</option>
+                                        <option value="manager">Manager</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">NID / Document</label>
+                                    <input type="file" name="nid_document" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
+                                    <div class="form-text" id="eNidHint"></div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Role</label>
-                            <select name="role" id="editRole" class="form-select">
-                                <option value="member">Member</option>
-                                <option value="author">Author</option>
-                                <option value="manager">Manager</option>
-                            </select>
+                    </div>
+
+                    <!-- Personal -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light py-2"><h6 class="mb-0 text-success"><i class="ti ti-id-badge me-2"></i>Personal Information</h6></div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold">Gender</label>
+                                    <select name="gender" id="eGender" class="form-select">
+                                        <option value="">— Select —</option>
+                                        <option value="male">Male</option>
+                                        <option value="female">Female</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold">Date of Birth</label>
+                                    <input type="date" name="date_of_birth" id="eDob" class="form-control">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold">Blood Group</label>
+                                    <select name="blood_group" id="eBlood" class="form-select">
+                                        <option value="">— Select —</option>
+                                        @foreach(['A+','A-','B+','B-','AB+','AB-','O+','O-'] as $bg)
+                                        <option value="{{ $bg }}">{{ $bg }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold">Join Date</label>
+                                    <input type="date" name="joined_at" id="eJoined" class="form-control">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold">Home Address</label>
+                                    <textarea name="address" id="eAddress" class="form-control" rows="2"></textarea>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">NID / Document</label>
-                            <input type="file" name="nid_document" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
-                            <div class="form-text" id="editNidCurrent"></div>
+                    </div>
+
+                    <!-- Occupation -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light py-2"><h6 class="mb-0 text-info"><i class="ti ti-briefcase me-2"></i>Occupation / Education</h6></div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Occupation Type</label>
+                                    <select name="occupation_type" id="eOccType" class="form-select" onchange="toggleOrg('eOccType','eOrgLabel')">
+                                        <option value="">— Select —</option>
+                                        <option value="student">Student</option>
+                                        <option value="employed">Employed</option>
+                                        <option value="business">Business</option>
+                                        <option value="freelance">Freelance</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="form-label fw-semibold" id="eOrgLabel">School / University / Company</label>
+                                    <input type="text" name="organization" id="eOrg" class="form-control" placeholder="Organization name">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Emergency Contact -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light py-2"><h6 class="mb-0 text-warning"><i class="ti ti-phone-call me-2"></i>Emergency Contact</h6></div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Contact Name</label>
+                                    <input type="text" name="emergency_contact_name" id="eEcName" class="form-control">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Contact Phone</label>
+                                    <input type="text" name="emergency_contact_phone" id="eEcPhone" class="form-control">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Relation</label>
+                                    <input type="text" name="emergency_contact_relation" id="eEcRel" class="form-control" placeholder="e.g. Father, Spouse">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Housing -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light py-2"><h6 class="mb-0 text-danger"><i class="ti ti-home me-2"></i>Housing & Financial</h6></div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Monthly House Rent (৳)</label>
+                                    <input type="number" name="house_rent" id="eRent" class="form-control" step="0.01" min="0">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Advance Amount (৳)</label>
+                                    <input type="number" name="advance_amount" id="eAdvance" class="form-control" step="0.01" min="0">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Advance Date</label>
+                                    <input type="date" name="advance_date" id="eAdvDate" class="form-control">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold">Internal Notes</label>
+                                    <textarea name="notes" id="eNotes" class="form-control" rows="2"></textarea>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="ti ti-device-floppy me-1"></i>Save Changes</button>
+                    <button type="submit" class="btn btn-warning"><i class="ti ti-device-floppy me-1"></i>Save Changes</button>
                 </div>
             </form>
         </div>
@@ -269,68 +521,117 @@
 </div>
 
 @if($errors->any())
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    new bootstrap.Modal(document.getElementById('addMemberModal')).show();
-});
-</script>
+<script>document.addEventListener('DOMContentLoaded',()=>new bootstrap.Modal(document.getElementById('addMemberModal')).show());</script>
 @endif
 
 <script>
-function openEditModal(memberId, name, email, phone, role, nidUrl) {
-    const form = document.getElementById('editMemberForm');
-    form.action = '/mess/{{ $mess->id }}/members/' + memberId;
-    document.getElementById('editName').value = name;
-    document.getElementById('editEmail').value = email;
-    document.getElementById('editPhone').value = phone;
-    document.getElementById('editRole').value = role;
-    document.getElementById('editPassword').value = '';
-    const nidHint = document.getElementById('editNidCurrent');
-    nidHint.innerHTML = nidUrl
-        ? 'Current: <a href="' + nidUrl + '" target="_blank">View document</a> &mdash; upload to replace'
-        : 'No document uploaded yet.';
-    new bootstrap.Modal(document.getElementById('editMemberModal')).show();
-}
-
-function confirmRemove(btn) {
-    const name = btn.dataset.name;
-    Swal.fire({
-        title: 'Remove Member?',
-        text: name + ' will be removed from this mess.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Yes, remove',
-        cancelButtonText: 'Cancel',
-    }).then(function(result) {
-        if (result.isConfirmed) {
-            btn.closest('form').submit();
-        }
-    });
-}
-
-function toggleEditPass() {
-    const input = document.getElementById('editPassword');
-    const icon = document.getElementById('editEyeIcon');
-    if (input.type === 'password') {
-        input.type = 'text';
-        icon.className = 'ti ti-eye-off';
-    } else {
-        input.type = 'password';
-        icon.className = 'ti ti-eye';
+function previewAvatar(input, imgId, placeholderId = null) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            if (typeof imgId === 'string' && imgId === 'addAvatarPreview') {
+                const el = document.getElementById('addAvatarPreview');
+                el.innerHTML = '';
+                el.style.background = 'none';
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.style.cssText = 'width:80px;height:80px;border-radius:50%;object-fit:cover';
+                el.appendChild(img);
+            } else {
+                const img = document.getElementById(imgId);
+                img.src = e.target.result;
+                img.style.display = 'inline-block';
+                if (placeholderId) {
+                    const ph = document.getElementById(placeholderId);
+                    if (ph) ph.style.display = 'none';
+                }
+            }
+        };
+        reader.readAsDataURL(input.files[0]);
     }
 }
 
-function togglePass() {
-    const input = document.getElementById('memberPassword');
-    const icon = document.getElementById('eyeIcon');
-    if (input.type === 'password') {
-        input.type = 'text';
-        icon.className = 'ti ti-eye-off';
+function toggleVis(inputId, iconId) {
+    const el = document.getElementById(inputId);
+    const ic = document.getElementById(iconId);
+    el.type = el.type === 'password' ? 'text' : 'password';
+    ic.className = el.type === 'password' ? 'ti ti-eye' : 'ti ti-eye-off';
+}
+
+function toggleOrg(selectId, labelId) {
+    const val = document.getElementById(selectId).value;
+    const map = { student:'School / University', employed:'Office / Company', business:'Business Name', freelance:'Platform / Agency', other:'Organization' };
+    const lbl = document.getElementById(labelId);
+    if (lbl) lbl.textContent = map[val] || 'School / University / Company';
+}
+
+function openEditModal(memberId, u, m) {
+    const form = document.getElementById('editMemberForm');
+    form.action = '/mess/{{ $mess->id }}/members/' + memberId;
+
+    // Account
+    document.getElementById('eName').value    = u.name || '';
+    document.getElementById('eEmail').value   = u.email || '';
+    document.getElementById('ePhone').value   = u.phone || '';
+    document.getElementById('eRole').value    = m.role || 'member';
+    document.getElementById('ePass').value    = '';
+
+    // NID hint
+    const nidHint = document.getElementById('eNidHint');
+    nidHint.innerHTML = u.nid_document
+        ? 'Current: <a href="{{ asset("storage/") }}' + u.nid_document + '" target="_blank">View</a> — upload to replace'
+        : 'No document yet.';
+
+    // Avatar
+    const img = document.getElementById('editAvatarImg');
+    const ph  = document.getElementById('editAvatarPlaceholder');
+    if (u.avatar) {
+        img.src = '{{ asset("storage/") }}' + u.avatar;
+        img.style.display = 'inline-block';
+        ph.style.display = 'none';
     } else {
-        input.type = 'password';
-        icon.className = 'ti ti-eye';
+        img.style.display = 'none';
+        ph.style.display = 'inline-flex';
+    }
+
+    // Personal
+    document.getElementById('eGender').value  = u.gender || '';
+    document.getElementById('eDob').value     = u.date_of_birth || '';
+    document.getElementById('eBlood').value   = u.blood_group || '';
+    document.getElementById('eJoined').value  = m.joined_at ? m.joined_at.substring(0,10) : '';
+    document.getElementById('eAddress').value = u.address || '';
+
+    // Occupation
+    document.getElementById('eOccType').value = u.occupation_type || '';
+    document.getElementById('eOrg').value     = u.organization || '';
+    toggleOrg('eOccType','eOrgLabel');
+
+    // Emergency
+    document.getElementById('eEcName').value  = u.emergency_contact_name || '';
+    document.getElementById('eEcPhone').value = u.emergency_contact_phone || '';
+    document.getElementById('eEcRel').value   = u.emergency_contact_relation || '';
+
+    // Housing
+    document.getElementById('eRent').value    = m.house_rent || 0;
+    document.getElementById('eAdvance').value = m.advance_amount || 0;
+    document.getElementById('eAdvDate').value = m.advance_date || '';
+    document.getElementById('eNotes').value   = m.notes || '';
+
+    new bootstrap.Modal(document.getElementById('editMemberModal')).show();
+}
+
+function confirmRemove(btn, name) {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Remove Member?',
+            text: name + ' will be removed from this mess.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Yes, remove',
+        }).then(r => { if (r.isConfirmed) btn.closest('form').submit(); });
+    } else {
+        if (confirm('Remove ' + name + '?')) btn.closest('form').submit();
     }
 }
 </script>

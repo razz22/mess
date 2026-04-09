@@ -9,7 +9,7 @@ class Expense extends Model
 {
     protected $fillable = [
         'mess_id', 'category_id', 'title', 'amount', 'expense_date',
-        'description', 'added_by', 'member_id', 'is_market_expense',
+        'description', 'added_by', 'member_id', 'is_market_expense', 'routine_id',
     ];
 
     protected $casts = [

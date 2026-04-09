@@ -11,6 +11,7 @@ use App\Http\Controllers\Mess\DepositController;
 use App\Http\Controllers\Mess\ManagerController;
 use App\Http\Controllers\Mess\ReportController;
 use App\Http\Controllers\Mess\RewardController;
+use App\Http\Controllers\Mess\TenantFormController;
 
 /*
 |--------------------------------------------------------------------------
@@ -47,11 +48,19 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/mess/{mess}',         [MessController::class, 'destroy'])->name('mess.destroy');
 
     // Members
-    Route::get('/mess/{mess}/members',           [MemberController::class, 'index'])->name('mess.members');
-    Route::post('/mess/{mess}/members',          [MemberController::class, 'store'])->name('mess.members.store');
-    Route::put('/mess/{mess}/members/{member}',          [MemberController::class, 'update'])->name('mess.members.update');
-    Route::put('/mess/{mess}/members/{member}/role', [MemberController::class, 'updateRole'])->name('mess.members.role');
-    Route::delete('/mess/{mess}/members/{member}',   [MemberController::class, 'remove'])->name('mess.members.remove');
+    Route::get('/mess/{mess}/members',                    [MemberController::class, 'index'])->name('mess.members');
+    Route::post('/mess/{mess}/members',                   [MemberController::class, 'store'])->name('mess.members.store');
+    Route::get('/mess/{mess}/members/{member}/profile',   [MemberController::class, 'show'])->name('mess.members.profile');
+    Route::put('/mess/{mess}/members/{member}',           [MemberController::class, 'update'])->name('mess.members.update');
+    Route::put('/mess/{mess}/members/{member}/role',      [MemberController::class, 'updateRole'])->name('mess.members.role');
+    Route::delete('/mess/{mess}/members/{member}',        [MemberController::class, 'remove'])->name('mess.members.remove');
+
+    // Tenant Registration Form
+    Route::get('/mess/{mess}/tenant-form',                        [TenantFormController::class, 'edit'])->name('mess.tenant-form.edit');
+    Route::post('/mess/{mess}/tenant-form',                       [TenantFormController::class, 'save'])->name('mess.tenant-form.save');
+    Route::get('/mess/{mess}/tenant-forms',                       [TenantFormController::class, 'index'])->name('mess.tenant-forms.index');
+    Route::get('/mess/{mess}/tenant-forms/{form}',                [TenantFormController::class, 'view'])->name('mess.tenant-forms.view');
+    Route::get('/mess/{mess}/tenant-forms/{form}/download',       [TenantFormController::class, 'download'])->name('mess.tenant-forms.download');
 
     // Meals & Attendance
     Route::get('/mess/{mess}/meals',                      [MealController::class, 'index'])->name('mess.meals');
@@ -75,6 +84,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/mess/{mess}/market/{routine}/complete',      [MarketController::class, 'completeRoutine'])->name('mess.market.complete');
     Route::post('/mess/{mess}/market/{routine}/exchange',      [MarketController::class, 'requestExchange'])->name('mess.market.exchange');
     Route::post('/mess/{mess}/market/exchange/{exchange}/respond', [MarketController::class, 'respondExchange'])->name('mess.market.exchange.respond');
+    Route::post('/mess/{mess}/market/quick-expense',           [MarketController::class, 'addQuickExpense'])->name('mess.market.quick-expense');
 
     // Expenses
     Route::get('/mess/{mess}/expenses',           [ExpenseController::class, 'index'])->name('mess.expenses');
@@ -98,6 +108,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/mess/{mess}/report/monthly',             [ReportController::class, 'monthly'])->name('mess.report.monthly');
     Route::post('/mess/{mess}/report/generate',           [ReportController::class, 'generate'])->name('mess.report.generate');
     Route::post('/mess/{mess}/report/toggle-shared',     [ReportController::class, 'toggleSharedExpense'])->name('mess.report.toggle-shared');
+    Route::post('/mess/{mess}/report/toggle-category',   [ReportController::class, 'toggleCategoryExpense'])->name('mess.report.toggle-category');
+    Route::post('/mess/{mess}/report/pay-extra',         [ReportController::class, 'payExtra'])->name('mess.report.pay-extra');
+    Route::post('/mess/{mess}/report/carry-extra',       [ReportController::class, 'carryExtraAsDeposit'])->name('mess.report.carry-extra');
     Route::get('/mess/{mess}/report/members',             [ReportController::class, 'memberReports'])->name('mess.report.members');
     Route::post('/mess/{mess}/report/members',            [ReportController::class, 'storeReport'])->name('mess.report.members.store');
     Route::post('/mess/{mess}/report/members/{report}/review', [ReportController::class, 'reviewReport'])->name('mess.report.members.review');
