@@ -110,46 +110,40 @@
                         <thead>
                             <tr class="align-middle">
                                 <th class="bg-light" style="min-width:180px;position:sticky;left:0;z-index:2;">
-                                    <div class="d-flex align-items-center gap-1">
-                                        <i class="ti ti-users text-primary"></i> Member
-                                    </div>
+                                    <i class="ti ti-users text-primary me-1"></i> Member
                                 </th>
                                 @foreach($mealTypes as $mt)
                                 @php
-                                    $sch = $schedules[$mt->name] ?? null;
+                                    $sch     = $schedules[$mt->name] ?? null;
                                     $expired = !$isPast && $mt->isExpired();
                                     $closed  = $sch && $sch->status === 'closed';
+                                    $totalQ  = $sch ? $allAttendances->filter(fn($g,$k) => str_starts_with($k, $sch->id.'_'))->flatten()->sum('quantity') : 0;
                                 @endphp
-                                <th class="text-center {{ $closed ? 'bg-secondary bg-opacity-10' : 'bg-light' }}" style="min-width:120px;">
+                                <th class="text-center {{ $closed ? 'bg-secondary bg-opacity-10' : 'bg-light' }}" style="min-width:140px;">
                                     <div class="fw-semibold">{{ $mt->name }}</div>
+                                    @if($mt->rate > 0)<div class="text-muted" style="font-size:10px">৳{{ number_format($mt->rate,2) }}/meal</div>@endif
                                     @if($closed)
-                                        <div class="badge bg-secondary" style="font-size:10px">Closed</div>
+                                        <span class="badge bg-secondary" style="font-size:10px">Closed</span>
                                     @elseif($expired)
-                                        <div class="badge bg-warning text-dark" style="font-size:10px">Expired</div>
-                                    @else
-                                        @if($sch)
-                                        @php
-                                            $onCount = $allAttendances->filter(fn($g,$k) => str_starts_with($k, $sch->id.'_'))
-                                                ->flatten()->where('status','on')->count();
-                                        @endphp
-                                        <div class="text-success" style="font-size:11px">{{ $onCount }}/{{ $members->count() }} on</div>
-                                        @endif
+                                        <span class="badge bg-warning text-dark" style="font-size:10px">Expired</span>
+                                    @elseif($sch)
+                                        <div class="text-success" style="font-size:10px" id="hdr-qty-{{ $sch->id }}">{{ $totalQ }} meals · {{ $members->count() }} members</div>
                                     @endif
                                 </th>
                                 @endforeach
-                                <th class="bg-light text-center" style="min-width:80px;">Total Meals</th>
+                                <th class="bg-light text-center" style="min-width:90px;">Total<br><span style="font-size:10px;font-weight:400">meals today</span></th>
                             </tr>
                         </thead>
                         <tbody>
                             @php $myId = Auth::id(); @endphp
                             @foreach($members as $mem)
                             @php
-                                $isMe = $mem->user_id === $myId;
-                                $canEdit = $isManager || $isMe;
-                                $totalOn = 0;
+                                $isMe     = $mem->user_id === $myId;
+                                $canEdit  = $isManager || $isMe;
+                                $totalQty = 0;
                             @endphp
                             <tr class="{{ $isMe ? 'table-primary bg-opacity-25' : '' }}">
-                                {{-- Member name (sticky) --}}
+                                {{-- Member name sticky --}}
                                 <td class="align-middle {{ $isMe ? 'bg-primary bg-opacity-10' : 'bg-white' }}" style="position:sticky;left:0;z-index:1;">
                                     <div class="d-flex align-items-center gap-2">
                                         @if($mem->user->avatar)
@@ -164,65 +158,89 @@
                                     </div>
                                 </td>
 
-                                {{-- Meal toggles --}}
+                                {{-- Quantity cells --}}
                                 @foreach($mealTypes as $mt)
                                 @php
-                                    $sch    = $schedules[$mt->name] ?? null;
-                                    $key    = $sch ? ($sch->id . '_' . $mem->user_id) : null;
-                                    $att    = $key ? ($allAttendances[$key]->first() ?? null) : null;
-                                    $status = $att ? $att->status : 'on'; // default ON
-                                    $locked = $isPast || !$sch || $sch->status === 'closed'
-                                              || (!$isManager && $mt->isExpired());
-                                    $canToggle = $canEdit && !$locked;
-                                    if ($status === 'on') $totalOn++;
+                                    $sch       = $schedules[$mt->name] ?? null;
+                                    $key       = $sch ? ($sch->id . '_' . $mem->user_id) : null;
+                                    $att       = $key ? ($allAttendances[$key]->first() ?? null) : null;
+                                    $qty       = $att ? (float)$att->quantity : 1.0; // default 1
+                                    $presets   = [0, 0.5, 1, 1.5, 2, 2.5, 3];
+                                    $isCustom  = !in_array($qty, $presets);
+                                    $locked    = $isPast || !$sch || $sch->status === 'closed'
+                                                 || (!$isManager && $mt->isExpired());
+                                    $canChange = $canEdit && !$locked;
+                                    $totalQty += $qty;
+                                    $cost      = $mt->rate > 0 ? $qty * $mt->rate : null;
                                 @endphp
-                                <td class="text-center align-middle p-2 {{ $locked ? 'bg-light' : '' }}">
+                                <td class="text-center align-middle p-1 {{ $locked ? 'bg-light' : '' }}">
                                     @if($sch)
-                                    <button
-                                        class="meal-toggle btn btn-sm rounded-pill px-3 fw-semibold
-                                               {{ $status === 'on' ? 'btn-success' : 'btn-danger' }}
-                                               {{ !$canToggle ? 'disabled opacity-75' : '' }}"
-                                        style="font-size:12px;min-width:60px;cursor:{{ $canToggle ? 'pointer' : 'default' }};"
-                                        data-schedule="{{ $sch->id }}"
-                                        data-user="{{ $mem->user_id }}"
-                                        data-status="{{ $status }}"
-                                        @if($canToggle) onclick="toggleMeal(this)" @endif
-                                        title="{{ $locked ? ($isPast ? 'Past date' : ($sch->status==='closed' ? 'Meal closed' : 'Time expired')) : '' }}"
-                                    >
-                                        @if($status === 'on')
-                                            <i class="ti ti-check me-1"></i>ON
-                                        @else
-                                            <i class="ti ti-x me-1"></i>OFF
+                                    <div class="d-flex flex-column align-items-center gap-1">
+                                        <select class="meal-qty-select form-select form-select-sm text-center fw-semibold"
+                                            style="width:100px;font-size:13px;border-radius:20px;
+                                                   background:{{ $qty == 0 ? '#fff5f5' : ($qty > 1 ? '#f0f8ff' : '#f0fff4') }};
+                                                   color:{{ $qty == 0 ? '#dc3545' : ($qty > 1 ? '#0d6efd' : '#198754') }};
+                                                   border-color:{{ $qty == 0 ? '#dc3545' : ($qty > 1 ? '#0d6efd' : '#198754') }};"
+                                            data-schedule="{{ $sch->id }}"
+                                            data-user="{{ $mem->user_id }}"
+                                            data-rate="{{ $mt->rate }}"
+                                            {{ !$canChange ? 'disabled' : '' }}
+                                            onchange="{{ $canChange ? 'changeMealQty(this)' : '' }}"
+                                            title="{{ $locked ? ($isPast ? 'Past date' : ($sch->status==='closed' ? 'Meal closed' : 'Time expired')) : '' }}"
+                                        >
+                                            <option value="0"      {{ (!$isCustom && $qty == 0)   ? 'selected' : '' }}>✕ Off</option>
+                                            <option value="0.5"    {{ (!$isCustom && $qty == 0.5) ? 'selected' : '' }}>½ meal</option>
+                                            <option value="1"      {{ (!$isCustom && $qty == 1)   ? 'selected' : '' }}>1 meal</option>
+                                            <option value="1.5"    {{ (!$isCustom && $qty == 1.5) ? 'selected' : '' }}>1½ meals</option>
+                                            <option value="2"      {{ (!$isCustom && $qty == 2)   ? 'selected' : '' }}>2 meals</option>
+                                            <option value="2.5"    {{ (!$isCustom && $qty == 2.5) ? 'selected' : '' }}>2½ meals</option>
+                                            <option value="3"      {{ (!$isCustom && $qty == 3)   ? 'selected' : '' }}>3 meals</option>
+                                            <option value="custom" {{ $isCustom ? 'selected' : '' }}>✎ Custom…</option>
+                                        </select>
+                                        <input type="number"
+                                            class="meal-custom-input form-control form-control-sm text-center fw-semibold {{ $isCustom ? '' : 'd-none' }}"
+                                            style="width:100px;font-size:13px;border-radius:20px;"
+                                            min="0" step="0.5" placeholder="e.g. 4"
+                                            value="{{ $isCustom ? $qty : '' }}"
+                                            data-schedule="{{ $sch->id }}"
+                                            data-user="{{ $mem->user_id }}"
+                                            data-rate="{{ $mt->rate }}"
+                                            {{ !$canChange ? 'disabled' : '' }}
+                                            onkeydown="if(event.key==='Enter'){event.preventDefault();submitCustomQty(this);}"
+                                            onblur="submitCustomQty(this)">
+                                        @if($cost !== null && $qty > 0)
+                                        <span class="text-muted qty-cost" style="font-size:10px">৳{{ number_format($cost,2) }}</span>
                                         @endif
-                                    </button>
+                                    </div>
                                     @else
                                     <span class="text-muted small">—</span>
                                     @endif
                                 </td>
                                 @endforeach
 
-                                {{-- Total meals column --}}
-                                <td class="text-center align-middle fw-bold">
-                                    <span class="badge bg-{{ $totalOn > 0 ? 'success' : 'danger' }} rounded-pill">{{ $totalOn }}</span>
+                                {{-- Row total --}}
+                                <td class="text-center align-middle fw-bold" id="row-total-{{ $mem->user_id }}">
+                                    <span class="badge rounded-pill bg-{{ $totalQty > 0 ? 'success' : 'danger' }}" style="font-size:13px;">{{ $totalQty }}</span>
                                 </td>
                             </tr>
                             @endforeach
                         </tbody>
-                        {{-- Summary row --}}
                         <tfoot>
                             <tr class="bg-light fw-semibold">
-                                <td class="bg-light" style="position:sticky;left:0;z-index:1;">Total ON</td>
+                                <td class="bg-light small" style="position:sticky;left:0;z-index:1;">Total meals</td>
                                 @foreach($mealTypes as $mt)
                                 @php
-                                    $sch = $schedules[$mt->name] ?? null;
-                                    $cnt = 0;
+                                    $sch    = $schedules[$mt->name] ?? null;
+                                    $sumQ   = 0;
+                                    $sumCost = 0;
                                     if ($sch) {
-                                        $cnt = $allAttendances->filter(fn($g,$k) => str_starts_with($k, $sch->id.'_'))
-                                            ->flatten()->where('status','on')->count();
+                                        $sumQ    = $allAttendances->filter(fn($g,$k) => str_starts_with($k, $sch->id.'_'))->flatten()->sum('quantity');
+                                        $sumCost = $mt->rate > 0 ? $sumQ * $mt->rate : 0;
                                     }
                                 @endphp
-                                <td class="text-center" id="count-{{ $sch?->id ?? 'none' }}">
-                                    <span class="badge bg-success rounded-pill">{{ $cnt }}</span>
+                                <td class="text-center" id="foot-{{ $sch?->id ?? 'none' }}">
+                                    <span class="badge bg-primary rounded-pill">{{ $sumQ }}</span>
+                                    @if($sumCost > 0)<div class="text-muted foot-cost" style="font-size:10px">৳{{ number_format($sumCost,2) }}</div>@endif
                                 </td>
                                 @endforeach
                                 <td></td>
@@ -235,29 +253,61 @@
         @endif
 
         {{-- Meal Type Management (manager only) --}}
-        @if($isManager && $mealTypes->isNotEmpty())
+        @if($isManager)
         <div class="card mt-3">
-            <div class="card-header py-2">
+            <div class="card-header py-2 d-flex align-items-center justify-content-between">
                 <h6 class="mb-0 fw-semibold"><i class="ti ti-tools-kitchen-2 me-2"></i>Manage Meal Types</h6>
             </div>
             <div class="card-body">
-                <div class="d-flex flex-wrap gap-2">
-                    @foreach($mess->mealTypes()->get() as $mt)
-                    <div class="d-flex align-items-center gap-1 border rounded px-3 py-2">
-                        <span class="fw-semibold">{{ $mt->name }}</span>
-                        @if($mt->close_time)
-                        <span class="text-muted small ms-1">· {{ \Carbon\Carbon::parse($mt->close_time)->format('g:i A') }}</span>
-                        @endif
-                        @if(!in_array($mt->name, ['Breakfast','Lunch','Dinner']))
-                        <form action="{{ route('mess.meal-types.destroy', [$mess->id, $mt->id]) }}" method="POST" class="ms-1">
-                            @csrf @method('DELETE')
-                            <button type="submit" class="btn btn-xs btn-outline-danger py-0 px-1" onclick="return confirm('Remove {{ $mt->name }}?')">
-                                <i class="ti ti-trash" style="font-size:11px"></i>
-                            </button>
-                        </form>
-                        @endif
-                    </div>
-                    @endforeach
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Name</th>
+                                <th>Rate (৳/meal)</th>
+                                <th>Closes At</th>
+                                <th>Status</th>
+                                <th class="text-center" style="width:120px">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($allMealTypes as $mt)
+                            <tr class="{{ !$mt->is_active ? 'opacity-50' : '' }}">
+                                <td class="fw-semibold align-middle">
+                                    {{ $mt->name }}
+                                    @if(!$mt->is_active)<span class="badge bg-secondary ms-1" style="font-size:10px">Disabled</span>@endif
+                                </td>
+                                <td class="align-middle">{{ $mt->rate > 0 ? '৳'.number_format($mt->rate,2) : '—' }}</td>
+                                <td class="align-middle">{{ $mt->close_time ? \Carbon\Carbon::parse($mt->close_time)->format('g:i A') : '—' }}</td>
+                                <td class="align-middle">
+                                    <span class="badge bg-{{ $mt->is_active ? 'success' : 'secondary' }}">{{ $mt->is_active ? 'Active' : 'Disabled' }}</span>
+                                </td>
+                                <td class="text-center align-middle">
+                                    <button class="btn btn-xs btn-outline-primary py-0"
+                                        onclick="openEditMealType({{ $mt->id }},'{{ addslashes($mt->name) }}','{{ $mt->rate }}','{{ $mt->close_time ? substr($mt->close_time,0,5) : '' }}',{{ $mt->is_active ? 'true' : 'false' }})"
+                                        title="Edit">
+                                        <i class="ti ti-edit" style="font-size:11px"></i>
+                                    </button>
+                                    @if($mt->is_active)
+                                    <form action="{{ route('mess.meal-types.destroy', [$mess->id, $mt->id]) }}" method="POST" class="d-inline ms-1">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="btn btn-xs btn-outline-warning py-0" title="Disable"
+                                            onclick="return confirm('Disable {{ addslashes($mt->name) }}?')">
+                                            <i class="ti ti-eye-off" style="font-size:11px"></i>
+                                        </button>
+                                    </form>
+                                    @else
+                                    <button class="btn btn-xs btn-outline-success py-0 ms-1"
+                                        onclick="openEditMealType({{ $mt->id }},'{{ addslashes($mt->name) }}','{{ $mt->rate }}','{{ $mt->close_time ? substr($mt->close_time,0,5) : '' }}',false,'enable')"
+                                        title="Re-enable">
+                                        <i class="ti ti-eye" style="font-size:11px"></i>
+                                    </button>
+                                    @endif
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -282,6 +332,11 @@
                         <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
                         <input type="text" name="name" class="form-control" placeholder="e.g. Snacks, Brunch" required maxlength="50">
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Rate per Meal (৳)</label>
+                        <input type="number" name="rate" class="form-control" placeholder="0" min="0" step="0.01">
+                        <div class="form-text">Cost per 1 meal unit. Leave 0 if not applicable.</div>
+                    </div>
                     <div class="mb-0">
                         <label class="form-label fw-semibold">Attendance Closes At</label>
                         <input type="time" name="close_time" class="form-control">
@@ -291,6 +346,47 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary btn-sm"><i class="ti ti-plus me-1"></i>Add</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Edit Meal Type Modal --}}
+<div class="modal fade" id="editMealTypeModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Meal Type</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editMealTypeForm" method="POST">
+                @csrf @method('PUT')
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" id="edit-mt-name" class="form-control" required maxlength="50">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Rate per Meal (৳)</label>
+                        <input type="number" name="rate" id="edit-mt-rate" class="form-control" min="0" step="0.01">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Attendance Closes At</label>
+                        <input type="time" name="close_time" id="edit-mt-close" class="form-control">
+                        <div class="form-text">Leave blank for no cutoff.</div>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label fw-semibold">Status</label>
+                        <select name="is_active" id="edit-mt-active" class="form-select">
+                            <option value="1">Active</option>
+                            <option value="0">Disabled</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="ti ti-check me-1"></i>Save</button>
                 </div>
             </form>
         </div>
@@ -356,9 +452,9 @@ function showToast(message, type) {
     }, 3000);
 }
 
-// Disable my toggles on load if limit already reached
+// Disable my selects on load if limit already reached
 if (!isManager && myChanges >= 3) {
-    window.addEventListener('DOMContentLoaded', function () { disableMyToggles(); });
+    window.addEventListener('DOMContentLoaded', function () { disableMySelects(); });
 }
 
 // ── Flatpickr — init after all footer scripts are loaded ─────
@@ -380,20 +476,65 @@ window.addEventListener('load', function () {
     }
 });
 
-// ── Meal toggle ──────────────────────────────────────────────
-function toggleMeal(btn) {
-    var scheduleId = btn.getAttribute('data-schedule');
-    var userId     = btn.getAttribute('data-user');
-    var curStatus  = btn.getAttribute('data-status');
-    var newStatus  = curStatus === 'on' ? 'off' : 'on';
+// ── Meal quantity change ─────────────────────────────────────
+function changeMealQty(select) {
+    // "Custom…" chosen — show the number input instead of sending
+    if (select.value === 'custom') {
+        var wrap  = select.closest('.d-flex.flex-column');
+        var input = wrap ? wrap.querySelector('.meal-custom-input') : null;
+        if (input) {
+            input.classList.remove('d-none');
+            input.value = '';
+            input.focus();
+        }
+        return;
+    }
 
-    btn.setAttribute('disabled', 'disabled');
-    btn.style.opacity = '0.6';
+    var scheduleId = select.getAttribute('data-schedule');
+    var userId     = select.getAttribute('data-user');
+    var rate       = parseFloat(select.getAttribute('data-rate')) || 0;
+    var quantity   = parseFloat(select.value);
+
+    sendMealQty(select, null, scheduleId, userId, rate, quantity);
+}
+
+// Custom input: submitted on Enter or blur
+function submitCustomQty(input) {
+    // Ignore blur if input is empty / not shown
+    if (input.classList.contains('d-none') || input.value === '') return;
+
+    var quantity = parseFloat(input.value);
+    if (isNaN(quantity) || quantity < 0) {
+        showToast('Please enter a valid quantity (e.g. 4 or 4.5).', 'danger');
+        return;
+    }
+    // Must be a multiple of 0.5
+    if (Math.round(quantity * 10) % 5 !== 0) {
+        showToast('Quantity must be in steps of 0.5 (e.g. 4, 4.5, 5).', 'warning');
+        input.focus();
+        return;
+    }
+
+    var scheduleId = input.getAttribute('data-schedule');
+    var userId     = input.getAttribute('data-user');
+    var rate       = parseFloat(input.getAttribute('data-rate')) || 0;
+
+    // Find the sibling select to sync its visual state
+    var wrap   = input.closest('.d-flex.flex-column');
+    var select = wrap ? wrap.querySelector('.meal-qty-select') : null;
+
+    sendMealQty(select, input, scheduleId, userId, rate, quantity);
+}
+
+function sendMealQty(select, customInput, scheduleId, userId, rate, quantity) {
+    // Lock both controls while sending
+    if (select)      select.disabled = true;
+    if (customInput) customInput.disabled = true;
 
     fetch('/mess/' + messId + '/meals/attendance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
-        body: JSON.stringify({ schedule_id: scheduleId, user_id: userId, status: newStatus })
+        body: JSON.stringify({ schedule_id: scheduleId, user_id: userId, quantity: quantity })
     })
     .then(function (response) {
         return response.text().then(function (text) {
@@ -401,67 +542,144 @@ function toggleMeal(btn) {
         });
     })
     .then(function (result) {
-        btn.removeAttribute('disabled');
-        btn.style.opacity = '';
+        if (select)      select.disabled = false;
+        if (customInput) customInput.disabled = false;
 
         var data = {};
         try { data = JSON.parse(result.text); } catch (e) {}
 
         if (!result.ok) {
             showToast(data.error || data.message || 'Server error ' + result.status, 'danger');
-            // If limit reached, disable all MY toggles
-            if (data.limit_reached) {
-                disableMyToggles();
-            }
+            if (data.limit_reached) { disableMySelects(); }
             return;
         }
 
-        btn.setAttribute('data-status', newStatus);
-        btn.classList.remove('btn-success', 'btn-danger');
-
-        if (newStatus === 'off') {
-            btn.classList.add('btn-danger');
-            btn.innerHTML = '<i class="ti ti-x me-1"></i>OFF';
-            showToast('Meal turned OFF', 'warning');
-        } else {
-            btn.classList.add('btn-success');
-            btn.innerHTML = '<i class="ti ti-check me-1"></i>ON';
-            showToast('Meal turned ON', 'success');
+        // If custom value, keep the input visible and update select to show "Custom…"
+        if (customInput) {
+            customInput.classList.remove('d-none');
+            if (select) {
+                select.value = 'custom';
+                applySelectStyle(select, quantity);
+            }
+        } else if (select) {
+            applySelectStyle(select, quantity);
+            // Hide custom input if it was previously visible
+            var wrap  = select.closest('.d-flex.flex-column');
+            var ci    = wrap ? wrap.querySelector('.meal-custom-input') : null;
+            if (ci) ci.classList.add('d-none');
         }
 
-        updateCount(scheduleId, data.on);
-        updateRowTotal(btn);
-
-        // Update remaining changes badge
-        if (!isManager && data.remaining !== null && data.remaining !== undefined) {
-            myChanges = 3 - data.remaining;
-            updateRemainingBadge(data.remaining);
-            if (data.remaining === 0) {
-                disableMyToggles();
+        // Update cost label
+        var container = (customInput || select).closest('td');
+        var costSpan  = container ? container.querySelector('.qty-cost') : null;
+        if (rate > 0 && quantity > 0) {
+            var cost = (quantity * rate).toFixed(2);
+            if (costSpan) {
+                costSpan.textContent = '৳' + cost;
+            } else {
+                var wrap2 = (customInput || select).closest('.d-flex.flex-column');
+                if (wrap2) {
+                    var s = document.createElement('span');
+                    s.className = 'text-muted qty-cost';
+                    s.style.fontSize = '10px';
+                    s.textContent = '৳' + cost;
+                    wrap2.appendChild(s);
+                }
             }
+        } else if (costSpan) {
+            costSpan.textContent = '';
+        }
+
+        // Live totals
+        updateHeaderQty(scheduleId, data.totalQty);
+        updateFooterQty(scheduleId, data.totalQty, rate);
+        updateRowTotalById(userId);
+
+        // Toast
+        if (quantity === 0) {
+            showToast('Meal turned OFF', 'warning');
+        } else {
+            showToast('Set to ' + quantity + ' meal' + (quantity !== 1 ? 's' : ''), 'success');
+        }
+
+        // Remaining badge
+        if (!isManager && data.remaining !== null && data.remaining !== undefined) {
+            updateRemainingBadge(data.remaining);
+            if (data.remaining === 0) { disableMySelects(); }
         }
     })
     .catch(function () {
-        btn.removeAttribute('disabled');
-        btn.style.opacity = '';
+        if (select)      select.disabled = false;
+        if (customInput) customInput.disabled = false;
         showToast('Request failed. Check your connection.', 'danger');
     });
 }
 
-function updateCount(scheduleId, onCount) {
-    var cell = document.getElementById('count-' + scheduleId);
-    if (cell) cell.innerHTML = '<span class="badge bg-success rounded-pill">' + onCount + '</span>';
+function applySelectStyle(select, qty) {
+    qty = parseFloat(qty);
+    if (qty === 0) {
+        select.style.background   = '#fff5f5';
+        select.style.color        = '#dc3545';
+        select.style.borderColor  = '#dc3545';
+    } else if (qty > 1) {
+        select.style.background   = '#f0f8ff';
+        select.style.color        = '#0d6efd';
+        select.style.borderColor  = '#0d6efd';
+    } else {
+        select.style.background   = '#f0fff4';
+        select.style.color        = '#198754';
+        select.style.borderColor  = '#198754';
+    }
 }
 
-function updateRowTotal(btn) {
-    var row     = btn.closest('tr');
-    var toggles = row.querySelectorAll('.meal-toggle');
-    var count   = 0;
-    toggles.forEach(function(t) { if (t.getAttribute('data-status') === 'on') count++; });
-    var totalCell = row.querySelector('td:last-child span');
-    if (totalCell) {
-        totalCell.textContent = count;
-        totalCell.className   = 'badge rounded-pill bg-' + (count > 0 ? 'success' : 'danger');
+function updateHeaderQty(scheduleId, totalQty) {
+    var el = document.getElementById('hdr-qty-' + scheduleId);
+    if (el) {
+        var members = el.textContent.match(/·\s*(\d+)\s*members/);
+        var mCount  = members ? members[1] : '';
+        el.textContent = totalQty + ' meals' + (mCount ? ' · ' + mCount + ' members' : '');
+    }
+}
+
+function updateFooterQty(scheduleId, totalQty, rate) {
+    var cell = document.getElementById('foot-' + scheduleId);
+    if (!cell) return;
+    var badge = cell.querySelector('.badge');
+    if (badge) badge.textContent = totalQty;
+    var costDiv = cell.querySelector('.foot-cost');
+    if (rate > 0) {
+        var cost = (totalQty * rate).toFixed(2);
+        if (costDiv) {
+            costDiv.textContent = '৳' + cost;
+        } else {
+            var d = document.createElement('div');
+            d.className = 'text-muted foot-cost';
+            d.style.fontSize = '10px';
+            d.textContent = '৳' + cost;
+            cell.appendChild(d);
+        }
+    } else if (costDiv) {
+        costDiv.textContent = '';
+    }
+}
+
+function updateRowTotalById(userId) {
+    var cell = document.getElementById('row-total-' + userId);
+    if (!cell) return;
+    var row = cell.closest('tr');
+    var total = 0;
+    // Sum preset selects (skip "custom" entries — use the input value instead)
+    row.querySelectorAll('.meal-qty-select').forEach(function(s) {
+        if (s.value !== 'custom') { total += parseFloat(s.value) || 0; }
+    });
+    row.querySelectorAll('.meal-custom-input:not(.d-none)').forEach(function(i) {
+        total += parseFloat(i.value) || 0;
+    });
+    var badge = cell.querySelector('span');
+    if (badge) {
+        badge.textContent    = total;
+        badge.className      = 'badge rounded-pill bg-' + (total > 0 ? 'success' : 'danger');
+        badge.style.fontSize = '13px';
     }
 }
 
@@ -470,27 +688,34 @@ function updateRemainingBadge(remaining) {
     if (!el) return;
     el.textContent = remaining + '/3 changes left today';
     var wrapper = el.closest('.d-flex.align-items-center');
-    if (wrapper) {
-        if (remaining === 0) {
-            wrapper.classList.remove('border-secondary', 'bg-light');
-            wrapper.classList.add('border-danger', 'bg-danger-subtle');
-            el.classList.remove('text-muted');
-            el.classList.add('text-danger');
-            wrapper.querySelector('i').classList.remove('text-muted');
-            wrapper.querySelector('i').classList.add('text-danger');
-        }
+    if (wrapper && remaining === 0) {
+        wrapper.classList.remove('border-secondary', 'bg-light');
+        wrapper.classList.add('border-danger', 'bg-danger-subtle');
+        el.classList.remove('text-muted');
+        el.classList.add('text-danger');
+        var icon = wrapper.querySelector('i');
+        if (icon) { icon.classList.remove('text-muted'); icon.classList.add('text-danger'); }
     }
 }
 
-function disableMyToggles() {
+function disableMySelects() {
     var myUserId = '{{ Auth::id() }}';
-    document.querySelectorAll('.meal-toggle[data-user="' + myUserId + '"]').forEach(function(btn) {
-        btn.setAttribute('disabled', 'disabled');
-        btn.style.opacity = '0.5';
-        btn.style.cursor  = 'not-allowed';
-        btn.title = 'You have used all 3 changes for today. Contact your manager.';
+    document.querySelectorAll('.meal-qty-select[data-user="' + myUserId + '"]').forEach(function(s) {
+        s.disabled = true;
+        s.title    = 'You have used all 3 changes for today. Contact your manager.';
     });
     showToast('You have used all 3 changes for today. Contact your manager.', 'danger');
+}
+
+function openEditMealType(id, name, rate, closeTime, isActive, action) {
+    var base = '/mess/' + messId + '/meal-types/' + id;
+    document.getElementById('editMealTypeForm').action = base;
+    document.getElementById('edit-mt-name').value  = name;
+    document.getElementById('edit-mt-rate').value  = rate || 0;
+    document.getElementById('edit-mt-close').value = closeTime || '';
+    document.getElementById('edit-mt-active').value = (action === 'enable' || isActive) ? '1' : '0';
+    var modal = new bootstrap.Modal(document.getElementById('editMealTypeModal'));
+    modal.show();
 }
 
 function closeMeal(scheduleId, mealName) {

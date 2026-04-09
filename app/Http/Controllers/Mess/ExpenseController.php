@@ -101,6 +101,18 @@ class ExpenseController extends Controller
         return back()->with('success', 'Category added.');
     }
 
+    public function destroyCategory(Mess $mess, ExpenseCategory $category)
+    {
+        if (!Auth::user()->isManagerOf($mess->id)) abort(403);
+        if ($category->mess_id !== $mess->id) abort(403);
+
+        // If expenses use this category, just null them out rather than blocking
+        $category->expenses()->update(['category_id' => null]);
+        $category->delete();
+
+        return back()->with('success', '"' . $category->name . '" category deleted.');
+    }
+
     private function authorizeMember(Mess $mess): void
     {
         if (!Auth::user()->getMembershipIn($mess->id)) abort(403);

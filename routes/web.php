@@ -58,13 +58,13 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/mess/{mess}/meals/attendance',          [MealController::class, 'markAttendance'])->name('mess.meals.attendance');
     Route::post('/mess/{mess}/meals/{schedule}/close',    [MealController::class, 'closeMeal'])->name('mess.meals.close');
     Route::post('/mess/{mess}/meal-types',                [MealController::class, 'storeMealType'])->name('mess.meal-types.store');
+    Route::put('/mess/{mess}/meal-types/{mealType}',      [MealController::class, 'updateMealType'])->name('mess.meal-types.update');
     Route::delete('/mess/{mess}/meal-types/{mealType}',   [MealController::class, 'destroyMealType'])->name('mess.meal-types.destroy');
 
-    // Meal Items (Kanban)
-    Route::get('/mess/{mess}/meal-items',               [MealController::class, 'mealItems'])->name('mess.meal-items');
-    Route::post('/mess/{mess}/meal-items',              [MealController::class, 'storeMealItem'])->name('mess.meal-items.store');
-    Route::put('/mess/{mess}/meal-items/{item}/status', [MealController::class, 'updateMealItemStatus'])->name('mess.meal-items.status');
-    Route::delete('/mess/{mess}/meal-items/{item}',     [MealController::class, 'destroyMealItem'])->name('mess.meal-items.destroy');
+    // Meal Items (Date & meal-type wise)
+    Route::get('/mess/{mess}/meal-items',          [MealController::class, 'mealItems'])->name('mess.meal-items');
+    Route::post('/mess/{mess}/meal-items',         [MealController::class, 'storeMealItem'])->name('mess.meal-items.store');
+    Route::delete('/mess/{mess}/meal-items/{item}',[MealController::class, 'destroyMealItem'])->name('mess.meal-items.destroy');
 
     // Market Routines
     Route::get('/mess/{mess}/market',                          [MarketController::class, 'index'])->name('mess.market');
@@ -81,7 +81,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/mess/{mess}/expenses',          [ExpenseController::class, 'store'])->name('mess.expenses.store');
     Route::put('/mess/{mess}/expenses/{expense}', [ExpenseController::class, 'update'])->name('mess.expenses.update');
     Route::delete('/mess/{mess}/expenses/{expense}', [ExpenseController::class, 'destroy'])->name('mess.expenses.destroy');
-    Route::post('/mess/{mess}/expense-categories',   [ExpenseController::class, 'storeCategory'])->name('mess.expense-categories.store');
+    Route::post('/mess/{mess}/expense-categories',              [ExpenseController::class, 'storeCategory'])->name('mess.expense-categories.store');
+    Route::delete('/mess/{mess}/expense-categories/{category}', [ExpenseController::class, 'destroyCategory'])->name('mess.expense-categories.destroy');
 
     // Deposits
     Route::get('/mess/{mess}/deposits',              [DepositController::class, 'index'])->name('mess.deposits');
@@ -96,6 +97,7 @@ Route::middleware(['auth'])->group(function () {
     // Reports
     Route::get('/mess/{mess}/report/monthly',             [ReportController::class, 'monthly'])->name('mess.report.monthly');
     Route::post('/mess/{mess}/report/generate',           [ReportController::class, 'generate'])->name('mess.report.generate');
+    Route::post('/mess/{mess}/report/toggle-shared',     [ReportController::class, 'toggleSharedExpense'])->name('mess.report.toggle-shared');
     Route::get('/mess/{mess}/report/members',             [ReportController::class, 'memberReports'])->name('mess.report.members');
     Route::post('/mess/{mess}/report/members',            [ReportController::class, 'storeReport'])->name('mess.report.members.store');
     Route::post('/mess/{mess}/report/members/{report}/review', [ReportController::class, 'reviewReport'])->name('mess.report.members.review');

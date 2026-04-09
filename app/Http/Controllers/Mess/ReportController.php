@@ -23,7 +23,12 @@ class ReportController extends Controller
 
         $members = $mess->activeMembers()->with('user')->get();
 
-        // Get or generate monthly summaries
+        // Auto-generate summaries on every page load (managers only)
+        if (Auth::user()->isManagerOf($mess->id)) {
+            $this->doGenerate($mess, $month, $year);
+        }
+
+        // Load summaries
         $summaries = MemberMonthlySummary::where('mess_id', $mess->id)
             ->where('month', $month)
             ->where('year', $year)
@@ -48,14 +53,13 @@ class ReportController extends Controller
             ->whereYear('date', $year)
             ->count();
 
-        // Meal attendance summary per member
+        // Meal attendance summary per member (sum quantity, not count rows)
         $mealByMember = MealAttendance::whereHas('schedule', fn($q) =>
                 $q->where('mess_id', $mess->id)
                     ->whereMonth('date', $month)
                     ->whereYear('date', $year)
             )
-            ->where('status', 'on')
-            ->select('user_id', DB::raw('count(*) as meal_count'))
+            ->select('user_id', DB::raw('SUM(quantity) as meal_count'))
             ->groupBy('user_id')
             ->pluck('meal_count', 'user_id');
 
@@ -90,7 +94,45 @@ class ReportController extends Controller
         $month = $request->month ?? now()->month;
         $year  = $request->year  ?? now()->year;
 
-        $members = $mess->activeMembers()->pluck('user_id');
+        $this->doGenerate($mess, $month, $year);
+
+        return back()->with('success', 'Report refreshed for ' . date('F Y', mktime(0,0,0,$month,1,$year)) . '.');
+    }
+
+    public function toggleSharedExpense(Request $request, Mess $mess)
+    {
+        if (!Auth::user()->isManagerOf($mess->id)) abort(403);
+
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'month'   => 'required|integer|min:1|max:12',
+            'year'    => 'required|integer',
+        ]);
+
+        // Ensure a summary row exists before toggling
+        $summary = MemberMonthlySummary::firstOrCreate(
+            ['mess_id' => $mess->id, 'user_id' => $request->user_id, 'month' => $request->month, 'year' => $request->year],
+            ['exclude_from_shared' => false]
+        );
+
+        $summary->update(['exclude_from_shared' => !$summary->exclude_from_shared]);
+
+        // Re-generate so totals reflect the change immediately
+        $this->doGenerate($mess, $request->month, $request->year);
+
+        return response()->json(['success' => true, 'excluded' => $summary->fresh()->exclude_from_shared]);
+    }
+
+    private function doGenerate(Mess $mess, int $month, int $year): void
+    {
+        $memberIds = $mess->activeMembers()->pluck('user_id');
+
+        // Load existing exclusion flags (persisted per member per month)
+        $exclusions = MemberMonthlySummary::where('mess_id', $mess->id)
+            ->where('month', $month)
+            ->where('year', $year)
+            ->whereIn('user_id', $memberIds)
+            ->pluck('exclude_from_shared', 'user_id');
 
         $totalExpenses = $mess->expenses()
             ->whereMonth('expense_date', $month)
@@ -102,27 +144,37 @@ class ReportController extends Controller
                     ->whereMonth('date', $month)
                     ->whereYear('date', $year)
             )
-            ->where('status', 'on')
-            ->select('user_id', DB::raw('count(*) as meal_count'))
+            ->select('user_id', DB::raw('SUM(quantity) as meal_count'))
             ->groupBy('user_id')
             ->pluck('meal_count', 'user_id');
 
         $totalMealCount = $mealByMember->sum();
         $perMealCost    = $totalMealCount > 0 ? ($totalExpenses / $totalMealCount) : 0;
 
-        foreach ($members as $userId) {
-            $memberMeals    = $mealByMember[$userId] ?? 0;
-            $mealCost       = $memberMeals * $perMealCost;
-            $marketExpense  = $mess->expenses()
+        $totalMarketExpenses = $mess->expenses()
+            ->where('is_market_expense', true)
+            ->whereMonth('expense_date', $month)
+            ->whereYear('expense_date', $year)
+            ->sum('amount');
+
+        $sharedBase = $totalExpenses - $totalMarketExpenses;
+
+        // Only members NOT excluded count towards shared expense division
+        $includedCount = $memberIds->filter(fn($id) => !($exclusions[$id] ?? false))->count();
+        $sharedPerHead = $includedCount > 0 ? ($sharedBase / $includedCount) : 0;
+
+        foreach ($memberIds as $userId) {
+            $excluded      = (bool)($exclusions[$userId] ?? false);
+            $memberMeals   = (float)($mealByMember[$userId] ?? 0);
+            $mealCost      = $memberMeals * $perMealCost;
+            $memberShared  = $excluded ? 0 : $sharedPerHead;
+
+            $marketExpense = $mess->expenses()
                 ->where('member_id', $userId)
                 ->where('is_market_expense', true)
                 ->whereMonth('expense_date', $month)
                 ->whereYear('expense_date', $year)
                 ->sum('amount');
-
-            $sharedExpense = $totalMealCount > 0
-                ? (($totalExpenses - $mess->expenses()->where('is_market_expense', true)->whereMonth('expense_date', $month)->whereYear('expense_date', $year)->sum('amount')) / count($members))
-                : 0;
 
             $totalDeposit = MemberDeposit::where('mess_id', $mess->id)
                 ->where('user_id', $userId)
@@ -130,38 +182,36 @@ class ReportController extends Controller
                 ->where('year', $year)
                 ->sum('amount');
 
-            // Previous carry forward
             $prevSummary = MemberMonthlySummary::where([
                 'mess_id' => $mess->id,
                 'user_id' => $userId,
                 'month'   => $month == 1 ? 12 : $month - 1,
                 'year'    => $month == 1 ? $year - 1 : $year,
             ])->first();
-            $carryIn = $prevSummary ? -$prevSummary->due_amount : 0; // negative due = credit
+            $carryIn = $prevSummary ? -$prevSummary->due_amount : 0;
 
-            $totalPayable  = $mealCost + $sharedExpense + $marketExpense;
+            $totalPayable    = $mealCost + $memberShared + $marketExpense;
             $netAfterDeposit = $totalDeposit + $carryIn - $totalPayable;
-            $dueAmount     = -$netAfterDeposit; // positive = member owes
-            $carryOut      = $netAfterDeposit < 0 ? 0 : $netAfterDeposit;
+            $dueAmount       = -$netAfterDeposit;
+            $carryOut        = $netAfterDeposit < 0 ? 0 : $netAfterDeposit;
 
             MemberMonthlySummary::updateOrCreate(
                 ['mess_id' => $mess->id, 'user_id' => $userId, 'month' => $month, 'year' => $year],
                 [
-                    'total_meal_days'  => $memberMeals,
-                    'meal_cost'        => round($mealCost, 2),
-                    'total_expenses'   => round($sharedExpense, 2),
-                    'market_expense'   => round($marketExpense, 2),
-                    'total_deposit'    => round($totalDeposit, 2),
-                    'carry_forward_in' => round(max(0, $carryIn), 2),
-                    'total_payable'    => round($totalPayable, 2),
-                    'due_amount'       => round(max(0, $dueAmount), 2),
-                    'carry_forward_out'=> round($carryOut, 2),
-                    'generated_at'     => now(),
+                    'total_meal_days'    => $memberMeals,
+                    'meal_cost'          => round($mealCost, 2),
+                    'total_expenses'     => round($memberShared, 2),
+                    'market_expense'     => round($marketExpense, 2),
+                    'total_deposit'      => round($totalDeposit, 2),
+                    'carry_forward_in'   => round(max(0, $carryIn), 2),
+                    'total_payable'      => round($totalPayable, 2),
+                    'due_amount'         => round(max(0, $dueAmount), 2),
+                    'carry_forward_out'  => round($carryOut, 2),
+                    'exclude_from_shared'=> $excluded,
+                    'generated_at'       => now(),
                 ]
             );
         }
-
-        return back()->with('success', 'Monthly report generated for ' . date('F Y', mktime(0,0,0,$month,1,$year)) . '.');
     }
 
     public function memberReports(Mess $mess)

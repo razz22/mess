@@ -13,9 +13,6 @@
                 <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addExpenseModal">
                     <i class="ti ti-circle-plus me-1"></i>Add Expense
                 </button>
-                <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
-                    <i class="ti ti-tag me-1"></i>Category
-                </button>
                 @endif
             </div>
         </div>
@@ -156,13 +153,39 @@
 
                 <!-- Categories List -->
                 <div class="card mt-3">
-                    <div class="card-header"><h6 class="mb-0">Categories</h6></div>
-                    <div class="card-body p-2">
-                        @foreach($categories as $cat)
-                        <span class="badge bg-{{ $cat->color }}-subtle text-{{ $cat->color }} m-1 p-2">
-                            <i class="{{ $cat->icon }} me-1"></i>{{ $cat->name }}
-                        </span>
-                        @endforeach
+                    <div class="card-header d-flex align-items-center justify-content-between py-2">
+                        <h6 class="mb-0">Categories</h6>
+                        @if($member->canManage())
+                        <button class="btn btn-xs btn-outline-primary py-0" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+                            <i class="ti ti-plus" style="font-size:12px"></i> Add
+                        </button>
+                        @endif
+                    </div>
+                    <div class="card-body p-0">
+                        @forelse($categories as $cat)
+                        <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-{{ $cat->color }}-subtle text-{{ $cat->color }} p-2">
+                                    <i class="{{ $cat->icon }}"></i>
+                                </span>
+                                <span class="small fw-semibold">{{ $cat->name }}</span>
+                                @if($cat->expenses()->count() > 0)
+                                <span class="text-muted" style="font-size:10px">{{ $cat->expenses()->count() }} uses</span>
+                                @endif
+                            </div>
+                            @if($member->canManage())
+                            <form action="{{ route('mess.expense-categories.destroy', [$mess->id, $cat->id]) }}" method="POST"
+                                onsubmit="return confirm('Delete category \'{{ addslashes($cat->name) }}\'? Existing expenses will become uncategorized.')">
+                                @csrf @method('DELETE')
+                                <button type="submit" class="btn btn-xs btn-outline-danger py-0 px-1" title="Delete">
+                                    <i class="ti ti-trash" style="font-size:11px"></i>
+                                </button>
+                            </form>
+                            @endif
+                        </div>
+                        @empty
+                        <p class="text-muted text-center small py-3">No categories yet.</p>
+                        @endforelse
                     </div>
                 </div>
             </div>

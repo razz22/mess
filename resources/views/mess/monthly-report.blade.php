@@ -9,16 +9,9 @@
                 <h6>{{ date('F Y', mktime(0,0,0,$month,1,$year)) }}</h6>
             </div>
             <div class="page-btn d-flex gap-2">
-                @if($member->canManage())
-                <form action="{{ route('mess.report.generate', $mess->id) }}" method="POST" class="d-inline">
-                    @csrf
-                    <input type="hidden" name="month" value="{{ $month }}">
-                    <input type="hidden" name="year" value="{{ $year }}">
-                    <button type="submit" class="btn btn-success btn-sm">
-                        <i class="ti ti-refresh me-1"></i>Generate Report
-                    </button>
-                </form>
-                @endif
+                <a href="{{ route('mess.dashboard', $mess->id) }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="ti ti-arrow-left me-1"></i>Back
+                </a>
             </div>
         </div>
 
@@ -100,13 +93,18 @@
                     </thead>
                     <tbody>
                         @foreach($members as $m)
-                        @php $summary = $summaries[$m->user->id] ?? null; @endphp
-                        <tr>
+                        @php
+                            $summary  = $summaries[$m->user->id] ?? null;
+                            $excluded = $summary?->exclude_from_shared ?? false;
+                        @endphp
+                        <tr id="row-{{ $m->user->id }}" class="{{ $excluded ? 'opacity-75' : '' }}">
                             <td>
                                 <div class="d-flex align-items-center gap-2">
-                                    <div class="avatar avatar-sm">
-                                        <span class="avatar-title rounded-circle bg-primary text-white">{{ strtoupper(substr($m->user->name, 0, 1)) }}</span>
-                                    </div>
+                                    @if($m->user->avatar)
+                                    <img src="{{ asset('storage/'.$m->user->avatar) }}" class="rounded-circle" style="width:34px;height:34px;object-fit:cover;flex-shrink:0;" alt="">
+                                    @else
+                                    <span class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-semibold" style="width:34px;height:34px;font-size:13px;flex-shrink:0;">{{ strtoupper(substr($m->user->name,0,1)) }}</span>
+                                    @endif
                                     <div>
                                         <div class="fw-semibold">{{ $m->user->name }}</div>
                                         <span class="badge bg-{{ $m->role === 'owner' ? 'danger' : ($m->role === 'manager' ? 'warning' : 'secondary') }} fs-10">{{ ucfirst($m->role) }}</span>
@@ -116,11 +114,29 @@
                             @if($summary)
                             <td class="text-center fw-bold">{{ $summary->total_meal_days }}</td>
                             <td>৳{{ number_format($summary->meal_cost, 2) }}</td>
-                            <td>৳{{ number_format($summary->total_expenses, 2) }}</td>
+                            <td class="align-middle">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span id="shared-{{ $m->user->id }}">
+                                        @if($excluded)
+                                        <span class="text-muted small fst-italic">Excluded</span>
+                                        @else
+                                        ৳{{ number_format($summary->total_expenses, 2) }}
+                                        @endif
+                                    </span>
+                                    @if($member->canManage())
+                                    <button class="btn btn-xs {{ $excluded ? 'btn-outline-success' : 'btn-outline-warning' }} py-0 px-1"
+                                        id="toggle-btn-{{ $m->user->id }}"
+                                        onclick="toggleShared({{ $m->user->id }}, {{ $excluded ? 'true' : 'false' }})"
+                                        title="{{ $excluded ? 'Include in shared expenses' : 'Exclude from shared expenses' }}">
+                                        <i class="ti {{ $excluded ? 'ti-user-check' : 'ti-user-minus' }}" style="font-size:11px"></i>
+                                    </button>
+                                    @endif
+                                </div>
+                            </td>
                             <td>৳{{ number_format($summary->market_expense, 2) }}</td>
-                            <td class="fw-bold">৳{{ number_format($summary->total_payable, 2) }}</td>
+                            <td class="fw-bold" id="payable-{{ $m->user->id }}">৳{{ number_format($summary->total_payable, 2) }}</td>
                             <td class="text-success fw-bold">৳{{ number_format($summary->total_deposit, 2) }}</td>
-                            <td class="fw-bold {{ $summary->due_amount > 0 ? 'text-danger' : 'text-success' }}">
+                            <td class="fw-bold {{ $summary->due_amount > 0 ? 'text-danger' : 'text-success' }}" id="due-{{ $m->user->id }}">
                                 {{ $summary->due_amount > 0 ? '-' : '+' }}৳{{ number_format($summary->due_amount, 2) }}
                             </td>
                             <td>
@@ -129,7 +145,17 @@
                                 </span>
                             </td>
                             @else
-                            <td colspan="8" class="text-muted text-center">Not generated</td>
+                            <td colspan="8" class="text-muted text-center">
+                                —
+                                @if($member->canManage())
+                                <button class="btn btn-xs btn-outline-warning py-0 px-1 ms-2"
+                                    id="toggle-btn-{{ $m->user->id }}"
+                                    onclick="toggleShared({{ $m->user->id }}, false)"
+                                    title="Exclude from shared expenses">
+                                    <i class="ti ti-user-minus" style="font-size:11px"></i>
+                                </button>
+                                @endif
+                            </td>
                             @endif
                         </tr>
                         @endforeach
@@ -175,4 +201,34 @@
         </div>
     </div>
 </div>
+<script>
+var messId = {{ $mess->id }};
+var csrf   = document.querySelector('meta[name="csrf-token"]').content;
+var month  = {{ $month }};
+var year   = {{ $year }};
+
+function toggleShared(userId, currentlyExcluded) {
+    var btn = document.getElementById('toggle-btn-' + userId);
+    if (btn) btn.disabled = true;
+
+    fetch('/mess/' + messId + '/report/toggle-shared', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+        body: JSON.stringify({ user_id: userId, month: month, year: year })
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+        if (data.success) {
+            // Reload so all recalculated numbers refresh cleanly
+            location.reload();
+        } else {
+            if (btn) btn.disabled = false;
+        }
+    })
+    .catch(function () {
+        if (btn) btn.disabled = false;
+        alert('Request failed. Please try again.');
+    });
+}
+</script>
 @endsection

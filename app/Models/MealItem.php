@@ -8,11 +8,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class MealItem extends Model
 {
     protected $fillable = [
-        'mess_id', 'name', 'description', 'category', 'status', 'sort_order', 'created_by',
+        'mess_id', 'date', 'meal_type', 'name', 'description', 'created_by',
     ];
 
     protected $casts = [
-        'sort_order' => 'integer',
+        'date' => 'date',
     ];
 
     public function mess(): BelongsTo

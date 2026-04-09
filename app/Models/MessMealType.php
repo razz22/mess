@@ -10,7 +10,7 @@ class MessMealType extends Model
     protected $table = 'mess_meal_types';
 
     protected $fillable = [
-        'mess_id', 'name', 'close_time', 'sort_order', 'is_active',
+        'mess_id', 'name', 'close_time', 'rate', 'sort_order', 'is_active',
     ];
 
     protected $casts = [

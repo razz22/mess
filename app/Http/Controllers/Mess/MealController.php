@@ -61,8 +61,10 @@ class MealController extends Controller
             $myChangesToday = $log ? $log->changes : 0;
         }
 
+        $allMealTypes = MessMealType::where('mess_id', $mess->id)->orderBy('sort_order')->get();
+
         return view('mess.meal-attendance', compact(
-            'mess', 'mealTypes', 'schedules', 'members',
+            'mess', 'mealTypes', 'allMealTypes', 'schedules', 'members',
             'allAttendances', 'date', 'today', 'isPast',
             'isManager', 'isBasic', 'member', 'myChangesToday'
         ));
@@ -75,26 +77,29 @@ class MealController extends Controller
         $request->validate([
             'schedule_id' => 'required|exists:meal_schedules,id',
             'user_id'     => 'nullable|exists:users,id',
-            'status'      => 'required|in:on,off',
+            'quantity'    => ['required', 'numeric', 'min:0', 'max:99', function ($attr, $value, $fail) {
+                if (fmod(round($value * 10), 5) !== 0.0) {
+                    $fail('Quantity must be in steps of 0.5.');
+                }
+            }],
         ]);
 
-        $schedule = MealSchedule::findOrFail($request->schedule_id);
+        $schedule     = MealSchedule::findOrFail($request->schedule_id);
         if ($schedule->mess_id !== $mess->id) abort(403);
 
-        $isManager = Auth::user()->isManagerOf($mess->id);
+        $isManager    = Auth::user()->isManagerOf($mess->id);
         $targetUserId = $request->user_id ?? Auth::id();
+        $quantity     = (float) $request->quantity;
+        $status       = $quantity > 0 ? 'on' : 'off';
 
-        // Members can only mark their own attendance
         if (!$isManager && $targetUserId != Auth::id()) {
             return response()->json(['error' => 'You can only manage your own attendance.'], 403);
         }
 
-        // Block past date changes
         if ($schedule->date->toDateString() < now()->toDateString()) {
             return response()->json(['error' => 'Cannot modify attendance for past dates.'], 422);
         }
 
-        // Check close time (members only)
         if (!$isManager) {
             $mealType = $mess->mealTypes()->where('name', $schedule->type)->first();
             if ($mealType && $mealType->isExpired()) {
@@ -102,25 +107,20 @@ class MealController extends Controller
             }
         }
 
-        // Enforce 3-change daily limit for non-managers
+        // 3-change daily limit for members
         if (!$isManager) {
-            $today  = now()->toDateString();
-            $log    = DB::table('meal_attendance_change_logs')
-                ->where('mess_id', $mess->id)
-                ->where('user_id', $targetUserId)
-                ->where('log_date', $today)
-                ->first();
-
+            $today   = now()->toDateString();
+            $log     = DB::table('meal_attendance_change_logs')
+                ->where('mess_id', $mess->id)->where('user_id', $targetUserId)->where('log_date', $today)->first();
             $changes = $log ? $log->changes : 0;
 
             if ($changes >= 3) {
                 return response()->json([
-                    'error'         => 'You cannot change your meal attendance more than 3 times per day. Please contact your manager.',
+                    'error'         => 'You cannot change meal attendance more than 3 times per day. Contact your manager.',
                     'limit_reached' => true,
                 ], 422);
             }
 
-            // Increment counter
             DB::table('meal_attendance_change_logs')->upsert(
                 ['mess_id' => $mess->id, 'user_id' => $targetUserId, 'log_date' => $today, 'changes' => $changes + 1, 'created_at' => now(), 'updated_at' => now()],
                 ['mess_id', 'user_id', 'log_date'],
@@ -130,25 +130,28 @@ class MealController extends Controller
 
         MealAttendance::updateOrCreate(
             ['meal_schedule_id' => $schedule->id, 'user_id' => $targetUserId],
-            ['mess_id' => $mess->id, 'status' => $request->status, 'marked_at' => now()]
+            ['mess_id' => $mess->id, 'status' => $status, 'quantity' => $quantity, 'marked_at' => now()]
         );
 
-        $on  = MealAttendance::where('meal_schedule_id', $schedule->id)->where('status', 'on')->count();
-        $off = MealAttendance::where('meal_schedule_id', $schedule->id)->where('status', 'off')->count();
+        $totalQty = MealAttendance::where('meal_schedule_id', $schedule->id)->sum('quantity');
+        $onCount  = MealAttendance::where('meal_schedule_id', $schedule->id)->where('quantity', '>', 0)->count();
 
-        // Return remaining changes for non-managers
         $remaining = null;
         if (!$isManager) {
             $today = now()->toDateString();
             $log   = DB::table('meal_attendance_change_logs')
-                ->where('mess_id', $mess->id)
-                ->where('user_id', $targetUserId)
-                ->where('log_date', $today)
-                ->first();
+                ->where('mess_id', $mess->id)->where('user_id', $targetUserId)->where('log_date', $today)->first();
             $remaining = max(0, 3 - ($log ? $log->changes : 0));
         }
 
-        return response()->json(['success' => true, 'status' => $request->status, 'on' => $on, 'off' => $off, 'remaining' => $remaining]);
+        return response()->json([
+            'success'   => true,
+            'quantity'  => $quantity,
+            'status'    => $status,
+            'totalQty'  => $totalQty,
+            'onCount'   => $onCount,
+            'remaining' => $remaining,
+        ]);
     }
 
     // Manager: add a custom meal type
@@ -159,32 +162,64 @@ class MealController extends Controller
         $request->validate([
             'name'       => 'required|string|max:50',
             'close_time' => 'nullable|date_format:H:i',
+            'rate'       => 'nullable|numeric|min:0',
         ]);
 
-        if ($mess->mealTypes()->where('name', $request->name)->exists()) {
-            return back()->with('error', 'Meal type "' . $request->name . '" already exists.');
+        // Re-activate if previously deactivated
+        $existing = MessMealType::where('mess_id', $mess->id)->where('name', ucfirst($request->name))->first();
+        if ($existing) {
+            $existing->update([
+                'is_active'  => true,
+                'close_time' => $request->close_time ? $request->close_time . ':00' : $existing->close_time,
+                'rate'       => $request->rate ?? $existing->rate,
+            ]);
+            return back()->with('success', '"' . $existing->name . '" re-activated.');
         }
 
-        $max = $mess->mealTypes()->max('sort_order') ?? 0;
+        $max = MessMealType::where('mess_id', $mess->id)->max('sort_order') ?? 0;
 
         MessMealType::create([
             'mess_id'    => $mess->id,
             'name'       => ucfirst($request->name),
             'close_time' => $request->close_time ? $request->close_time . ':00' : null,
+            'rate'       => $request->rate ?? 0,
             'sort_order' => $max + 1,
         ]);
 
         return back()->with('success', 'Meal type added.');
     }
 
-    // Manager: remove a meal type
+    // Manager: update meal type (name, rate, close_time, active)
+    public function updateMealType(Request $request, Mess $mess, MessMealType $mealType)
+    {
+        if (!Auth::user()->isManagerOf($mess->id)) abort(403);
+        if ($mealType->mess_id !== $mess->id) abort(403);
+
+        $request->validate([
+            'name'       => 'required|string|max:50',
+            'close_time' => 'nullable|date_format:H:i',
+            'rate'       => 'nullable|numeric|min:0',
+            'is_active'  => 'nullable|boolean',
+        ]);
+
+        $mealType->update([
+            'name'       => ucfirst($request->name),
+            'close_time' => $request->close_time ? $request->close_time . ':00' : null,
+            'rate'       => $request->rate ?? $mealType->rate,
+            'is_active'  => $request->has('is_active') ? (bool)$request->is_active : $mealType->is_active,
+        ]);
+
+        return back()->with('success', $mealType->name . ' updated.');
+    }
+
+    // Manager: toggle active / deactivate meal type
     public function destroyMealType(Mess $mess, MessMealType $mealType)
     {
         if (!Auth::user()->isManagerOf($mess->id)) abort(403);
         if ($mealType->mess_id !== $mess->id) abort(403);
 
         $mealType->update(['is_active' => false]);
-        return back()->with('success', 'Meal type removed.');
+        return back()->with('success', '"' . $mealType->name . '" disabled.');
     }
 
     public function closeMeal(Request $request, Mess $mess, MealSchedule $schedule)
@@ -205,46 +240,58 @@ class MealController extends Controller
     public function mealItems(Mess $mess)
     {
         $this->authorizeMember($mess);
-        $member = Auth::user()->getMembershipIn($mess->id);
 
-        $items = [
-            'todo'        => $mess->mealItems()->where('status', 'todo')->orderBy('sort_order')->get(),
-            'in_progress' => $mess->mealItems()->where('status', 'in_progress')->orderBy('sort_order')->get(),
-            'done'        => $mess->mealItems()->where('status', 'done')->orderBy('sort_order')->get(),
-        ];
+        $date      = request('date', now()->toDateString());
+        $today     = now()->toDateString();
+        $mealTypes = $mess->mealTypes()->get(); // active meal types, sorted
+        $member    = Auth::user()->getMembershipIn($mess->id);
+        $isManager = Auth::user()->isManagerOf($mess->id);
 
-        return view('mess.meal-items', compact('mess', 'items', 'member'));
+        // Load all items for this date, keyed by meal_type
+        $items = $mess->mealItems()
+            ->where('date', $date)
+            ->with('createdBy')
+            ->orderBy('created_at')
+            ->get()
+            ->groupBy('meal_type');
+
+        return view('mess.meal-items', compact('mess', 'mealTypes', 'items', 'date', 'today', 'member', 'isManager'));
     }
 
     public function storeMealItem(Request $request, Mess $mess)
     {
         $this->authorizeMember($mess);
-        $request->validate(['name' => 'required|string|max:255', 'category' => 'nullable|string|max:50']);
-
-        $mess->mealItems()->create([
-            'name'        => $request->name,
-            'description' => $request->description,
-            'category'    => $request->category ?? 'general',
-            'status'      => 'todo',
-            'created_by'  => Auth::id(),
+        $request->validate([
+            'name'      => 'required|string|max:255',
+            'meal_type' => 'required|string|max:50',
+            'date'      => 'required|date',
         ]);
 
-        return back()->with('success', 'Meal item added.');
-    }
+        $item = $mess->mealItems()->create([
+            'date'       => $request->date,
+            'meal_type'  => $request->meal_type,
+            'name'       => $request->name,
+            'created_by' => Auth::id(),
+        ]);
 
-    public function updateMealItemStatus(Request $request, Mess $mess, \App\Models\MealItem $item)
-    {
-        $this->authorizeMember($mess);
-        $request->validate(['status' => 'required|in:todo,in_progress,done']);
-        $item->update(['status' => $request->status]);
-        return response()->json(['success' => true]);
+        return response()->json([
+            'success' => true,
+            'item'    => [
+                'id'              => $item->id,
+                'name'            => $item->name,
+                'meal_type'       => $item->meal_type,
+                'created_by_name' => Auth::user()->name,
+                'is_mine'         => true,
+            ],
+        ]);
     }
 
     public function destroyMealItem(Mess $mess, \App\Models\MealItem $item)
     {
-        if (!Auth::user()->isManagerOf($mess->id)) abort(403);
+        $this->authorizeMember($mess);
+        if ($item->created_by !== Auth::id() && !Auth::user()->isManagerOf($mess->id)) abort(403);
         $item->delete();
-        return back()->with('success', 'Item deleted.');
+        return response()->json(['success' => true]);
     }
 
     private function authorizeMember(Mess $mess): void

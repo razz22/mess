@@ -11,7 +11,7 @@ class MemberMonthlySummary extends Model
         'mess_id', 'user_id', 'month', 'year',
         'total_meal_days', 'meal_cost', 'total_expenses', 'market_expense',
         'total_deposit', 'carry_forward_in', 'total_payable',
-        'due_amount', 'carry_forward_out', 'status', 'generated_at',
+        'due_amount', 'carry_forward_out', 'status', 'exclude_from_shared', 'generated_at',
     ];
 
     protected $casts = [
@@ -23,7 +23,8 @@ class MemberMonthlySummary extends Model
         'total_payable' => 'decimal:2',
         'due_amount' => 'decimal:2',
         'carry_forward_out' => 'decimal:2',
-        'generated_at' => 'datetime',
+        'generated_at'       => 'datetime',
+        'exclude_from_shared' => 'boolean',
     ];
 
     public function mess(): BelongsTo
