@@ -137,9 +137,10 @@
 </style>
 
 <script>
-var messId  = {{ $mess->id }};
-var csrf    = document.querySelector('meta[name="csrf-token"]').content;
-var pageDate = '{{ $date }}';
+var csrf         = document.querySelector('meta[name="csrf-token"]').content;
+var pageDate     = '{{ $date }}';
+var addItemUrl   = '{{ route("mess.meal-items.store", $mess->id) }}';
+var deleteUrlBase = '{{ url("mess/" . $mess->id . "/meal-items") }}';
 
 // ── Flatpickr date navigation ────────────────────────────────
 window.addEventListener('load', function () {
@@ -172,12 +173,25 @@ document.querySelectorAll('.add-item-form').forEach(function (form) {
         var btn = form.querySelector('button[type="submit"]');
         btn.disabled = true;
 
-        fetch('/mess/' + messId + '/meal-items', {
+        fetch(addItemUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrf
+            },
             body: JSON.stringify({ name: name, meal_type: mealType, date: pageDate })
         })
-        .then(function (r) { return r.json(); })
+        .then(function (r) {
+            if (!r.ok) {
+                return r.text().then(function (text) {
+                    var msg = 'Error ' + r.status;
+                    try { var j = JSON.parse(text); msg = j.message || (j.errors ? Object.values(j.errors).flat().join(' ') : msg); } catch (e) {}
+                    throw new Error(msg);
+                });
+            }
+            return r.json();
+        })
         .then(function (data) {
             btn.disabled = false;
             if (!data.success) {
@@ -188,9 +202,9 @@ document.querySelectorAll('.add-item-form').forEach(function (form) {
             appendItem(mealType, data.item);
             showItemToast('"' + data.item.name + '" added to ' + mealType, 'success');
         })
-        .catch(function () {
+        .catch(function (err) {
             btn.disabled = false;
-            showItemToast('Request failed.', 'danger');
+            showItemToast(err.message || 'Request failed.', 'danger');
         });
     });
 });
@@ -228,22 +242,29 @@ function appendItem(mealType, item) {
 function deleteItem(itemId, name) {
     if (!confirm('Remove "' + name + '"?')) return;
 
-    fetch('/mess/' + messId + '/meal-items/' + itemId, {
+    fetch(deleteUrlBase + '/' + itemId, {
         method: 'DELETE',
-        headers: { 'X-CSRF-TOKEN': csrf }
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf }
     })
-    .then(function (r) { return r.json(); })
+    .then(function (r) {
+        if (!r.ok) {
+            return r.text().then(function (text) {
+                var msg = 'Error ' + r.status;
+                try { var j = JSON.parse(text); msg = j.message || msg; } catch (e) {}
+                throw new Error(msg);
+            });
+        }
+        return r.json();
+    })
     .then(function (data) {
         if (!data.success) { showItemToast('Could not remove item.', 'danger'); return; }
         var li = document.getElementById('item-' + itemId);
         if (li) {
             var list = li.closest('ul');
             li.remove();
-            // Update badge
             if (list) {
                 var header = list.closest('.card').querySelector('.badge.bg-primary');
                 if (header) header.textContent = list.children.length;
-                // Show empty placeholder if no items left
                 if (list.children.length === 0) {
                     var mealType = list.id.replace('list-', '');
                     var empty = document.getElementById('empty-' + mealType);
@@ -253,7 +274,7 @@ function deleteItem(itemId, name) {
         }
         showItemToast('"' + name + '" removed.', 'warning');
     })
-    .catch(function () { showItemToast('Request failed.', 'danger'); });
+    .catch(function (err) { showItemToast(err.message || 'Request failed.', 'danger'); });
 }
 
 function escHtml(s) {

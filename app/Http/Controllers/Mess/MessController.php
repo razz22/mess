@@ -7,6 +7,7 @@ use App\Models\ExpenseCategory;
 use App\Models\Mess;
 use App\Models\MessMember;
 use App\Models\MessSetting;
+use App\Models\SystemSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -16,6 +17,14 @@ class MessController extends Controller
     public function index()
     {
         $user = Auth::user();
+
+        // Super admin sees every mess on the platform
+        if ($user->is_super_admin) {
+            $memberships = collect(); // no real memberships
+            $allMesses   = Mess::with('owner')->withCount('activeMembers')->latest()->get();
+            return view('mess.list', compact('memberships', 'allMesses'));
+        }
+
         $memberships = MessMember::with('mess')
             ->where('user_id', $user->id)
             ->where('is_active', true)
@@ -32,9 +41,10 @@ class MessController extends Controller
             return redirect()->route('mess.index')
                 ->with('error', 'Members cannot create a mess.');
         }
-        if ($user->ownedMesses()->count() >= 2) {
+        $maxMesses = $user->max_messes ?? 2;
+        if ($user->ownedMesses()->count() >= $maxMesses) {
             return redirect()->route('mess.index')
-                ->with('error', 'You can only create up to 2 messes.');
+                ->with('error', "You can only create up to {$maxMesses} messes.");
         }
 
         return view('mess.create');
@@ -48,9 +58,11 @@ class MessController extends Controller
             return redirect()->route('mess.index')
                 ->with('error', 'Members cannot create a mess.');
         }
-        if ($user->ownedMesses()->count() >= 2) {
+        $sysSettings = SystemSetting::instance();
+        $maxMesses   = $user->max_messes ?? $sysSettings->default_max_messes;
+        if ($user->ownedMesses()->count() >= $maxMesses) {
             return redirect()->route('mess.index')
-                ->with('error', 'You can only create up to 2 messes.');
+                ->with('error', "You can only create up to {$maxMesses} messes.");
         }
 
         $validated = $request->validate([
@@ -61,8 +73,15 @@ class MessController extends Controller
         ]);
 
         $avatarPath = null;
-        if ($request->hasFile('avatar')) {
-            $avatarPath = $request->file('avatar')->store('mess-avatars', 'public');
+        try {
+            if (!empty($validated['avatar'])
+                && $validated['avatar'] instanceof \Illuminate\Http\UploadedFile
+                && $validated['avatar']->getRealPath() !== false
+                && $validated['avatar']->getRealPath() !== '') {
+                $avatarPath = $validated['avatar']->store('mess-avatars', 'public');
+            }
+        } catch (\Throwable $e) {
+            // Avatar upload failed — proceed without avatar
         }
 
         $mess = Mess::create([
@@ -71,7 +90,7 @@ class MessController extends Controller
             'description' => $validated['description'] ?? null,
             'address'     => $validated['address'] ?? null,
             'avatar'      => $avatarPath,
-            'max_members' => 20,
+            'max_members' => $sysSettings->default_max_members,
         ]);
 
         // Add owner as member
@@ -197,18 +216,17 @@ class MessController extends Controller
             'avatar'      => 'nullable|image|max:2048',
         ]);
 
-        if ($request->hasFile('avatar')) {
+        if (!empty($validated['avatar']) && $validated['avatar'] instanceof \Illuminate\Http\UploadedFile) {
             if ($mess->avatar) Storage::disk('public')->delete($mess->avatar);
-            $validated['avatar'] = $request->file('avatar')->store('mess-avatars', 'public');
+            $validated['avatar'] = $validated['avatar']->store('mess-avatars', 'public');
+        } else {
+            unset($validated['avatar']); // don't overwrite existing avatar if none uploaded
         }
 
         $mess->update($validated);
 
         // Update settings
         $mess->settings()->updateOrCreate(['mess_id' => $mess->id], [
-            'breakfast_close' => $request->breakfast_close ?? '09:00:00',
-            'lunch_close'     => $request->lunch_close ?? '14:00:00',
-            'dinner_close'    => $request->dinner_close ?? '21:00:00',
             'monthly_rate'    => 0,
             'meal_cost_mode'  => in_array($request->meal_cost_mode, ['monthly', 'daily']) ? $request->meal_cost_mode : 'monthly',
             'allow_meal_off'  => $request->boolean('allow_meal_off'),

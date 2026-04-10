@@ -525,7 +525,7 @@ function submitQuickAdd(routineId) {
 
     fetch(`/mess/${messId}/market/${routineId}/list`, {
         method: 'POST',
-        headers: { 'X-CSRF-TOKEN': csrf },
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
         body: formData,
     }).then(r => {
         if (r.ok) { location.reload(); }

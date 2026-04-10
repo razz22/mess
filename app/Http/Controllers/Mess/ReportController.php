@@ -76,6 +76,7 @@ class ReportController extends Controller
         // Cash in hand = total deposits - total expenses
         $cashInHand = $totalDeposits - $totalExpenses;
 
+        // All expenses by category (for the bottom display panel)
         $expensesByCategory = $mess->expenses()
             ->whereMonth('expense_date', $month)
             ->whereYear('expense_date', $year)
@@ -87,11 +88,26 @@ class ReportController extends Controller
         $member        = Auth::user()->getMembershipIn($mess->id);
         $allCategories = $mess->expenseCategories()->where('is_active', true)->get();
 
-        $categoriesForModal = $allCategories->map(fn($c) => [
-            'id'     => $c->id,
-            'name'   => $c->name,
-            'amount' => $expensesByCategory[$c->id]['amount'] ?? 0,
-        ])->values();
+        // Non-market expense amounts per category (used for the per-member exclusion modal)
+        // Only non-market expenses count toward Expense Cost, so only those categories should be excludable
+        $nonMarketByCategory = $mess->expenses()
+            ->whereMonth('expense_date', $month)
+            ->whereYear('expense_date', $year)
+            ->where('is_market_expense', false)
+            ->select('category_id', DB::raw('SUM(amount) as total'))
+            ->groupBy('category_id')
+            ->pluck('total', 'category_id');
+
+        $totalMembers = $mess->activeMembers()->count();
+
+        $categoriesForModal = $allCategories
+            ->filter(fn($c) => isset($nonMarketByCategory[$c->id]) && $nonMarketByCategory[$c->id] > 0)
+            ->map(fn($c) => [
+                'id'       => $c->id,
+                'name'     => $c->name,
+                'total'    => (float) $nonMarketByCategory[$c->id],
+                'per_head' => $totalMembers > 0 ? round($nonMarketByCategory[$c->id] / $totalMembers, 2) : 0,
+            ])->values();
 
         // Category exclusions per member: [userId => [categoryId, ...]]
         $memberCategoryExclusions = MemberCategoryExclusion::where('mess_id', $mess->id)
@@ -389,13 +405,6 @@ class ReportController extends Controller
                 }
             }
 
-            $marketExpense = $mess->expenses()
-                ->where('member_id', $userId)
-                ->where('is_market_expense', true)
-                ->whereMonth('expense_date', $month)
-                ->whereYear('expense_date', $year)
-                ->sum('amount');
-
             $totalDeposit = MemberDeposit::where('mess_id', $mess->id)
                 ->where('user_id', $userId)
                 ->where('month', $month)
@@ -414,7 +423,8 @@ class ReportController extends Controller
                 $carryIn = -$prevSummary->due_amount;
             }
 
-            $totalPayable    = $mealCost + $memberShared + $marketExpense;
+            // Total payable = Meal Cost (from Market Routine) + Expense Cost (shared non-meal expenses)
+            $totalPayable    = $mealCost + $memberShared;
             $netAfterDeposit = $totalDeposit + $carryIn - $totalPayable;
             $dueAmount       = -$netAfterDeposit;
             $carryOut        = $netAfterDeposit < 0 ? 0 : $netAfterDeposit;
@@ -425,7 +435,6 @@ class ReportController extends Controller
                     'total_meal_days'     => $memberMeals,
                     'meal_cost'           => round($mealCost, 2),
                     'total_expenses'      => round($memberShared, 2),
-                    'market_expense'      => round($marketExpense, 2),
                     'total_deposit'       => round($totalDeposit, 2),
                     'carry_forward_in'    => round(max(0, $carryIn), 2),
                     'total_payable'       => round($totalPayable, 2),

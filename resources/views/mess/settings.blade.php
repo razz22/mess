@@ -79,22 +79,6 @@
                         <div class="card-header"><h6 class="mb-0"><i class="ti ti-tools-kitchen-2 me-2"></i>Meal Settings</h6></div>
                         <div class="card-body">
                             <div class="mb-3">
-                                <label class="form-label fw-semibold">Breakfast Close Time</label>
-                                <input type="time" name="breakfast_close" class="form-control"
-                                    value="{{ $settings->breakfast_close ?? '09:00' }}">
-                                <div class="form-text">Members cannot mark attendance after this time</div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Lunch Close Time</label>
-                                <input type="time" name="lunch_close" class="form-control"
-                                    value="{{ $settings->lunch_close ?? '14:00' }}">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Dinner Close Time</label>
-                                <input type="time" name="dinner_close" class="form-control"
-                                    value="{{ $settings->dinner_close ?? '21:00' }}">
-                            </div>
-                            <div class="mb-3">
                                 <label class="form-label fw-semibold">Meal Cost Calculation Mode</label>
                                 <div class="d-flex flex-column gap-2 mt-1">
                                     <div class="form-check">
@@ -133,31 +117,6 @@
                         </div>
                     </div>
 
-                    <!-- Subscription Info -->
-                    <div class="card mt-3">
-                        <div class="card-header"><h6 class="mb-0"><i class="ti ti-crown me-2"></i>Subscription</h6></div>
-                        <div class="card-body">
-                            @if($mess->subscription)
-                            <div class="d-flex align-items-center gap-3">
-                                <span class="badge bg-warning fs-14">{{ ucfirst($mess->subscription->plan) }}</span>
-                                <div>
-                                    <div>Max Members: <strong>{{ $mess->subscription->max_members }}</strong></div>
-                                    <div class="text-muted small">Expires: {{ $mess->subscription->expires_at?->format('d M Y') ?? 'Never' }}</div>
-                                </div>
-                            </div>
-                            @else
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <div class="fw-semibold">Free Plan</div>
-                                    <div class="text-muted small">Max {{ $mess->max_members }} members</div>
-                                </div>
-                                <a href="#" class="btn btn-sm btn-warning">
-                                    <i class="ti ti-crown me-1"></i>Upgrade
-                                </a>
-                            </div>
-                            @endif
-                        </div>
-                    </div>
                 </div>
             </div>
 

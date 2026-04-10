@@ -112,6 +112,52 @@
     @include('layout.partials.collapsed-sidebar')
     @include('layout.partials.horizontal-sidebar')
 @endif
+{{-- Impersonation Banner --}}
+@if(session('impersonating_admin_id'))
+<div style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#dc3545;color:#fff;text-align:center;padding:6px 16px;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:12px;">
+    <i class="ti ti-eye"></i>
+    Viewing as <strong>&nbsp;{{ Auth::user()->name }}&nbsp;</strong> — Super Admin Impersonation
+    <form action="{{ route('admin.exit-impersonation') }}" method="POST" style="display:inline;">
+        @csrf
+        <button type="submit" style="background:#fff;color:#dc3545;border:none;border-radius:4px;padding:2px 10px;font-size:12px;font-weight:700;cursor:pointer;">Exit</button>
+    </form>
+</div>
+@endif
+
+{{-- Subscription Expiry Alert --}}
+@auth
+@php
+    $__activeMess = Auth::user()->getActiveMess();
+    $__sub = $__activeMess?->subscription;
+    $__daysLeft = $__sub?->expires_at ? (int) now()->diffInDays($__sub->expires_at, false) : null;
+    $__showAlert = $__sub && $__daysLeft !== null && $__daysLeft <= 7 && $__daysLeft >= 0;
+    $__expired   = $__sub && $__daysLeft !== null && $__daysLeft < 0;
+@endphp
+@if($__showAlert || $__expired)
+<div style="background:{{ $__expired ? '#dc3545' : ($__daysLeft <= 3 ? '#f59e0b' : '#3b82f6') }};
+            color:#fff;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;
+            gap:12px;font-size:13px;font-weight:500;flex-wrap:wrap;">
+    <div class="d-flex align-items-center gap-2">
+        <i class="ti ti-{{ $__expired ? 'alert-circle' : 'clock' }} fs-5 flex-shrink-0"></i>
+        @if($__expired)
+            Your <strong>&nbsp;{{ $__sub->plan }}&nbsp;</strong> subscription has <strong>expired</strong>. Renew now to restore your member limit.
+        @elseif($__daysLeft === 0)
+            Your <strong>&nbsp;{{ $__sub->plan }}&nbsp;</strong> subscription expires <strong>today</strong>!
+        @else
+            Your <strong>&nbsp;{{ $__sub->plan }}&nbsp;</strong> subscription expires in <strong>&nbsp;{{ $__daysLeft }} day{{ $__daysLeft > 1 ? 's' : '' }}&nbsp;</strong> on {{ $__sub->expires_at->format('d M Y') }}.
+        @endif
+    </div>
+    @if($__activeMess && Auth::user()->isManagerOf($__activeMess->id))
+    <a href="{{ route('mess.upgrade', $__activeMess->id) }}"
+       style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.5);
+              border-radius:6px;padding:5px 14px;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap;">
+        <i class="ti ti-rocket me-1"></i>Renew Now
+    </a>
+    @endif
+</div>
+@endif
+@endauth
+
 @yield('content')
 </div>
 <!-- /Main Wrapper -->
@@ -119,6 +165,7 @@
 @component('components.modalpopup')
 @endcomponent
 @include('layout.partials.footer-scripts')
+@stack('scripts')
 </body>
 
 </html>

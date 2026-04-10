@@ -29,6 +29,14 @@ class CustomAuthController extends Controller
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
+            Auth::user()->update([
+                'last_login_at' => now(),
+                'last_login_ip' => $request->ip(),
+            ]);
+            // Super admin goes to admin dashboard
+            if (Auth::user()->is_super_admin) {
+                return redirect()->route('admin.dashboard')->withSuccess('Welcome, Super Admin.');
+            }
             return redirect()->intended(route('mess.index'))->withSuccess('Signed in');
         }
 

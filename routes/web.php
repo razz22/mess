@@ -12,6 +12,8 @@ use App\Http\Controllers\Mess\ManagerController;
 use App\Http\Controllers\Mess\ReportController;
 use App\Http\Controllers\Mess\RewardController;
 use App\Http\Controllers\Mess\TenantFormController;
+use App\Http\Controllers\Mess\HouseRentController;
+use App\Http\Controllers\Admin\SuperAdminController;
 
 /*
 |--------------------------------------------------------------------------
@@ -119,7 +121,70 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/mess/{mess}/rewards',     [RewardController::class, 'index'])->name('mess.rewards');
     Route::post('/mess/{mess}/rewards',    [RewardController::class, 'store'])->name('mess.rewards.store');
 
+    // Mess Upgrade (owner only)
+    Route::get('/mess/{mess}/upgrade',         [\App\Http\Controllers\Mess\UpgradeController::class, 'index'])->name('mess.upgrade');
+    Route::get('/mess/{mess}/upgrade/history', [\App\Http\Controllers\Mess\UpgradeController::class, 'history'])->name('mess.upgrade.history');
+    Route::post('/mess/{mess}/upgrade',        [\App\Http\Controllers\Mess\UpgradeController::class, 'store'])->name('mess.upgrade.store');
+
+    // House Rent Management (owner only)
+    Route::get('/mess/{mess}/rent',                                    [HouseRentController::class, 'index'])->name('mess.rent.index');
+    Route::post('/mess/{mess}/rent/set',                               [HouseRentController::class, 'setRent'])->name('mess.rent.set');
+    Route::post('/mess/{mess}/rent/payments',                          [HouseRentController::class, 'storePayment'])->name('mess.rent.payments.store');
+    Route::put('/mess/{mess}/rent/payments/{payment}',                 [HouseRentController::class, 'updatePayment'])->name('mess.rent.payments.update');
+    Route::delete('/mess/{mess}/rent/payments/{payment}',              [HouseRentController::class, 'destroyPayment'])->name('mess.rent.payments.destroy');
+    Route::post('/mess/{mess}/rent/advances',                          [HouseRentController::class, 'storeAdvance'])->name('mess.rent.advances.store');
+    Route::put('/mess/{mess}/rent/advances/{advance}',                 [HouseRentController::class, 'updateAdvance'])->name('mess.rent.advances.update');
+    Route::delete('/mess/{mess}/rent/advances/{advance}',              [HouseRentController::class, 'destroyAdvance'])->name('mess.rent.advances.destroy');
+
 });
+
+// -------------------------------------------------------------------------
+// Super Admin Routes
+// -------------------------------------------------------------------------
+Route::middleware(['auth', 'super_admin'])->prefix('admin')->name('admin.')->group(function () {
+
+    Route::get('/dashboard',                                              [SuperAdminController::class, 'dashboard'])->name('dashboard');
+
+    // Users
+    Route::get('/users',                                                  [SuperAdminController::class, 'users'])->name('users');
+    Route::post('/users',                                                 [SuperAdminController::class, 'storeUser'])->name('users.store');
+    Route::put('/users/{user}',                                           [SuperAdminController::class, 'updateUser'])->name('users.update');
+    Route::post('/users/{user}/toggle',                                   [SuperAdminController::class, 'toggleActive'])->name('users.toggle');
+    Route::post('/users/{user}/reset-password',                           [SuperAdminController::class, 'resetPassword'])->name('users.reset-password');
+
+    // Messes
+    Route::get('/messes',                                                 [SuperAdminController::class, 'messes'])->name('messes');
+    Route::post('/messes',                                                [SuperAdminController::class, 'storeMess'])->name('mess.store');
+    Route::get('/messes/{mess}',                                          [SuperAdminController::class, 'showMess'])->name('mess.show');
+    Route::delete('/messes/{mess}',                                       [SuperAdminController::class, 'destroyMess'])->name('mess.destroy');
+
+    // Mess Members (admin)
+    Route::post('/messes/{mess}/members',                                 [SuperAdminController::class, 'addMemberToMess'])->name('mess.member.add');
+    Route::put('/messes/{mess}/members/{member}/role',                    [SuperAdminController::class, 'updateMemberRole'])->name('mess.member.role');
+    Route::delete('/messes/{mess}/members/{member}',                      [SuperAdminController::class, 'removeMemberFromMess'])->name('mess.member.remove');
+
+    // Impersonation
+    Route::post('/impersonate/{user}',                                    [SuperAdminController::class, 'impersonate'])->name('impersonate');
+
+    // Upgrade Management
+    Route::get('/upgrades',                                               [SuperAdminController::class, 'upgrades'])->name('upgrades');
+    Route::post('/upgrades/{upgrade}/approve',                            [SuperAdminController::class, 'approveUpgrade'])->name('upgrade.approve');
+    Route::post('/upgrades/{upgrade}/reject',                             [SuperAdminController::class, 'rejectUpgrade'])->name('upgrade.reject');
+    Route::post('/messes/{mess}/set-limit',                               [SuperAdminController::class, 'setMessLimit'])->name('mess.set-limit');
+    Route::post('/users/{user}/set-mess-limit',                           [SuperAdminController::class, 'setUserMessLimit'])->name('user.set-mess-limit');
+
+    // System Settings
+    Route::get('/settings',                                               [SuperAdminController::class, 'settings'])->name('settings');
+    Route::post('/settings',                                              [SuperAdminController::class, 'updateSettings'])->name('settings.update');
+
+    // Subscription Plans
+    Route::post('/plans',                                                 [SuperAdminController::class, 'storePlan'])->name('plans.store');
+    Route::put('/plans/{plan}',                                           [SuperAdminController::class, 'updatePlan'])->name('plans.update');
+    Route::delete('/plans/{plan}',                                        [SuperAdminController::class, 'destroyPlan'])->name('plans.destroy');
+});
+
+// Exit impersonation (accessible while impersonating, auth only)
+Route::middleware('auth')->post('/admin/exit-impersonation', [SuperAdminController::class, 'exitImpersonation'])->name('admin.exit-impersonation');
 
 // Legacy template routes (kept for template pages)
 Route::get('/template-index', function () {

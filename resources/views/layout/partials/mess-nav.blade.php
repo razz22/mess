@@ -1,3 +1,35 @@
+{{-- Super Admin Navigation (only for super admins) --}}
+@auth
+@if(Auth::user()->is_super_admin)
+<li class="submenu-open">
+    <h6 class="submenu-hdr" style="color:#dc3545;"><i class="ti ti-shield-check me-1"></i>Super Admin</h6>
+    <ul>
+        <li class="{{ Request::routeIs('admin.dashboard') ? 'active' : '' }}">
+            <a href="{{ route('admin.dashboard') }}"><i class="ti ti-layout-dashboard fs-16 me-2"></i><span>Admin Dashboard</span></a>
+        </li>
+        <li class="{{ Request::routeIs('admin.users*') ? 'active' : '' }}">
+            <a href="{{ route('admin.users') }}"><i class="ti ti-users fs-16 me-2"></i><span>All Users</span></a>
+        </li>
+        <li class="{{ Request::routeIs('admin.messes*') || Request::routeIs('admin.mess.*') ? 'active' : '' }}">
+            <a href="{{ route('admin.messes') }}"><i class="ti ti-building-community fs-16 me-2"></i><span>All Messes</span></a>
+        </li>
+        <li class="{{ Request::routeIs('admin.upgrades*') || Request::routeIs('admin.upgrade.*') ? 'active' : '' }}">
+            <a href="{{ route('admin.upgrades') }}" class="d-flex align-items-center gap-1">
+                <i class="ti ti-rocket fs-16 me-2"></i><span>Upgrades</span>
+                @php $pendingUpgrades = \App\Models\MessUpgrade::where('status','pending')->count(); @endphp
+                @if($pendingUpgrades > 0)
+                <span class="badge bg-warning text-dark ms-auto" style="font-size:10px;">{{ $pendingUpgrades }}</span>
+                @endif
+            </a>
+        </li>
+        <li class="{{ Request::routeIs('admin.settings') ? 'active' : '' }}">
+            <a href="{{ route('admin.settings') }}"><i class="ti ti-adjustments fs-16 me-2"></i><span>System Settings</span></a>
+        </li>
+    </ul>
+</li>
+@endif
+@endauth
+
 {{-- Mess Management Navigation --}}
 <li class="submenu-open">
         <h6 class="submenu-hdr">Mess Management</h6>
@@ -87,6 +119,23 @@
                 <li class="{{ Request::routeIs('mess.report.members') ? 'active' : '' }}">
                         <a href="{{ route('mess.report.members', $sma->id) }}"><i class="ti ti-flag fs-16 me-2"></i><span>Member Reports</span></a>
                 </li>
+
+                {{-- House Rent Management — owner only --}}
+                @if(Auth::user()->isOwnerOf($sma->id))
+                <li class="{{ Request::routeIs('mess.rent.*') ? 'active' : '' }}">
+                        <a href="{{ route('mess.rent.index', $sma->id) }}"><i class="ti ti-home-dollar fs-16 me-2"></i><span>House Rent</span></a>
+                </li>
+                @endif
+
+                {{-- Upgrade Mess — owner/manager --}}
+                @if(Auth::user()->isManagerOf($sma->id))
+                <li class="{{ Request::routeIs('mess.upgrade') ? 'active' : '' }}">
+                        <a href="{{ route('mess.upgrade', $sma->id) }}"><i class="ti ti-rocket fs-16 me-2"></i><span>Upgrade Mess</span></a>
+                </li>
+                <li class="{{ Request::routeIs('mess.upgrade.history') ? 'active' : '' }}">
+                        <a href="{{ route('mess.upgrade.history', $sma->id) }}"><i class="ti ti-history fs-16 me-2"></i><span>Upgrade History</span></a>
+                </li>
+                @endif
 
                 {{-- Settings — owner only --}}
                 @if(Auth::user()->isOwnerOf($sma->id))

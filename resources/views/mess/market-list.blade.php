@@ -292,7 +292,7 @@ const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
 function updateItem(itemId, data) {
     fetch(`/mess/${messId}/market/list/${itemId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
         body: JSON.stringify(data),
     })
     .then(r => r.json())

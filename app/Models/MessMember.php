@@ -9,7 +9,7 @@ class MessMember extends Model
 {
     protected $fillable = [
         'mess_id', 'user_id', 'role', 'is_active', 'carry_forward', 'joined_at',
-        'house_rent', 'advance_amount', 'advance_date', 'notes',
+        'room_no', 'house_rent', 'advance_amount', 'advance_date', 'notes',
     ];
 
     protected $casts = [

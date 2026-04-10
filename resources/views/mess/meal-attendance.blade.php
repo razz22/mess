@@ -386,10 +386,11 @@
 <div id="meal-toast-container" class="position-fixed top-0 end-0 p-3" style="z-index:99999;"></div>
 
 <script>
-var messId      = {{ $mess->id }};
 var csrf        = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 var isManager   = {{ $isManager ? 'true' : 'false' }};
 var myChanges   = {{ $myChangesToday }};
+var attendanceUrl   = '{{ route("mess.meals.attendance", $mess->id) }}';
+var mealCloseBase   = '{{ url("mess/" . $mess->id . "/meals") }}';
 
 // ── Bootstrap Toast helper ───────────────────────────────────
 function showToast(message, type) {
@@ -509,9 +510,9 @@ function sendMealQty(select, customInput, scheduleId, userId, quantity) {
     if (select)      select.disabled = true;
     if (customInput) customInput.disabled = true;
 
-    fetch('/mess/' + messId + '/meals/attendance', {
+    fetch(attendanceUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
         body: JSON.stringify({ schedule_id: scheduleId, user_id: userId, quantity: quantity })
     })
     .then(function (response) {
@@ -665,9 +666,9 @@ function closeMeal(scheduleId, mealName) {
 
     showToast('Closing ' + mealName + '…', 'info');
 
-    fetch('/mess/' + messId + '/meals/' + scheduleId + '/close', {
+    fetch(mealCloseBase + '/' + scheduleId + '/close', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
         body: JSON.stringify({ meal_cost: parseFloat(cost) || 0 })
     })
     .then(function (r) { return r.json(); })

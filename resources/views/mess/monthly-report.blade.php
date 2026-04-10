@@ -45,16 +45,16 @@
                     <div class="card-body py-3 text-center">
                         <div class="text-muted small mb-1"><i class="ti ti-shopping-cart me-1"></i>Market Cost</div>
                         <div class="fs-4 fw-bold text-primary">৳{{ number_format($totalMarket, 2) }}</div>
-                        <div class="text-muted" style="font-size:11px">Food / Bazaar expenses</div>
+                        <div class="text-muted" style="font-size:11px">Bazaar → drives meal rate</div>
                     </div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-body py-3 text-center">
-                        <div class="text-muted small mb-1"><i class="ti ti-receipt me-1"></i>Other Expenses</div>
+                        <div class="text-muted small mb-1"><i class="ti ti-receipt me-1"></i>Shared Expenses</div>
                         <div class="fs-4 fw-bold text-warning">৳{{ number_format($totalNonMarket, 2) }}</div>
-                        <div class="text-muted" style="font-size:11px">Cook, bills, utilities…</div>
+                        <div class="text-muted" style="font-size:11px">Cook, bills, utilities → split equally</div>
                     </div>
                 </div>
             </div>
@@ -132,11 +132,14 @@
                             <th>Member</th>
                             <th class="text-center">Meals</th>
                             <th class="text-center">Per Meal Rate</th>
-                            <th>Meal Cost</th>
-                            <th>Market Exp.</th>
-                            <th>Total Payable</th>
-                            <th>Deposited</th>
-                            <th>Due / Extra</th>
+                            <th class="text-end">Meal Cost</th>
+                            <th>
+                                Expense Cost
+                                <span class="text-muted" style="font-size:10px;font-weight:normal;display:block;">Shared expenses ÷ members</span>
+                            </th>
+                            <th class="text-end">Total Payable</th>
+                            <th class="text-end">Deposited</th>
+                            <th class="text-end">Due / Extra</th>
                             <th>Status</th>
                             @if($isManager) <th></th> @endif
                         </tr>
@@ -149,7 +152,7 @@
                             $catExclIds   = $memberCategoryExclusions[$m->user->id] ?? [];
                             $catExclCount = count($catExclIds);
                         @endphp
-                        <tr id="row-{{ $m->user->id }}" class="{{ $excluded ? 'opacity-75' : '' }}">
+                        <tr id="row-{{ $m->user->id }}" class="{{ $excluded ? 'table-secondary opacity-75' : '' }}">
                             <td>
                                 <div class="d-flex align-items-center gap-2">
                                     @if($m->user->avatar)
@@ -173,41 +176,43 @@
                             <td class="text-center fw-bold">{{ number_format($memberMeals, 1) }}</td>
                             <td class="text-center">
                                 @if($costMode === 'daily')
-                                <span class="text-muted small">৳{{ number_format($memberRate, 2) }}</span>
+                                <span class="text-muted small">৳{{ number_format($memberRate, 2) }}<br><span style="font-size:10px">avg/meal</span></span>
                                 @else
                                 <span class="badge bg-primary-subtle text-primary">৳{{ number_format($perMealCost, 2) }}</span>
                                 @endif
                             </td>
-                            <td>৳{{ number_format($summary->meal_cost, 2) }}</td>
+                            <td class="text-end">৳{{ number_format($summary->meal_cost, 2) }}</td>
+                            {{-- Expense Cost: member's share of non-meal shared expenses --}}
                             <td>
                                 <div class="d-flex align-items-center gap-1 flex-wrap">
-                                    <span>৳{{ number_format($summary->market_expense, 2) }}</span>
+                                    <span class="fw-semibold">৳{{ number_format($summary->total_expenses, 2) }}</span>
                                     @if($isManager)
-                                    <button class="btn btn-xs {{ $excluded ? 'btn-outline-success' : 'btn-outline-warning' }} py-0 px-1"
+                                    {{-- Remove ALL expenses for this member --}}
+                                    <button class="btn btn-xs {{ $excluded ? 'btn-success' : 'btn-outline-warning' }} py-0 px-1"
                                         id="toggle-btn-{{ $m->user->id }}"
                                         onclick="toggleShared({{ $m->user->id }}, {{ $excluded ? 'true' : 'false' }})"
-                                        title="{{ $excluded ? 'Include in shared expenses' : 'Exclude from all shared expenses' }}">
+                                        title="{{ $excluded ? 'Include in all shared expenses' : 'Exclude from ALL shared expenses' }}">
                                         <i class="ti {{ $excluded ? 'ti-user-check' : 'ti-user-minus' }}" style="font-size:11px"></i>
                                     </button>
                                     @if(!$excluded)
+                                    {{-- Remove individual categories --}}
                                     <button class="btn btn-xs btn-outline-secondary py-0 px-1"
                                         onclick="openCategoryModal({{ $m->user->id }}, '{{ addslashes($m->user->name) }}')"
-                                        title="Manage category exclusions">
+                                        title="Remove individual expense categories">
                                         <i class="ti ti-adjustments-horizontal" style="font-size:11px"></i>
                                     </button>
                                     @endif
                                     @endif
-                                    @if($catExclCount > 0)
-                                    <span class="badge bg-warning text-dark" title="{{ $catExclCount }} shared expense category(s) excluded">-{{ $catExclCount }} cat.</span>
-                                    @endif
                                     @if($excluded)
-                                    <span class="badge bg-secondary" title="Excluded from all shared expenses">No shared</span>
+                                    <span class="badge bg-secondary" title="Excluded from all shared expenses">No expense</span>
+                                    @elseif($catExclCount > 0)
+                                    <span class="badge bg-warning text-dark" title="{{ $catExclCount }} category(s) excluded">-{{ $catExclCount }}</span>
                                     @endif
                                 </div>
                             </td>
-                            <td class="fw-bold">৳{{ number_format($summary->total_payable, 2) }}</td>
-                            <td class="text-success fw-bold">৳{{ number_format($summary->total_deposit, 2) }}</td>
-                            <td class="fw-bold {{ $summary->due_amount > 0 ? 'text-danger' : 'text-success' }}">
+                            <td class="text-end fw-bold">৳{{ number_format($summary->total_payable, 2) }}</td>
+                            <td class="text-end text-success fw-bold">৳{{ number_format($summary->total_deposit, 2) }}</td>
+                            <td class="text-end fw-bold {{ $summary->due_amount > 0 ? 'text-danger' : 'text-success' }}">
                                 {{ $summary->due_amount > 0 ? '-' : '+' }}৳{{ number_format(abs($summary->due_amount), 2) }}
                             </td>
                             <td>
@@ -242,7 +247,7 @@
                             </td>
                             @endif
                             @else
-                            <td colspan="8" class="text-muted text-center">—</td>
+                            <td colspan="8" class="text-muted text-center fst-italic">No data — report not generated yet</td>
                             @if($isManager)
                             <td>
                                 <button class="btn btn-xs btn-outline-success py-0 px-2"
@@ -394,7 +399,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Manage Expense Categories — <span id="catModalMemberName"></span></h5>
+                <h5 class="modal-title"><i class="ti ti-adjustments-horizontal me-2 text-primary"></i>Expense Cost — <span id="catModalMemberName"></span></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="catModalBody">
@@ -408,22 +413,21 @@
 </div>
 
 <script>
-var messId = {{ $mess->id }};
 var csrf   = document.querySelector('meta[name="csrf-token"]').content;
 var month  = {{ $month }};
 var year   = {{ $year }};
+var reportBase = '{{ url("mess/" . $mess->id . "/report") }}';
 
-var expenseCategories = @json($categoriesForModal);
-var expenseCategoriesRaw = @json($expensesByCategory);
+var expenseCategories   = @json($categoriesForModal);   // non-market categories with per_head cost
 var memberCatExclusions = @json($memberCategoryExclusions);
 
 function toggleShared(userId, currentlyExcluded) {
     var btn = document.getElementById('toggle-btn-' + userId);
     if (btn) btn.disabled = true;
 
-    fetch('/mess/' + messId + '/report/toggle-shared', {
+    fetch(reportBase + '/toggle-shared', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
         body: JSON.stringify({ user_id: userId, month: month, year: year })
     })
     .then(function (r) { return r.json(); })
@@ -457,9 +461,9 @@ function openExtraModal(userId, userName, amount) {
 function payExtraOut() {
     if (!extraUserId) return;
     document.getElementById('payOutBtn').disabled = true;
-    fetch('/mess/' + messId + '/report/pay-extra', {
+    fetch(reportBase + '/pay-extra', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
         body: JSON.stringify({ user_id: extraUserId, month: month, year: year })
     })
     .then(function(r) { return r.json(); })
@@ -482,9 +486,9 @@ function carryExtraAsDeposit() {
     if (!extraUserId) return;
     var note = document.getElementById('carryNoteInput').value;
     document.getElementById('carryBtn').disabled = true;
-    fetch('/mess/' + messId + '/report/carry-extra', {
+    fetch(reportBase + '/carry-extra', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
         body: JSON.stringify({ user_id: extraUserId, month: month, year: year, note: note })
     })
     .then(function(r) { return r.json(); })
@@ -532,31 +536,34 @@ function renderCategoryModal(userId) {
     var excluded = memberCatExclusions[userId] || [];
 
     if (!expenseCategories || expenseCategories.length === 0) {
-        body.innerHTML = '<p class="text-muted text-center">No expense categories this month.</p>';
+        body.innerHTML = '<p class="text-muted text-center py-3">No shared expense categories this month.</p>';
         return;
     }
 
     var html = '<div class="list-group list-group-flush">';
     expenseCategories.forEach(function(cat) {
         var isExcluded = excluded.indexOf(cat.id) !== -1;
-        html += '<div class="list-group-item d-flex justify-content-between align-items-center px-0">';
+        html += '<div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">';
         html += '<div>';
         html += '<span class="fw-semibold">' + cat.name + '</span>';
-        html += '<span class="text-muted small ms-2">৳' + parseFloat(cat.amount).toFixed(2) + '</span>';
+        html += '<div class="text-muted" style="font-size:11px">';
+        html += 'Total: ৳' + parseFloat(cat.total).toFixed(2);
+        html += ' &nbsp;·&nbsp; Your share: <strong class="text-danger">৳' + parseFloat(cat.per_head).toFixed(2) + '</strong>';
+        html += '</div>';
         if (isExcluded) {
-            html += ' <span class="badge bg-danger ms-1">Removed</span>';
+            html += '<span class="badge bg-danger mt-1">Removed from this member</span>';
         }
         html += '</div>';
-        html += '<button class="btn btn-sm ' + (isExcluded ? 'btn-outline-success' : 'btn-outline-danger') + '"';
+        html += '<button class="btn btn-sm ' + (isExcluded ? 'btn-outline-success' : 'btn-outline-danger') + ' flex-shrink-0"';
         html += ' onclick="toggleCategory(' + userId + ',' + cat.id + ')"';
         html += ' id="cat-btn-' + userId + '-' + cat.id + '"';
-        html += ' title="' + (isExcluded ? 'Add back this category' : 'Remove this category for this member') + '">';
+        html += ' title="' + (isExcluded ? 'Add back: member pays ৳' + parseFloat(cat.per_head).toFixed(2) : 'Remove: member skips ৳' + parseFloat(cat.per_head).toFixed(2)) + '">';
         html += isExcluded ? '<i class="ti ti-plus me-1"></i>Add Back' : '<i class="ti ti-minus me-1"></i>Remove';
         html += '</button>';
         html += '</div>';
     });
     html += '</div>';
-    html += '<p class="text-muted small mt-2 mb-0">Removing a category means this member will not share that expense. Other members will split it instead.</p>';
+    html += '<p class="text-muted small mt-3 mb-0"><i class="ti ti-info-circle me-1"></i>Removing a category exempts this member from that expense. The amount is then redistributed among the remaining members.</p>';
     body.innerHTML = html;
 }
 
@@ -564,9 +571,9 @@ function toggleCategory(userId, categoryId) {
     var btn = document.getElementById('cat-btn-' + userId + '-' + categoryId);
     if (btn) btn.disabled = true;
 
-    fetch('/mess/' + messId + '/report/toggle-category', {
+    fetch(reportBase + '/toggle-category', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
         body: JSON.stringify({ user_id: userId, category_id: categoryId, month: month, year: year })
     })
     .then(function (r) { return r.json(); })

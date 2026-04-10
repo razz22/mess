@@ -49,7 +49,68 @@
             </div>
         </div>
 
-        @if($memberships->isEmpty())
+        {{-- Super Admin: flat list of ALL messes --}}
+        @if(Auth::user()->is_super_admin)
+        @if(isset($allMesses) && $allMesses->isNotEmpty())
+        <div class="row">
+            @foreach($allMesses as $mess)
+            <div class="col-md-6 col-xl-4">
+                <div class="card h-100 border-danger border-opacity-25">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="avatar avatar-lg me-3">
+                                @if($mess->avatar)
+                                    <img src="{{ asset('storage/'.$mess->avatar) }}" class="img-fluid rounded-circle" alt="">
+                                @else
+                                    <span class="avatar-title rounded-circle bg-success text-white fs-4">
+                                        {{ strtoupper(substr($mess->name, 0, 1)) }}
+                                    </span>
+                                @endif
+                            </div>
+                            <div>
+                                <h6 class="fw-bold mb-0">{{ $mess->name }}</h6>
+                                <span class="badge bg-danger fs-10"><i class="ti ti-shield-check me-1"></i>Super Admin</span>
+                            </div>
+                        </div>
+
+                        <div class="small text-muted mb-2">
+                            <i class="ti ti-user me-1"></i>Owner: <strong>{{ $mess->owner->name }}</strong>
+                        </div>
+
+                        <div class="d-flex gap-3 mb-3">
+                            <div class="text-center">
+                                <div class="fw-bold text-primary">{{ $mess->active_members_count }}</div>
+                                <div class="fs-10 text-muted">Members</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="fw-bold text-muted">{{ $mess->max_members }}</div>
+                                <div class="fs-10 text-muted">Capacity</div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <a href="{{ route('mess.dashboard', $mess->id) }}" class="btn btn-danger btn-sm flex-fill">
+                                <i class="ti ti-door-enter me-1"></i>Enter
+                            </a>
+                            <a href="{{ route('admin.mess.show', $mess->id) }}" class="btn btn-outline-secondary btn-sm" title="Admin Manage">
+                                <i class="ti ti-settings"></i>
+                            </a>
+                        </div>
+
+                        <div class="mt-3 pt-2 border-top">
+                            <small class="text-muted"><i class="ti ti-key me-1"></i>Code: <code>{{ $mess->invite_code }}</code></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endforeach
+        </div>
+        @else
+        <div class="card"><div class="card-body text-center py-4 text-muted">No messes on the platform yet.</div></div>
+        @endif
+
+        {{-- Regular users --}}
+        @elseif($memberships->isEmpty())
         <div class="card">
             <div class="card-body text-center py-5">
                 <div class="mb-3">
