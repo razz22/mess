@@ -61,7 +61,11 @@ class MealController extends Controller
             $myChangesToday = $log ? $log->changes : 0;
         }
 
-        $allMealTypes = MessMealType::where('mess_id', $mess->id)->orderBy('sort_order')->get();
+        $allMealTypes = MessMealType::where('mess_id', $mess->id)
+            ->orderByRaw('CASE WHEN close_time IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('close_time')
+            ->orderBy('sort_order')
+            ->get();
 
         return view('mess.meal-attendance', compact(
             'mess', 'mealTypes', 'allMealTypes', 'schedules', 'members',

@@ -60,14 +60,16 @@ class CustomAuthController extends Controller
             'phone'    => 'nullable|string|max:20',
         ]);
 
-        User::create([
+        $user = User::create([
             'name'     => $request->name,
             'email'    => $request->email,
             'password' => Hash::make($request->password),
             'phone'    => $request->phone,
         ]);
 
-        return redirect('signin')->withSuccess('Registration successful. Please sign in.');
+        Auth::login($user);
+
+        return redirect()->route('mess.index');
     }
 
     public function dashboard()

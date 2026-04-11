@@ -55,7 +55,10 @@ class Mess extends Model
 
     public function mealTypes(): HasMany
     {
-        return $this->hasMany(MessMealType::class)->where('is_active', true)->orderBy('sort_order');
+        return $this->hasMany(MessMealType::class)->where('is_active', true)
+            ->orderByRaw('CASE WHEN close_time IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('close_time')
+            ->orderBy('sort_order');
     }
 
     public function mealItems(): HasMany

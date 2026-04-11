@@ -23,11 +23,15 @@ class MemberController extends Controller
 
     public function show(Mess $mess, MessMember $member)
     {
-        if (!Auth::user()->getMembershipIn($mess->id)) abort(403);
+        $authUser = Auth::user();
+        if (! $authUser->getMembershipIn($mess->id) && ! $authUser->is_super_admin) abort(403);
         if ($member->mess_id !== $mess->id) abort(403);
 
-        $isManager = Auth::user()->isManagerOf($mess->id);
-        return view('mess.member-profile', compact('mess', 'member', 'isManager'));
+        $isManager    = $authUser->isManagerOf($mess->id);
+        $isOwner      = $mess->owner_id === $authUser->id;
+        $isSelf       = $member->user_id === $authUser->id;
+        $isSuperAdmin = $authUser->is_super_admin;
+        return view('mess.member-profile', compact('mess', 'member', 'isManager', 'isOwner', 'isSelf', 'isSuperAdmin'));
     }
 
     public function store(Request $request, Mess $mess)
@@ -109,16 +113,24 @@ class MemberController extends Controller
 
     public function update(Request $request, Mess $mess, MessMember $member)
     {
-        $this->authorizeOwner($mess);
+        $authUser     = Auth::user();
+        $isSelf       = $member->user_id === $authUser->id;
+        $isManager    = $authUser->isManagerOf($mess->id);
+        $isOwner      = $mess->owner_id === $authUser->id;
+        $isSuperAdmin = $authUser->is_super_admin;
 
-        $user = $member->user;
+        if (! $isSuperAdmin && ! $isManager && ! $isSelf) {
+            abort(403, 'You are not allowed to edit this profile.');
+        }
+
+        $profileUser = $member->user;
 
         $request->validate([
             'name'                        => 'required|string|max:255',
-            'email'                       => 'required|email|unique:users,email,' . $user->id,
+            'email'                       => 'required|email|unique:users,email,' . $profileUser->id,
             'password'                    => 'nullable|string|min:6',
             'phone'                       => 'nullable|string|max:20',
-            'role'                        => 'required|in:member,author,manager',
+            'role'                        => 'nullable|in:member,author,manager',
             'avatar'                      => 'nullable|image|max:3072',
             'nid_document'                => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:3072',
             'blood_group'                 => 'nullable|in:A+,A-,B+,B-,AB+,AB-,O+,O-',
@@ -157,33 +169,52 @@ class MemberController extends Controller
         }
 
         if ($request->hasFile('avatar')) {
-            if ($user->avatar) Storage::disk('public')->delete($user->avatar);
+            if ($profileUser->avatar) Storage::disk('public')->delete($profileUser->avatar);
             $userData['avatar'] = $request->file('avatar')->store('member-avatars', 'public');
         }
 
         if ($request->hasFile('nid_document')) {
-            if ($user->nid_document) Storage::disk('public')->delete($user->nid_document);
+            if ($profileUser->nid_document) Storage::disk('public')->delete($profileUser->nid_document);
             $userData['nid_document'] = $request->file('nid_document')->store('nid_documents', 'public');
         }
 
-        $user->update($userData);
+        $profileUser->update($userData);
 
-        if ($request->role === 'manager') {
-            MessMember::where('mess_id', $mess->id)
-                ->where('role', 'manager')
-                ->update(['role' => 'member']);
+        // Only owner/super admin can change role and financial fields
+        if ($isSuperAdmin || $isOwner) {
+            $newRole = $request->role ?? $member->role;
+            if ($newRole === 'manager' && $member->role !== 'manager') {
+                MessMember::where('mess_id', $mess->id)
+                    ->where('role', 'manager')
+                    ->update(['role' => 'member']);
+            }
+            $member->update([
+                'role'           => $newRole,
+                'joined_at'      => $request->joined_at ?: $member->joined_at,
+                'house_rent'     => $request->house_rent ?? $member->house_rent,
+                'advance_amount' => $request->advance_amount ?? $member->advance_amount,
+                'advance_date'   => $request->advance_date ?: $member->advance_date,
+                'notes'          => $request->notes ?? $member->notes,
+            ]);
+        } elseif ($isManager) {
+            // Manager can change role (except owner) and mess-specific fields
+            $newRole = $request->role ?? $member->role;
+            if ($member->role !== 'owner') {
+                if ($newRole === 'manager' && $member->role !== 'manager') {
+                    MessMember::where('mess_id', $mess->id)
+                        ->where('role', 'manager')
+                        ->update(['role' => 'member']);
+                }
+                $member->update([
+                    'role'      => $newRole,
+                    'joined_at' => $request->joined_at ?: $member->joined_at,
+                    'notes'     => $request->notes ?? $member->notes,
+                ]);
+            }
         }
+        // Self-edit: no mess-member fields change (role/rent/etc.)
 
-        $member->update([
-            'role'           => $request->role,
-            'joined_at'      => $request->joined_at ?: $member->joined_at,
-            'house_rent'     => $request->house_rent ?? 0,
-            'advance_amount' => $request->advance_amount ?? 0,
-            'advance_date'   => $request->advance_date ?: null,
-            'notes'          => $request->notes,
-        ]);
-
-        return back()->with('success', $user->name . ' updated successfully.');
+        return back()->with('success', $profileUser->name . ' updated successfully.');
     }
 
     public function updateRole(Request $request, Mess $mess, MessMember $member)

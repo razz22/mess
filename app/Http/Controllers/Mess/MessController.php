@@ -200,14 +200,14 @@ class MessController extends Controller
 
     public function edit(Mess $mess)
     {
-        $this->authorizeOwner($mess);
+        $this->authorizeOwnerOrManager($mess);
         $settings = $mess->settings ?? new MessSetting(['mess_id' => $mess->id]);
         return view('mess.settings', compact('mess', 'settings'));
     }
 
     public function update(Request $request, Mess $mess)
     {
-        $this->authorizeOwner($mess);
+        $this->authorizeOwnerOrManager($mess);
 
         $validated = $request->validate([
             'name'        => 'required|string|max:255',
@@ -304,6 +304,18 @@ class MessController extends Controller
     {
         if ($mess->owner_id !== Auth::id()) {
             abort(403, 'Only the owner can do this.');
+        }
+    }
+
+    private function authorizeOwnerOrManager(Mess $mess): void
+    {
+        $user   = Auth::user();
+        $member = $user->getMembershipIn($mess->id);
+
+        if ($user->is_super_admin) return;
+
+        if (! $member || ! in_array($member->role, ['owner', 'manager'])) {
+            abort(403, 'Only the mess owner or manager can access settings.');
         }
     }
 }

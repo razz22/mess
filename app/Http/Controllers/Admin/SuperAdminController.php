@@ -433,16 +433,31 @@ class SuperAdminController extends Controller
     public function settings()
     {
         $settings = SystemSetting::instance();
-        $plans    = SubscriptionPlan::orderBy('sort_order')->orderBy('price')->get();
-        return view('admin.settings', compact('settings', 'plans'));
+        return view('admin.settings', compact('settings'));
+    }
+
+    public function plans()
+    {
+        $plans = SubscriptionPlan::orderBy('sort_order')->orderBy('price')->get();
+        return view('admin.plans', compact('plans'));
     }
 
     public function updateSettings(Request $request)
     {
         $data = $request->validate([
-            'default_max_members' => 'required|integer|min:1|max:1000',
-            'default_max_messes'  => 'required|integer|min:1|max:50',
+            'default_max_members'  => 'required|integer|min:1|max:1000',
+            'default_max_messes'   => 'required|integer|min:1|max:50',
+            'google_client_id'     => 'nullable|string|max:255',
+            'google_client_secret' => 'nullable|string|max:255',
+            'google_login_enabled' => 'nullable|boolean',
         ]);
+
+        $data['google_login_enabled'] = $request->boolean('google_login_enabled');
+
+        // Don't overwrite the existing secret if the field was left blank
+        if (empty($data['google_client_secret'])) {
+            unset($data['google_client_secret']);
+        }
 
         SystemSetting::instance()->update($data);
 

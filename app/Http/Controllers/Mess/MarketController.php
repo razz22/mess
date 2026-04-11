@@ -122,33 +122,69 @@ class MarketController extends Controller
         $this->authorizeMember($mess);
 
         $request->validate([
-            'item_name'      => 'required|string|max:255',
-            'quantity'       => 'nullable|string|max:50',
-            'unit'           => 'nullable|string|max:20',
-            'estimated_cost' => 'nullable|numeric|min:0',
-            'actual_cost'    => 'nullable|numeric|min:0',
-            'assigned_to'    => 'nullable|exists:users,id',
-            'expense_date'   => 'nullable|date',
+            'items'                  => 'required|array|min:1',
+            'items.*.item_name'      => 'required|string|max:255',
+            'items.*.quantity'       => 'nullable|string|max:50',
+            'items.*.unit'           => 'nullable|string|max:20',
+            'items.*.estimated_cost' => 'nullable|numeric|min:0',
+            'items.*.actual_cost'    => 'nullable|numeric|min:0',
+            'items.*.assigned_to'    => 'nullable|exists:users,id',
+            'items.*.expense_date'   => 'nullable|date',
         ]);
 
-        MarketListItem::create([
-            'routine_id'     => $routine->id,
-            'mess_id'        => $mess->id,
-            'item_name'      => $request->item_name,
-            'quantity'       => $request->quantity,
-            'unit'           => $request->unit,
-            'estimated_cost' => $request->estimated_cost ?? 0,
-            'actual_cost'    => $request->actual_cost ?? 0,
-            'assigned_to'    => $request->assigned_to,
-            'expense_date'   => $request->expense_date,
-            'added_by'       => Auth::id(),
-        ]);
+        foreach ($request->items as $item) {
+            MarketListItem::create([
+                'routine_id'     => $routine->id,
+                'mess_id'        => $mess->id,
+                'item_name'      => $item['item_name'],
+                'quantity'       => $item['quantity'] ?? null,
+                'unit'           => $item['unit'] ?? null,
+                'estimated_cost' => $item['estimated_cost'] ?? 0,
+                'actual_cost'    => $item['actual_cost'] ?? 0,
+                'assigned_to'    => $item['assigned_to'] ?? null,
+                'expense_date'   => $item['expense_date'] ?? null,
+                'added_by'       => Auth::id(),
+            ]);
+        }
 
-        // Update routine total
         $total = $routine->listItems()->sum('actual_cost');
         $routine->update(['total_spent' => $total]);
 
-        return back()->with('success', 'Item added.');
+        $count = count($request->items);
+        return back()->with('success', $count . ' item' . ($count > 1 ? 's' : '') . ' added successfully.');
+    }
+
+    public function unassign(Request $request, Mess $mess, MarketRoutine $routine)
+    {
+        if ($routine->mess_id !== $mess->id) abort(403);
+
+        $user      = Auth::user();
+        $isSuperAdmin = $user->is_super_admin;
+        $isOwner   = $mess->owner_id === $user->id;
+
+        // Only owner, super admin, or managers can remove
+        if (! $isSuperAdmin && ! $user->isManagerOf($mess->id)) {
+            abort(403, 'Only the mess owner or manager can remove assignments.');
+        }
+
+        // Completed routines: only owner or super admin can remove
+        if ($routine->status === 'completed' && ! $isSuperAdmin && ! $isOwner) {
+            return back()->with('error', 'Completed routines can only be removed by the owner or super admin.');
+        }
+
+        // Pending with items: only allow removal if items have been cleared, or owner/super admin
+        if ($routine->status === 'pending' && $routine->listItems()->exists()) {
+            if (! $isSuperAdmin && ! $isOwner) {
+                return back()->with('error', 'Remove all list items first before unassigning this routine.');
+            }
+        }
+
+        // Delete list items and expenses tied to this routine, then the routine itself
+        \App\Models\Expense::where('routine_id', $routine->id)->delete();
+        $routine->listItems()->delete();
+        $routine->delete();
+
+        return back()->with('success', 'Market assignment removed.');
     }
 
     public function updateListItem(Request $request, Mess $mess, MarketListItem $item)

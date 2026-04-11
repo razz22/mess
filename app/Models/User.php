@@ -16,6 +16,7 @@ class User extends Authenticatable
         'blood_group', 'address', 'occupation_type', 'organization',
         'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relation',
         'date_of_birth', 'gender', 'is_super_admin', 'last_login_at', 'last_login_ip', 'max_messes',
+        'google_id', 'email_verified_at',
     ];
 
     protected $hidden = [

@@ -77,7 +77,7 @@
                         @foreach($mealTypes as $mt)
                         @php $sch = $schedules[$mt->name] ?? null; @endphp
                         <div class="d-flex align-items-center gap-1">
-                            <span class="badge bg-{{ $mt->isExpired() && !$isPast ? 'secondary' : 'primary' }}-subtle border border-{{ $mt->isExpired() && !$isPast ? 'secondary' : 'primary' }} text-dark">
+                            <span class="badge bg-{{ $mt->isExpired($date) && !$isPast ? 'secondary' : 'primary' }}-subtle border border-{{ $mt->isExpired($date) && !$isPast ? 'secondary' : 'primary' }} text-dark">
                                 {{ $mt->name }}
                                 @if($mt->close_time) <span class="text-muted">· closes {{ \Carbon\Carbon::parse($mt->close_time)->format('g:i A') }}</span> @endif
                             </span>
@@ -115,7 +115,7 @@
                                 @foreach($mealTypes as $mt)
                                 @php
                                     $sch     = $schedules[$mt->name] ?? null;
-                                    $expired = !$isPast && $mt->isExpired();
+                                    $expired = !$isPast && $mt->isExpired($date);
                                     $closed  = $sch && $sch->status === 'closed';
                                     $totalQ  = $sch ? $allAttendances->filter(fn($g,$k) => str_starts_with($k, $sch->id.'_'))->flatten()->sum('quantity') : 0;
                                 @endphp
@@ -167,7 +167,7 @@
                                     $presets   = [0, 0.5, 1, 1.5, 2, 2.5, 3];
                                     $isCustom  = !in_array($qty, $presets);
                                     $locked    = $isPast || !$sch || $sch->status === 'closed'
-                                                 || (!$isManager && $mt->isExpired());
+                                                 || (!$isManager && $mt->isExpired($date));
                                     $canChange = $canEdit && !$locked;
                                     $totalQty += $qty;
                                     $cost      = null; // rate calculated from market expenses, not meal type
@@ -278,17 +278,13 @@
                                         <i class="ti ti-edit" style="font-size:11px"></i>
                                     </button>
                                     @if($mt->is_active)
-                                    <form action="{{ route('mess.meal-types.destroy', [$mess->id, $mt->id]) }}" method="POST" class="d-inline ms-1">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="btn btn-xs btn-outline-warning py-0" title="Disable"
-                                            onclick="return confirm('Disable {{ addslashes($mt->name) }}?')">
-                                            <i class="ti ti-eye-off" style="font-size:11px"></i>
-                                        </button>
-                                    </form>
+                                    <button class="btn btn-xs btn-outline-warning py-0 ms-1" title="Disable"
+                                        onclick="openToggleMealType({{ $mt->id }},'{{ addslashes($mt->name) }}','disable')">
+                                        <i class="ti ti-eye-off" style="font-size:11px"></i>
+                                    </button>
                                     @else
-                                    <button class="btn btn-xs btn-outline-success py-0 ms-1"
-                                        onclick="openEditMealType({{ $mt->id }},'{{ addslashes($mt->name) }}','{{ $mt->close_time ? substr($mt->close_time,0,5) : '' }}',false,'enable')"
-                                        title="Re-enable">
+                                    <button class="btn btn-xs btn-outline-success py-0 ms-1" title="Re-enable"
+                                        onclick="openToggleMealType({{ $mt->id }},'{{ addslashes($mt->name) }}','enable')">
                                         <i class="ti ti-eye" style="font-size:11px"></i>
                                     </button>
                                     @endif
@@ -372,6 +368,39 @@
         </div>
     </div>
 </div>
+
+{{-- Toggle (Disable / Enable) Meal Type Confirmation Modal --}}
+<div class="modal fade" id="toggleMealTypeModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0" id="toggleMealTypeHeader">
+                <h5 class="modal-title d-flex align-items-center gap-2" id="toggleMealTypeTitle">
+                    <i class="ti ti-alert-triangle text-warning fs-5"></i> Confirm Action
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center py-3">
+                <div id="toggleMealTypeIcon" class="mb-3" style="font-size:2.5rem;"></div>
+                <p class="mb-0 fw-semibold fs-6" id="toggleMealTypeMsg"></p>
+                <p class="text-muted small mt-1" id="toggleMealTypeSubMsg"></p>
+            </div>
+            <div class="modal-footer border-0 pt-0 justify-content-center gap-2">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="ti ti-x me-1"></i>No, Cancel
+                </button>
+                <button type="button" class="btn px-4" id="toggleMealTypeConfirmBtn">
+                    <i class="ti ti-check me-1"></i>Yes, Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Hidden form submitted on confirm --}}
+<form id="toggleMealTypeForm" method="POST" class="d-none">
+    @csrf @method('DELETE')
+</form>
+
 @endif
 
 <style>
@@ -390,7 +419,8 @@ var csrf        = document.querySelector('meta[name="csrf-token"]').getAttribute
 var isManager   = {{ $isManager ? 'true' : 'false' }};
 var myChanges   = {{ $myChangesToday }};
 var attendanceUrl   = '{{ route("mess.meals.attendance", $mess->id) }}';
-var mealCloseBase   = '{{ url("mess/" . $mess->id . "/meals") }}';
+var mealCloseBase    = '{{ url("mess/" . $mess->id . "/meals") }}';
+var mealTypeBase     = '{{ url("mess/" . $mess->id . "/meal-types") }}';
 
 // ── Bootstrap Toast helper ───────────────────────────────────
 function showToast(message, type) {
@@ -650,8 +680,73 @@ function disableMySelects() {
     showToast('You have used all 3 changes for today. Contact your manager.', 'danger');
 }
 
+function openToggleMealType(id, name, action) {
+    var isDisable = action === 'disable';
+    var form = document.getElementById('toggleMealTypeForm');
+    form.action = mealTypeBase + '/' + id;
+
+    var icon    = document.getElementById('toggleMealTypeIcon');
+    var msg     = document.getElementById('toggleMealTypeMsg');
+    var subMsg  = document.getElementById('toggleMealTypeSubMsg');
+    var btn     = document.getElementById('toggleMealTypeConfirmBtn');
+    var header  = document.getElementById('toggleMealTypeHeader');
+
+    if (isDisable) {
+        icon.innerHTML   = '<i class="ti ti-eye-off text-warning"></i>';
+        msg.textContent  = 'Disable "' + name + '"?';
+        subMsg.textContent = 'Members will no longer be able to mark attendance for this meal type.';
+        btn.className    = 'btn btn-warning px-4';
+        btn.innerHTML    = '<i class="ti ti-eye-off me-1"></i>Yes, Disable';
+        header.querySelector('i').className = 'ti ti-alert-triangle text-warning fs-5';
+    } else {
+        icon.innerHTML   = '<i class="ti ti-eye text-success"></i>';
+        msg.textContent  = 'Re-enable "' + name + '"?';
+        subMsg.textContent = 'This meal type will become active and visible to all members.';
+        btn.className    = 'btn btn-success px-4';
+        btn.innerHTML    = '<i class="ti ti-eye me-1"></i>Yes, Enable';
+        header.querySelector('i').className = 'ti ti-circle-check text-success fs-5';
+        // Re-enable uses PUT to update is_active=1 via edit form instead
+        // For simplicity, swap method to PUT and add hidden field
+    }
+
+    btn.onclick = function() {
+        if (!isDisable) {
+            // For enable: switch to PUT with is_active=1
+            var methodInput = form.querySelector('input[name="_method"]');
+            if (methodInput) methodInput.value = 'PUT';
+            var nameInput = form.querySelector('input[name="name"]');
+            if (!nameInput) {
+                nameInput = document.createElement('input');
+                nameInput.type = 'hidden';
+                nameInput.name = 'name';
+                form.appendChild(nameInput);
+            }
+            nameInput.value = name;
+            var activeInput = form.querySelector('input[name="is_active"]');
+            if (!activeInput) {
+                activeInput = document.createElement('input');
+                activeInput.type = 'hidden';
+                activeInput.name = 'is_active';
+                form.appendChild(activeInput);
+            }
+            activeInput.value = '1';
+        } else {
+            var methodInput = form.querySelector('input[name="_method"]');
+            if (methodInput) methodInput.value = 'DELETE';
+            // Remove any leftover enable inputs
+            ['name','is_active'].forEach(function(n) {
+                var el = form.querySelector('input[name="' + n + '"]');
+                if (el) el.remove();
+            });
+        }
+        form.submit();
+    };
+
+    new bootstrap.Modal(document.getElementById('toggleMealTypeModal')).show();
+}
+
 function openEditMealType(id, name, closeTime, isActive, action) {
-    var base = '/mess/' + messId + '/meal-types/' + id;
+    var base = mealTypeBase + '/' + id;
     document.getElementById('editMealTypeForm').action = base;
     document.getElementById('edit-mt-name').value  = name;
     document.getElementById('edit-mt-close').value = closeTime || '';

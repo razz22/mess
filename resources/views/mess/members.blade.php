@@ -567,7 +567,7 @@ function toggleOrg(selectId, labelId) {
 
 function openEditModal(memberId, u, m) {
     const form = document.getElementById('editMemberForm');
-    form.action = '/mess/{{ $mess->id }}/members/' + memberId;
+    form.action = '{{ url("mess/" . $mess->id . "/members") }}/' + memberId;
 
     // Account
     document.getElementById('eName').value    = u.name || '';

@@ -58,14 +58,17 @@
         <div class="card mb-4">
             <div class="card-header"><h6 class="mb-0"><i class="ti ti-calendar me-2"></i>Calendar View</h6></div>
             <div class="card-body p-0">
-                <div class="row g-0 text-center">
+                <div class="row g-0 text-center cal-header-row">
                     @foreach(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as $day)
-                    <div class="col fw-bold py-2 bg-light border-bottom border-end" style="flex:0 0 14.2857%;max-width:14.2857%">{{ $day }}</div>
+                    <div class="col fw-bold py-2 bg-light border-bottom border-end cal-day-hdr">
+                        <span class="d-none d-sm-inline">{{ $day }}</span>
+                        <span class="d-inline d-sm-none">{{ substr($day,0,1) }}</span>
+                    </div>
                     @endforeach
                 </div>
                 <div class="row g-0" id="calendarGrid">
                     @foreach($calendarDays as $calDay)
-                    <div class="col border-bottom border-end" style="min-height:90px;flex:0 0 14.2857%;max-width:14.2857%">
+                    <div class="cal-cell col border-bottom border-end">
                         @if($calDay)
                         @php
                             $dateStr = $calDay->format('Y-m-d');
@@ -75,10 +78,10 @@
                             $isRangeStart = $routine && $routine->start_date->format('Y-m-d') === $dateStr;
                             $isRangeEnd   = $routine && $routine->end_date->format('Y-m-d') === $dateStr;
                         @endphp
-                        <div class="p-1 h-100 d-flex flex-column {{ $isToday ? 'bg-primary-subtle' : '' }}">
+                        <div class="cal-inner h-100 d-flex flex-column {{ $isToday ? 'bg-primary-subtle' : '' }}">
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="fw-bold {{ $isToday ? 'text-primary' : 'text-muted' }}" style="font-size:12px">{{ $calDay->day }}</span>
-                                @if($isFriday)<span class="badge bg-warning-subtle text-warning" style="font-size:8px">Fri</span>@endif
+                                <span class="cal-date-num fw-bold {{ $isToday ? 'text-primary' : 'text-muted' }}">{{ $calDay->day }}</span>
+                                @if($isFriday)<span class="cal-fri-badge badge bg-warning-subtle text-warning d-none d-sm-inline">Fri</span>@endif
                             </div>
                             @if($routine)
                             @php
@@ -93,23 +96,28 @@
                                 elseif ($isRangeStart) $rangeLabel = ' ▶';
                                 elseif ($isRangeEnd)   $rangeLabel = ' ◀';
                                 else $rangeLabel = ' ─';
+                                $firstName = explode(' ', $routine->assignedTo->name)[0];
                             @endphp
-                            <div class="rounded p-1 bg-{{ $statusColor }}-subtle flex-grow-1 d-flex flex-column" style="font-size:10px">
-                                <div class="fw-semibold text-truncate">
-                                    {{ $routine->assignedTo->name }}{{ $rangeLabel }}
+                            <div class="cal-routine-block rounded p-1 bg-{{ $statusColor }}-subtle flex-grow-1 d-flex flex-column">
+                                <div class="cal-name fw-semibold text-truncate">
+                                    <span class="d-none d-sm-inline">{{ $routine->assignedTo->name }}{{ $rangeLabel }}</span>
+                                    <span class="d-inline d-sm-none">{{ $firstName }}{{ $rangeLabel }}</span>
                                 </div>
-                                <span class="badge bg-{{ $statusColor }} mt-auto" style="font-size:8px">{{ ucfirst($routine->status) }}</span>
-                                @if($routine->total_spent > 0)
-                                <span class="text-muted" style="font-size:9px">৳{{ number_format($routine->total_spent, 0) }}</span>
+                                <span class="cal-status-badge badge bg-{{ $statusColor }} mt-auto">{{ ucfirst($routine->status) }}</span>
+                                @if($routine->status === 'completed' && $routine->total_spent > 0)
+                                <div class="cal-cost mt-1 rounded text-center">
+                                    <span class="cal-cost-label d-none d-sm-inline text-muted">Cost: </span>
+                                    <span class="fw-bold text-success">৳{{ number_format($routine->total_spent, 0) }}</span>
+                                </div>
                                 @endif
-                                <div class="d-flex gap-1 mt-1">
+                                <div class="cal-actions d-flex gap-1 mt-1">
                                     <a href="{{ route('mess.market.list', [$mess->id, $routine->id]) }}"
-                                       class="btn btn-xs btn-outline-primary flex-grow-1" style="font-size:8px;padding:1px 3px">
-                                       <i class="ti ti-list"></i> List
+                                       class="btn btn-xs btn-outline-primary flex-grow-1 cal-btn">
+                                       <i class="ti ti-list"></i><span class="d-none d-md-inline"> List</span>
                                     </a>
                                     @if($isManager && $isRangeStart)
                                     <button onclick="openQuickAdd('{{ $dateStr }}')"
-                                        class="btn btn-xs btn-outline-success" style="font-size:8px;padding:1px 4px" title="Add item">
+                                        class="btn btn-xs btn-outline-success cal-btn" title="Add item">
                                         <i class="ti ti-plus"></i>
                                     </button>
                                     @endif
@@ -118,7 +126,7 @@
                             @elseif($isManager)
                             <div class="flex-grow-1 d-flex align-items-center justify-content-center">
                                 <button onclick="prefillAssign('{{ $dateStr }}')"
-                                    class="btn btn-xs btn-outline-secondary" style="font-size:9px;opacity:0.5"
+                                    class="btn btn-xs btn-outline-secondary cal-btn" style="opacity:0.5"
                                     title="Assign duty for this day">
                                     <i class="ti ti-plus"></i>
                                 </button>
@@ -176,6 +184,17 @@
                                     <a href="{{ route('mess.market.list', [$mess->id, $routine->id]) }}" class="btn btn-xs btn-outline-primary">
                                         <i class="ti ti-list me-1"></i>List
                                     </a>
+                                    @php
+                                        $canSuperRemove = Auth::user()->is_super_admin || $isOwner;
+                                        $hasItems       = $routine->listItems->isNotEmpty();
+                                        $isCompleted    = $routine->status === 'completed';
+                                        // Remove allowed: manager if pending+no items; owner/super always
+                                        $canRemove = $isManager && (
+                                            $canSuperRemove ||
+                                            (! $isCompleted && ! $hasItems)
+                                        );
+                                    @endphp
+
                                     @if($routine->status === 'pending')
                                         @if($routine->assigned_to === Auth::id())
                                         <button class="btn btn-xs btn-outline-warning" onclick="openExchangeModal({{ $routine->id }}, true)">
@@ -190,7 +209,24 @@
                                         <button class="btn btn-xs btn-outline-secondary" onclick="openReassignModal({{ $routine->id }})">
                                             <i class="ti ti-edit me-1"></i>Reassign
                                         </button>
+                                        <button class="btn btn-xs btn-success"
+                                            onclick="openApproveModal('{{ route('mess.market.complete', [$mess->id, $routine->id]) }}','{{ addslashes($routine->assignedTo->name) }}','{{ $routine->start_date->format('d M') }}','{{ $routine->total_spent > 0 ? '৳'.number_format($routine->total_spent,0) : '' }}')">
+                                            <i class="ti ti-check me-1"></i>Approve
+                                        </button>
                                         @endif
+                                    @endif
+
+                                    @if($canRemove)
+                                    <button class="btn btn-xs btn-outline-danger"
+                                        onclick="openUnassignModal(
+                                            '{{ route('mess.market.unassign', [$mess->id, $routine->id]) }}',
+                                            '{{ addslashes($routine->assignedTo->name) }}',
+                                            '{{ $routine->start_date->format('d M') }}{{ $routine->start_date->ne($routine->end_date) ? ' → '.$routine->end_date->format('d M') : '' }}',
+                                            {{ $hasItems ? 'true' : 'false' }},
+                                            {{ $isCompleted ? 'true' : 'false' }}
+                                        )">
+                                        <i class="ti ti-user-minus me-1"></i>Remove
+                                    </button>
                                     @endif
                                     {{-- Pending exchange requests for this routine --}}
                                     @foreach($routine->exchanges->where('status','pending') as $exc)
@@ -352,20 +388,21 @@
     </div>
 </div>
 
-<!-- Quick Add Item to Routine Modal (from calendar) -->
-<div class="modal fade" id="quickAddModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="ti ti-shopping-cart me-2"></i>Add Item to Routine</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div id="quickAddContent">Loading...</div>
-            </div>
-        </div>
-    </div>
-</div>
+{{-- Shared Add Items Modal (used from calendar quick-add) --}}
+@php
+    // For the market page modal, we use a placeholder routine; the form action is set dynamically by JS
+    $calRoutine = $routines->first() ?? new \App\Models\MarketRoutine([
+        'assigned_to' => null,
+        'start_date'  => now(),
+        'end_date'    => now(),
+    ]);
+    // Use first routine just for member list / defaults; action URL set by JS per cell
+@endphp
+@include('mess.partials.add-items-modal', [
+    'addRoute' => route('mess.market.list.add', [$mess->id, $calRoutine->id ?? 0]),
+    'members'  => $members,
+    'routine'  => $calRoutine,
+])
 
 <!-- Quick Market Expense Modal (standalone, no routine) -->
 <div class="modal fade" id="quickExpenseModal" tabindex="-1">
@@ -421,6 +458,55 @@ foreach($routines as $r) {
 }
 @endphp
 
+<style>
+/* Calendar cell sizing */
+.cal-cell {
+    flex: 0 0 14.2857%;
+    max-width: 14.2857%;
+    min-height: clamp(70px, 12vw, 110px);
+}
+.cal-day-hdr {
+    flex: 0 0 14.2857%;
+    max-width: 14.2857%;
+    font-size: clamp(9px, 2vw, 14px);
+}
+.cal-inner {
+    padding: clamp(2px, 0.8vw, 6px);
+}
+.cal-date-num {
+    font-size: clamp(9px, 2.2vw, 13px);
+    line-height: 1;
+}
+.cal-routine-block {
+    font-size: clamp(8px, 1.8vw, 11px);
+}
+.cal-name {
+    font-size: clamp(8px, 1.8vw, 11px);
+    line-height: 1.2;
+}
+.cal-status-badge {
+    font-size: clamp(6px, 1.4vw, 9px);
+    padding: 1px 3px;
+}
+.cal-cost {
+    font-size: clamp(7px, 1.6vw, 10px);
+    line-height: 1.3;
+    background: rgba(0,0,0,.06);
+    padding: 1px 2px;
+}
+.cal-btn {
+    font-size: clamp(7px, 1.6vw, 10px);
+    padding: clamp(1px, 0.3vw, 2px) clamp(2px, 0.5vw, 4px);
+    min-width: 0;
+}
+/* On very small screens hide cost label text, keep number */
+@media (max-width: 400px) {
+    .cal-cost { font-size: 7px; }
+    .cal-name  { font-size: 7px; }
+    .cal-status-badge { display: none !important; }
+}
+</style>
+
 <script>
 const messId = {{ $mess->id }};
 const routineByDate = @json($routineJs);
@@ -462,75 +548,138 @@ function openReassignModal(routineId) {
 function openQuickAdd(dateStr) {
     const routineId = routineByDate[dateStr];
     if (!routineId) return;
-
-    const memberOptions = members.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
-    const html = `
-        <form id="quickAddForm">
-            <div class="mb-2">
-                <label class="form-label fw-semibold">Item Name</label>
-                <input type="text" id="qa_item" class="form-control" required placeholder="e.g. Fish, Oil">
-            </div>
-            <div class="row g-2 mb-2">
-                <div class="col-6">
-                    <label class="form-label">Est. Cost (৳)</label>
-                    <input type="number" id="qa_est" class="form-control" step="0.01" min="0" placeholder="0.00">
-                </div>
-                <div class="col-6">
-                    <label class="form-label">Actual Cost (৳)</label>
-                    <input type="number" id="qa_actual" class="form-control" step="0.01" min="0" placeholder="0.00">
-                </div>
-            </div>
-            <div class="row g-2 mb-2">
-                <div class="col-6">
-                    <label class="form-label">Quantity</label>
-                    <input type="text" id="qa_qty" class="form-control" placeholder="e.g. 2 kg">
-                </div>
-                <div class="col-6">
-                    <label class="form-label">Buyer (optional)</label>
-                    <select id="qa_buyer" class="form-select">
-                        <option value="">— Default —</option>
-                        ${memberOptions}
-                    </select>
-                </div>
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Date</label>
-                <input type="date" id="qa_date" class="form-control" value="${dateStr}">
-            </div>
-            <div class="d-flex gap-2">
-                <button type="button" class="btn btn-primary flex-grow-1" onclick="submitQuickAdd(${routineId})">
-                    <i class="ti ti-plus me-1"></i>Add Item
-                </button>
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-            </div>
-        </form>`;
-
-    document.getElementById('quickAddContent').innerHTML = html;
-    new bootstrap.Modal(document.getElementById('quickAddModal')).show();
+    // Point the shared modal form to the correct routine
+    document.getElementById('addItemsForm').action = `/mess/${messId}/market/${routineId}/list`;
+    // Set the date input default
+    const dateInput = document.getElementById('ai_date');
+    if (dateInput) { dateInput.value = dateStr; dateInput.min = dateStr; dateInput.max = dateStr; }
+    new bootstrap.Modal(document.getElementById('addItemModal')).show();
 }
 
-function submitQuickAdd(routineId) {
-    const item = document.getElementById('qa_item').value.trim();
-    if (!item) { alert('Item name required'); return; }
+function openUnassignModal(action, name, period, hasItems, isCompleted) {
+    document.getElementById('unassignForm').action   = action;
+    document.getElementById('unassignName').textContent   = name;
+    document.getElementById('unassignPeriod').textContent = period;
 
-    const formData = new FormData();
-    formData.append('_token', csrf);
-    formData.append('item_name', item);
-    formData.append('estimated_cost', document.getElementById('qa_est').value || 0);
-    formData.append('actual_cost', document.getElementById('qa_actual').value || 0);
-    formData.append('quantity', document.getElementById('qa_qty').value);
-    const buyer = document.getElementById('qa_buyer').value;
-    if (buyer) formData.append('assigned_to', buyer);
-    formData.append('expense_date', document.getElementById('qa_date').value);
+    var warn    = document.getElementById('unassignWarning');
+    var warnTxt = document.getElementById('unassignWarningText');
 
-    fetch(`/mess/${messId}/market/${routineId}/list`, {
-        method: 'POST',
-        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
-        body: formData,
-    }).then(r => {
-        if (r.ok) { location.reload(); }
-        else { alert('Error adding item.'); }
-    });
+    if (isCompleted) {
+        warn.classList.remove('d-none');
+        warnTxt.textContent = 'This routine is completed. Removing it will also delete the associated expense records.';
+    } else if (hasItems) {
+        warn.classList.remove('d-none');
+        warnTxt.textContent = 'This routine has list items. All items and their expense records will also be deleted.';
+    } else {
+        warn.classList.add('d-none');
+    }
+
+    new bootstrap.Modal(document.getElementById('unassignModal')).show();
+}
+
+function openApproveModal(action, name, date, spent) {
+    document.getElementById('approveRoutineForm').action = action;
+    document.getElementById('approveModalName').textContent  = name;
+    document.getElementById('approveModalDate').textContent  = date;
+    var spentEl = document.getElementById('approveModalSpent');
+    if (spent) {
+        spentEl.textContent = spent;
+        spentEl.closest('.approve-spent-row').classList.remove('d-none');
+    } else {
+        spentEl.closest('.approve-spent-row').classList.add('d-none');
+    }
+    new bootstrap.Modal(document.getElementById('approveRoutineModal')).show();
 }
 </script>
+
+{{-- Unassign Routine Confirmation Modal --}}
+<div class="modal fade" id="unassignModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title d-flex align-items-center gap-2">
+                    <span class="rounded-circle d-flex align-items-center justify-content-center bg-danger text-white" style="width:32px;height:32px;flex-shrink:0">
+                        <i class="ti ti-user-minus fs-6"></i>
+                    </span>
+                    Remove Assignment
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-3">
+                <div id="unassignWarning" class="alert alert-warning py-2 small d-none">
+                    <i class="ti ti-alert-triangle me-1"></i>
+                    <span id="unassignWarningText"></span>
+                </div>
+                <p class="mb-2 text-muted small">This will permanently remove the assignment.</p>
+                <div class="rounded p-3 bg-light border">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted small">Assigned To</span>
+                        <span class="fw-semibold small" id="unassignName"></span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted small">Period</span>
+                        <span class="fw-semibold small" id="unassignPeriod"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0 justify-content-center gap-2">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="ti ti-x me-1"></i>Cancel
+                </button>
+                <form id="unassignForm" method="POST" class="d-inline">
+                    @csrf @method('DELETE')
+                    <button type="submit" class="btn btn-danger px-4">
+                        <i class="ti ti-user-minus me-1"></i>Yes, Remove
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Approve Routine Confirmation Modal --}}
+<div class="modal fade" id="approveRoutineModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title d-flex align-items-center gap-2">
+                    <span class="rounded-circle d-flex align-items-center justify-content-center bg-success text-white" style="width:32px;height:32px;flex-shrink:0">
+                        <i class="ti ti-check fs-6"></i>
+                    </span>
+                    Approve Market Routine
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-3">
+                <p class="mb-2 text-muted small">You are about to mark this routine as <strong class="text-success">completed</strong>.</p>
+                <div class="rounded p-3 bg-light border">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted small">Assigned To</span>
+                        <span class="fw-semibold small" id="approveModalName"></span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted small">Date</span>
+                        <span class="fw-semibold small" id="approveModalDate"></span>
+                    </div>
+                    <div class="d-flex justify-content-between approve-spent-row">
+                        <span class="text-muted small">Total Spent</span>
+                        <span class="fw-bold small text-success" id="approveModalSpent"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0 justify-content-center gap-2">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="ti ti-x me-1"></i>Cancel
+                </button>
+                <form id="approveRoutineForm" method="POST" class="d-inline">
+                    @csrf
+                    <button type="submit" class="btn btn-success px-4">
+                        <i class="ti ti-check me-1"></i>Yes, Approve
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection

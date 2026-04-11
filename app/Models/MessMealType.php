@@ -22,9 +22,16 @@ class MessMealType extends Model
         return $this->belongsTo(Mess::class);
     }
 
-    public function isExpired(): bool
+    public function isExpired(string $date = null): bool
     {
         if (!$this->close_time) return false;
+
+        $date = $date ?? now()->toDateString();
+
+        if ($date > now()->toDateString()) return false; // future date — never expired
+        if ($date < now()->toDateString()) return true;  // past date — always expired
+
+        // Today: compare current time against close_time
         return now()->format('H:i:s') > $this->close_time;
     }
 }

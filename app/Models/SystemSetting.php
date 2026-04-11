@@ -9,11 +9,15 @@ class SystemSetting extends Model
     protected $fillable = [
         'default_max_members',
         'default_max_messes',
+        'google_client_id',
+        'google_client_secret',
+        'google_login_enabled',
     ];
 
     protected $casts = [
-        'default_max_members' => 'integer',
-        'default_max_messes'  => 'integer',
+        'default_max_members'  => 'integer',
+        'default_max_messes'   => 'integer',
+        'google_login_enabled' => 'boolean',
     ];
 
     /**

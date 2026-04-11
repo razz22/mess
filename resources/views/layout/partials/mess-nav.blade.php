@@ -22,6 +22,9 @@
                 @endif
             </a>
         </li>
+        <li class="{{ Request::routeIs('admin.plans*') ? 'active' : '' }}">
+            <a href="{{ route('admin.plans') }}"><i class="ti ti-packages fs-16 me-2"></i><span>Subscription Plans</span></a>
+        </li>
         <li class="{{ Request::routeIs('admin.settings') ? 'active' : '' }}">
             <a href="{{ route('admin.settings') }}"><i class="ti ti-adjustments fs-16 me-2"></i><span>System Settings</span></a>
         </li>
@@ -137,8 +140,8 @@
                 </li>
                 @endif
 
-                {{-- Settings — owner only --}}
-                @if(Auth::user()->isOwnerOf($sma->id))
+                {{-- Settings — owner or manager --}}
+                @if(Auth::user()->isManagerOf($sma->id))
                 <li class="{{ Request::routeIs('mess.settings') ? 'active' : '' }}">
                         <a href="{{ route('mess.settings', $sma->id) }}"><i class="ti ti-settings fs-16 me-2"></i><span>Mess Settings</span></a>
                 </li>

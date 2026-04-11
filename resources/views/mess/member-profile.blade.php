@@ -20,7 +20,7 @@
                 <a href="{{ route('mess.members', $mess->id) }}" class="btn btn-outline-secondary btn-sm">
                     <i class="ti ti-arrow-left me-1"></i>Back to Members
                 </a>
-                @if($isManager && $member->role !== 'owner')
+                @if($isManager || $isSelf)
                 <button class="btn btn-warning btn-sm" onclick="document.getElementById('editProfileForm').scrollIntoView({behavior:'smooth'})">
                     <i class="ti ti-edit me-1"></i>Edit Profile
                 </button>
@@ -223,11 +223,21 @@
                 </div>
                 @endif
 
-                <!-- Edit Form (managers only) -->
-                @if($isManager && $member->role !== 'owner')
+                <!-- Edit Form -->
+                @if($isManager || $isSelf)
                 <div id="editProfileForm">
                 <form action="{{ route('mess.members.update', [$mess->id, $member->id]) }}" method="POST" enctype="multipart/form-data">
                     @csrf @method('PUT')
+
+                    @if(session('success'))
+                    <div class="alert alert-success alert-dismissible fade show py-2 mb-3">{{ session('success') }}<button class="btn-close" data-bs-dismiss="alert"></button></div>
+                    @endif
+                    @if($errors->any())
+                    <div class="alert alert-danger alert-dismissible fade show py-2 mb-3">
+                        <ul class="mb-0 ps-3">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
+                        <button class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    @endif
 
                     <!-- Account -->
                     <div class="card mb-3">
@@ -236,24 +246,27 @@
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label>
-                                    <input type="text" name="name" class="form-control" value="{{ old('name', $u->name) }}" required>
+                                    <input type="text" name="name" class="form-control @error('name') is-invalid @enderror" value="{{ old('name', $u->name) }}" required>
+                                    @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold">Email <span class="text-danger">*</span></label>
-                                    <input type="email" name="email" class="form-control" value="{{ old('email', $u->email) }}" required>
+                                    <input type="email" name="email" class="form-control @error('email') is-invalid @enderror" value="{{ old('email', $u->email) }}" required>
+                                    @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold">New Password</label>
                                     <div class="input-group">
                                         <input type="password" name="password" id="pfPass" class="form-control" placeholder="Leave blank to keep" minlength="6">
-                                        <button class="btn btn-outline-secondary" type="button" onclick="document.getElementById('pfPass').type==='password'?(document.getElementById('pfPass').type='text',this.innerHTML='<i class=\'ti ti-eye-off\'></i>'):(document.getElementById('pfPass').type='password',this.innerHTML='<i class=\'ti ti-eye\'></i>')"><i class="ti ti-eye"></i></button>
+                                        <button class="btn btn-outline-secondary" type="button" onclick="var i=document.getElementById('pfPass');i.type=i.type==='password'?'text':'password';this.querySelector('i').className=i.type==='password'?'ti ti-eye':'ti ti-eye-off'"><i class="ti ti-eye"></i></button>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold">Phone</label>
                                     <input type="text" name="phone" class="form-control" value="{{ old('phone', $u->phone) }}">
                                 </div>
-                                <div class="col-md-6">
+                                @if($isManager && $member->role !== 'owner')
+                                <div class="col-md-4">
                                     <label class="form-label fw-semibold">Role</label>
                                     <select name="role" class="form-select">
                                         <option value="member" {{ $member->role==='member'?'selected':'' }}>Member</option>
@@ -261,6 +274,7 @@
                                         <option value="manager" {{ $member->role==='manager'?'selected':'' }}>Manager</option>
                                     </select>
                                 </div>
+                                @endif
                                 <div class="col-md-3">
                                     <label class="form-label fw-semibold">Photo</label>
                                     <input type="file" name="avatar" class="form-control" accept="image/*">
@@ -289,7 +303,7 @@
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label fw-semibold">Date of Birth</label>
-                                    <input type="date" name="date_of_birth" class="form-control" value="{{ old('date_of_birth', $u->date_of_birth) }}">
+                                    <input type="date" name="date_of_birth" class="form-control" value="{{ old('date_of_birth', $u->date_of_birth?->format('Y-m-d')) }}">
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label fw-semibold">Blood Group</label>
@@ -300,10 +314,12 @@
                                         @endforeach
                                     </select>
                                 </div>
+                                @if($isManager)
                                 <div class="col-md-3">
                                     <label class="form-label fw-semibold">Join Date</label>
                                     <input type="date" name="joined_at" class="form-control" value="{{ old('joined_at', $member->joined_at?->format('Y-m-d')) }}">
                                 </div>
+                                @endif
                                 <div class="col-12">
                                     <label class="form-label fw-semibold">Home Address</label>
                                     <textarea name="address" class="form-control" rows="2">{{ old('address', $u->address) }}</textarea>
@@ -355,7 +371,8 @@
                         </div>
                     </div>
 
-                    <!-- Housing -->
+                    <!-- Housing & Financial — owner/super admin only -->
+                    @if($isSuperAdmin || $isOwner)
                     <div class="card mb-3">
                         <div class="card-header bg-light py-2"><h6 class="mb-0 text-danger"><i class="ti ti-home me-2"></i>Housing & Financial</h6></div>
                         <div class="card-body">
@@ -372,13 +389,19 @@
                                     <label class="form-label fw-semibold">Advance Date</label>
                                     <input type="date" name="advance_date" class="form-control" value="{{ old('advance_date', $member->advance_date?->format('Y-m-d')) }}">
                                 </div>
-                                <div class="col-12">
-                                    <label class="form-label fw-semibold">Internal Notes <span class="text-muted fw-normal small">(visible to managers only)</span></label>
-                                    <textarea name="notes" class="form-control" rows="3">{{ old('notes', $member->notes) }}</textarea>
-                                </div>
                             </div>
                         </div>
                     </div>
+                    @endif
+
+                    @if($isManager)
+                    <div class="card mb-3">
+                        <div class="card-header bg-light py-2"><h6 class="mb-0 text-secondary"><i class="ti ti-notes me-2"></i>Internal Notes</h6></div>
+                        <div class="card-body">
+                            <textarea name="notes" class="form-control" rows="3" placeholder="Visible to managers only">{{ old('notes', $member->notes) }}</textarea>
+                        </div>
+                    </div>
+                    @endif
 
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-warning">

@@ -2,8 +2,17 @@
 @extends('layout.mainlayout')
 @section('content')
 @php
-    $isManager = $member && in_array($member->role, ['owner', 'manager']);
-    $canEdit   = $isManager || $routine->assigned_to === Auth::id();
+    $isOwner      = $member && $member->role === 'owner';
+    $isSuperAdmin = Auth::user()->is_super_admin;
+    $isManager    = $member && in_array($member->role, ['owner', 'manager']);
+    $isCompleted  = $routine->status === 'completed';
+    // Completed routines: only owner or super admin can edit/add
+    $canEdit      = $isCompleted
+        ? ($isSuperAdmin || $isOwner)
+        : ($isManager || $routine->assigned_to === Auth::id());
+    $canAdd       = $isCompleted
+        ? ($isSuperAdmin || $isOwner)
+        : ($isManager || $routine->assigned_to === Auth::id());
 @endphp
 <div class="page-wrapper">
     <div class="content">
@@ -23,10 +32,16 @@
                 </h6>
             </div>
             <div class="page-btn d-flex gap-2">
-                @if($canEdit && $routine->status === 'pending')
+                @if($canAdd)
                 <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addItemModal">
                     <i class="ti ti-plus me-1"></i>Add Item
                 </button>
+                @elseif($isCompleted && !$isSuperAdmin && !$isOwner)
+                <span class="btn btn-sm btn-secondary disabled" title="Approved routines are locked for editing">
+                    <i class="ti ti-lock me-1"></i>Locked
+                </span>
+                @endif
+                @if($canEdit && !$isCompleted)
                 <form action="{{ route('mess.market.complete', [$mess->id, $routine->id]) }}" method="POST">
                     @csrf
                     <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Mark as completed? This will create market expenses.')">
@@ -220,70 +235,12 @@
     </div>
 </div>
 
-<!-- Add Item Modal -->
-<div class="modal fade" id="addItemModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="ti ti-shopping-cart me-2"></i>Add Item</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form action="{{ route('mess.market.list.add', [$mess->id, $routine->id]) }}" method="POST">
-                @csrf
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Item Name <span class="text-danger">*</span></label>
-                        <input type="text" name="item_name" class="form-control" required placeholder="e.g. Potato, Fish, Oil">
-                    </div>
-                    <div class="row g-2 mb-3">
-                        <div class="col-6">
-                            <label class="form-label">Quantity</label>
-                            <input type="text" name="quantity" class="form-control" placeholder="e.g. 2">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label">Unit</label>
-                            <input type="text" name="unit" class="form-control" placeholder="kg, litre, pcs">
-                        </div>
-                    </div>
-                    <div class="row g-2 mb-3">
-                        <div class="col-6">
-                            <label class="form-label">Est. Cost (৳)</label>
-                            <input type="number" name="estimated_cost" class="form-control" step="0.01" min="0" placeholder="0.00">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label">Actual Cost (৳)</label>
-                            <input type="number" name="actual_cost" class="form-control" step="0.01" min="0" placeholder="0.00">
-                        </div>
-                    </div>
-                    <div class="row g-2 mb-3">
-                        <div class="col-6">
-                            <label class="form-label">Bought By</label>
-                            <select name="assigned_to" class="form-select">
-                                <option value="">— {{ $routine->assignedTo->name }} (default) —</option>
-                                @foreach($members as $m)
-                                @if($m->user->id !== $routine->assigned_to)
-                                <option value="{{ $m->user->id }}">{{ $m->user->name }}</option>
-                                @endif
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label">Purchase Date</label>
-                            <input type="date" name="expense_date" class="form-control"
-                                value="{{ $routine->start_date->format('Y-m-d') }}"
-                                min="{{ $routine->start_date->format('Y-m-d') }}"
-                                max="{{ $routine->end_date->format('Y-m-d') }}">
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add Item</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+<!-- Add Items Modal -->
+@include('mess.partials.add-items-modal', [
+    'addRoute'    => route('mess.market.list.add', [$mess->id, $routine->id]),
+    'members'     => $members,
+    'routine'     => $routine,
+])
 
 <script>
 const messId = {{ $mess->id }};

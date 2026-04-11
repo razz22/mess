@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CustomAuthController;
+use App\Http\Controllers\GoogleOAuthController;
 use App\Http\Controllers\Mess\MessController;
 use App\Http\Controllers\Mess\MemberController;
 use App\Http\Controllers\Mess\MealController;
@@ -30,6 +31,10 @@ Route::post('custom-login',   [CustomAuthController::class, 'customSignin'])->na
 Route::get('register',        [CustomAuthController::class, 'registration'])->name('register');
 Route::post('custom-register',[CustomAuthController::class, 'customRegister'])->name('register.custom');
 Route::get('signout',        [CustomAuthController::class, 'signOut'])->name('signout');
+
+// Google OAuth Routes
+Route::get('auth/google',          [GoogleOAuthController::class, 'redirect'])->name('auth.google');
+Route::get('auth/google/callback', [GoogleOAuthController::class, 'callback'])->name('auth.google.callback');
 Route::get('index',          [CustomAuthController::class, 'dashboard']);
 
 // -------------------------------------------------------------------------
@@ -87,6 +92,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/mess/{mess}/market/{routine}/exchange',      [MarketController::class, 'requestExchange'])->name('mess.market.exchange');
     Route::post('/mess/{mess}/market/exchange/{exchange}/respond', [MarketController::class, 'respondExchange'])->name('mess.market.exchange.respond');
     Route::post('/mess/{mess}/market/quick-expense',           [MarketController::class, 'addQuickExpense'])->name('mess.market.quick-expense');
+    Route::delete('/mess/{mess}/market/{routine}/unassign',    [MarketController::class, 'unassign'])->name('mess.market.unassign');
 
     // Expenses
     Route::get('/mess/{mess}/expenses',           [ExpenseController::class, 'index'])->name('mess.expenses');
@@ -178,6 +184,7 @@ Route::middleware(['auth', 'super_admin'])->prefix('admin')->name('admin.')->gro
     Route::post('/settings',                                              [SuperAdminController::class, 'updateSettings'])->name('settings.update');
 
     // Subscription Plans
+    Route::get('/plans',                                                  [SuperAdminController::class, 'plans'])->name('plans');
     Route::post('/plans',                                                 [SuperAdminController::class, 'storePlan'])->name('plans.store');
     Route::put('/plans/{plan}',                                           [SuperAdminController::class, 'updatePlan'])->name('plans.update');
     Route::delete('/plans/{plan}',                                        [SuperAdminController::class, 'destroyPlan'])->name('plans.destroy');
