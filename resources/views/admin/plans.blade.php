@@ -38,7 +38,20 @@
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">Description</label>
                                 <textarea name="description" class="form-control" rows="2"
-                                    placeholder="Features or notes…">{{ old('description') }}</textarea>
+                                    placeholder="Short tagline for this plan">{{ old('description') }}</textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Features <span class="text-muted fw-normal">(one per line)</span></label>
+                                <textarea name="features" class="form-control" rows="4"
+                                    placeholder="All Free features&#10;Priority support&#10;Advanced reports&#10;Export to PDF/Excel">{{ old('features') }}</textarea>
+                                <div class="form-text">Each line becomes a bullet point on the landing page pricing card.</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Button Label</label>
+                                <input type="text" name="button_label" class="form-control"
+                                    placeholder="e.g. Start Standard, Go Premium"
+                                    value="{{ old('button_label') }}">
+                                <div class="form-text">Leave blank to auto-generate from plan name.</div>
                             </div>
                             <div class="row g-2 mb-3">
                                 <div class="col-6">
@@ -50,13 +63,13 @@
                                 </div>
                                 <div class="col-6">
                                     <label class="form-label fw-semibold">Price (৳) <span class="text-danger">*</span></label>
-                                    <input type="number" name="price" min="0" step="0.01"
+                                    <input type="number" name="price" min="1" step="0.01"
                                         class="form-control @error('price') is-invalid @enderror"
-                                        value="{{ old('price', 0) }}">
+                                        value="{{ old('price', 299) }}">
                                     @error('price')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 </div>
                             </div>
-                            <div class="row g-2 mb-4">
+                            <div class="row g-2 mb-3">
                                 <div class="col-6">
                                     <label class="form-label fw-semibold">Duration (months) <span class="text-danger">*</span></label>
                                     <input type="number" name="duration_months" min="1" max="24"
@@ -70,6 +83,13 @@
                                         class="form-control"
                                         value="{{ old('sort_order', 0) }}">
                                 </div>
+                            </div>
+                            <div class="mb-4 form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="is_featured" id="is_featured" value="1"
+                                    {{ old('is_featured') ? 'checked' : '' }}>
+                                <label class="form-check-label fw-semibold" for="is_featured">
+                                    Mark as Popular <span class="text-muted fw-normal">(shows "Popular" badge)</span>
+                                </label>
                             </div>
                             <button type="submit" class="btn btn-success w-100">
                                 <i class="ti ti-plus me-1"></i>Create Plan
@@ -178,6 +198,18 @@
                         <label class="form-label fw-semibold">Description</label>
                         <textarea name="description" id="ep_description" class="form-control" rows="2"></textarea>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Features <span class="text-muted fw-normal">(one per line)</span></label>
+                        <textarea name="features" id="ep_features" class="form-control" rows="4"
+                            placeholder="All Free features&#10;Priority support&#10;Advanced reports"></textarea>
+                        <div class="form-text">Each line becomes a bullet point on the landing page.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Button Label</label>
+                        <input type="text" name="button_label" id="ep_button_label" class="form-control"
+                            placeholder="e.g. Start Standard, Go Premium">
+                        <div class="form-text">Leave blank to auto-generate from plan name.</div>
+                    </div>
                     <div class="row g-2 mb-3">
                         <div class="col-6">
                             <label class="form-label fw-semibold">Max Members <span class="text-danger">*</span></label>
@@ -185,7 +217,7 @@
                         </div>
                         <div class="col-6">
                             <label class="form-label fw-semibold">Price (৳) <span class="text-danger">*</span></label>
-                            <input type="number" name="price" id="ep_price" min="0" step="0.01" class="form-control" required>
+                            <input type="number" name="price" id="ep_price" min="1" step="0.01" class="form-control" required>
                         </div>
                     </div>
                     <div class="row g-2 mb-3">
@@ -198,9 +230,13 @@
                             <input type="number" name="sort_order" id="ep_sort_order" min="0" class="form-control">
                         </div>
                     </div>
+                    <div class="mb-2 form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name="is_featured" id="ep_is_featured" value="1">
+                        <label class="form-check-label fw-semibold" for="ep_is_featured">Mark as Popular</label>
+                    </div>
                     <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" name="is_active" id="ep_is_active" value="1">
-                        <label class="form-check-label fw-semibold" for="ep_is_active">Active (visible to mess owners)</label>
+                        <label class="form-check-label fw-semibold" for="ep_is_active">Active (visible on landing page)</label>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -219,10 +255,13 @@ function editPlan(id, plan) {
     form.action = '/admin/plans/' + id;
     document.getElementById('ep_name').value             = plan.name;
     document.getElementById('ep_description').value     = plan.description || '';
+    document.getElementById('ep_features').value        = Array.isArray(plan.features) ? plan.features.join('\n') : (plan.features || '');
+    document.getElementById('ep_button_label').value    = plan.button_label || '';
     document.getElementById('ep_max_members').value     = plan.max_members;
     document.getElementById('ep_price').value           = plan.price;
     document.getElementById('ep_duration_months').value = plan.duration_months;
     document.getElementById('ep_sort_order').value      = plan.sort_order;
+    document.getElementById('ep_is_featured').checked   = !!plan.is_featured;
     document.getElementById('ep_is_active').checked     = !!plan.is_active;
     new bootstrap.Modal(document.getElementById('editPlanModal')).show();
 }

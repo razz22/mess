@@ -79,7 +79,13 @@
                         <div class="d-flex align-items-center gap-1">
                             <span class="badge bg-{{ $mt->isExpired($date) && !$isPast ? 'secondary' : 'primary' }}-subtle border border-{{ $mt->isExpired($date) && !$isPast ? 'secondary' : 'primary' }} text-dark">
                                 {{ $mt->name }}
-                                @if($mt->close_time) <span class="text-muted">· closes {{ \Carbon\Carbon::parse($mt->close_time)->format('g:i A') }}</span> @endif
+                                @if($mt->close_time)
+                                    <span class="text-muted">
+                                        · closes
+                                        @if($mt->closes_previous_day) <span class="fw-semibold text-warning" title="Cut-off is the night before the meal date">prev. night</span> @endif
+                                        {{ \Carbon\Carbon::parse($mt->close_time)->format('g:i A') }}
+                                    </span>
+                                @endif
                             </span>
                             @if($isManager && $sch && $sch->status === 'open' && !$isPast)
                             <button class="btn btn-xs btn-outline-danger py-0" onclick="closeMeal({{ $sch->id }}, '{{ $mt->name }}')" title="Close {{ $mt->name }}">
@@ -267,13 +273,22 @@
                                     {{ $mt->name }}
                                     @if(!$mt->is_active)<span class="badge bg-secondary ms-1" style="font-size:10px">Disabled</span>@endif
                                 </td>
-                                <td class="align-middle">{{ $mt->close_time ? \Carbon\Carbon::parse($mt->close_time)->format('g:i A') : '—' }}</td>
+                                <td class="align-middle">
+                                    @if($mt->close_time)
+                                        @if($mt->closes_previous_day)
+                                            <span class="badge bg-warning-subtle text-warning border border-warning me-1" style="font-size:10px">Prev. Night</span>
+                                        @endif
+                                        {{ \Carbon\Carbon::parse($mt->close_time)->format('g:i A') }}
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
+                                </td>
                                 <td class="align-middle">
                                     <span class="badge bg-{{ $mt->is_active ? 'success' : 'secondary' }}">{{ $mt->is_active ? 'Active' : 'Disabled' }}</span>
                                 </td>
                                 <td class="text-center align-middle">
                                     <button class="btn btn-xs btn-outline-primary py-0"
-                                        onclick="openEditMealType({{ $mt->id }},'{{ addslashes($mt->name) }}','{{ $mt->close_time ? substr($mt->close_time,0,5) : '' }}',{{ $mt->is_active ? 'true' : 'false' }})"
+                                        onclick="openEditMealType({{ $mt->id }},'{{ addslashes($mt->name) }}','{{ $mt->close_time ? substr($mt->close_time,0,5) : '' }}',{{ $mt->is_active ? 'true' : 'false' }},{{ $mt->closes_previous_day ? 'true' : 'false' }})"
                                         title="Edit">
                                         <i class="ti ti-edit" style="font-size:11px"></i>
                                     </button>
@@ -317,10 +332,23 @@
                         <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
                         <input type="text" name="name" class="form-control" placeholder="e.g. Snacks, Brunch" required maxlength="50">
                     </div>
-                    <div class="mb-0">
+                    <div class="mb-2">
                         <label class="form-label fw-semibold">Attendance Closes At</label>
-                        <input type="time" name="close_time" class="form-control">
+                        <input type="time" name="close_time" id="add-mt-close" class="form-control"
+                            onchange="toggleAddPrevDay(this.value)">
                         <div class="form-text">Leave blank for no cutoff.</div>
+                    </div>
+                    <div class="mb-0" id="add-prev-day-wrap" style="display:none">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="closes_previous_day"
+                                id="add-mt-prev-day" value="1">
+                            <label class="form-check-label fw-semibold" for="add-mt-prev-day">
+                                Closes the <strong>night before</strong> the meal date
+                            </label>
+                        </div>
+                        <div class="form-text text-warning">
+                            <i class="ti ti-info-circle me-1"></i>Members must mark attendance by this time on the <em>previous day</em>.
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -347,10 +375,23 @@
                         <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
                         <input type="text" name="name" id="edit-mt-name" class="form-control" required maxlength="50">
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-2">
                         <label class="form-label fw-semibold">Attendance Closes At</label>
-                        <input type="time" name="close_time" id="edit-mt-close" class="form-control">
+                        <input type="time" name="close_time" id="edit-mt-close" class="form-control"
+                            onchange="toggleEditPrevDay(this.value)">
                         <div class="form-text">Leave blank for no cutoff.</div>
+                    </div>
+                    <div class="mb-3" id="edit-prev-day-wrap" style="display:none">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="closes_previous_day"
+                                id="edit-mt-prev-day" value="1">
+                            <label class="form-check-label fw-semibold" for="edit-mt-prev-day">
+                                Closes the <strong>night before</strong> the meal date
+                            </label>
+                        </div>
+                        <div class="form-text text-warning">
+                            <i class="ti ti-info-circle me-1"></i>Members must mark attendance by this time on the <em>previous day</em>.
+                        </div>
                     </div>
                     <div class="mb-0">
                         <label class="form-label fw-semibold">Status</label>
@@ -745,14 +786,26 @@ function openToggleMealType(id, name, action) {
     new bootstrap.Modal(document.getElementById('toggleMealTypeModal')).show();
 }
 
-function openEditMealType(id, name, closeTime, isActive, action) {
+function openEditMealType(id, name, closeTime, isActive, closesPrevDay) {
     var base = mealTypeBase + '/' + id;
     document.getElementById('editMealTypeForm').action = base;
-    document.getElementById('edit-mt-name').value  = name;
-    document.getElementById('edit-mt-close').value = closeTime || '';
-    document.getElementById('edit-mt-active').value = (action === 'enable' || isActive) ? '1' : '0';
+    document.getElementById('edit-mt-name').value     = name;
+    document.getElementById('edit-mt-close').value    = closeTime || '';
+    document.getElementById('edit-mt-active').value   = isActive ? '1' : '0';
+    document.getElementById('edit-mt-prev-day').checked = !!closesPrevDay;
+    toggleEditPrevDay(closeTime);
     var modal = new bootstrap.Modal(document.getElementById('editMealTypeModal'));
     modal.show();
+}
+
+function toggleAddPrevDay(val) {
+    document.getElementById('add-prev-day-wrap').style.display = val ? '' : 'none';
+    if (!val) document.getElementById('add-mt-prev-day').checked = false;
+}
+
+function toggleEditPrevDay(val) {
+    document.getElementById('edit-prev-day-wrap').style.display = val ? '' : 'none';
+    if (!val) document.getElementById('edit-mt-prev-day').checked = false;
 }
 
 function closeMeal(scheduleId, mealName) {

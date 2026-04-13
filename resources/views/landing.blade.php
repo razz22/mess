@@ -326,15 +326,24 @@
             <h2 class="section-title mt-2">Simple, Transparent Pricing</h2>
             <p class="text-muted">Start free, upgrade when you need more</p>
         </div>
+
+        @php
+            // Always show a Free card first, then paid plans from DB
+            $hasPaidPlans = $plans->where('price', '>', 0)->count();
+            $colClass = $hasPaidPlans ? 'col-md-' . max(3, min(4, intval(12 / ($hasPaidPlans + 1)))) : 'col-md-4';
+        @endphp
+
         <div class="row g-4 justify-content-center">
-            <div class="col-md-4">
+
+            {{-- Free Plan (always shown, values from SystemSettings) --}}
+            <div class="{{ $colClass }}">
                 <div class="pricing-card">
                     <h5 class="fw-bold">Free</h5>
                     <div class="price mt-2">৳0 <span>/ month</span></div>
                     <hr>
                     <ul class="list-unstyled mt-3">
-                        <li class="py-1"><i class="ti ti-check me-2 text-success"></i>2 messes</li>
-                        <li class="py-1"><i class="ti ti-check me-2 text-success"></i>Up to 20 members per mess</li>
+                        <li class="py-1"><i class="ti ti-check me-2 text-success"></i>Up to {{ $sysSettings->default_max_members }} members per mess</li>
+                        <li class="py-1"><i class="ti ti-check me-2 text-success"></i>Create up to {{ $sysSettings->default_max_messes }} {{ Str::plural('mess', $sysSettings->default_max_messes) }}</li>
                         <li class="py-1"><i class="ti ti-check me-2 text-success"></i>All core features</li>
                         <li class="py-1"><i class="ti ti-check me-2 text-success"></i>Meal attendance</li>
                         <li class="py-1"><i class="ti ti-check me-2 text-success"></i>Market routine</li>
@@ -343,41 +352,45 @@
                     <a href="{{ route('register') }}" class="btn-outline-custom d-block text-center mt-4">Get Started Free</a>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="pricing-card featured">
+
+            {{-- Paid Plans from DB --}}
+            @foreach($plans->where('price', '>', 0) as $plan)
+            <div class="{{ $colClass }}">
+                <div class="pricing-card {{ $plan->is_featured ? 'featured' : '' }}">
                     <div class="d-flex justify-content-between align-items-start">
-                        <h5 class="fw-bold">Standard</h5>
+                        <h5 class="fw-bold">{{ $plan->name }}</h5>
+                        @if($plan->is_featured)
                         <span class="badge" style="background:var(--primary)">Popular</span>
+                        @endif
                     </div>
-                    <div class="price mt-2">৳299 <span>/ month</span></div>
+                    <div class="price mt-2">
+                        ৳{{ number_format($plan->price, 0) }}
+                        <span>/ {{ $plan->duration_months > 1 ? $plan->duration_months . ' months' : 'month' }}</span>
+                    </div>
                     <hr>
                     <ul class="list-unstyled mt-3">
-                        <li class="py-1"><i class="ti ti-check me-2 text-success"></i>2 messes</li>
-                        <li class="py-1"><i class="ti ti-check me-2 text-success"></i>Up to 30 members per mess</li>
-                        <li class="py-1"><i class="ti ti-check me-2 text-success"></i>All Free features</li>
-                        <li class="py-1"><i class="ti ti-check me-2 text-success"></i>Priority support</li>
-                        <li class="py-1"><i class="ti ti-check me-2 text-success"></i>Advanced reports</li>
-                        <li class="py-1"><i class="ti ti-check me-2 text-success"></i>Export to PDF/Excel</li>
+                        <li class="py-1"><i class="ti ti-check me-2 text-success"></i>Up to {{ $plan->max_members }} members per mess</li>
+                        @if($plan->features)
+                            @foreach($plan->features as $feature)
+                            <li class="py-1"><i class="ti ti-check me-2 text-success"></i>{{ $feature }}</li>
+                            @endforeach
+                        @endif
                     </ul>
-                    <a href="{{ route('register') }}" class="btn-primary-custom d-block text-center mt-4">Start Standard</a>
+                    <a href="{{ route('register') }}"
+                        class="{{ $plan->is_featured ? 'btn-primary-custom' : 'btn-outline-custom' }} d-block text-center mt-4">
+                        {{ $plan->button_label ?: 'Get ' . $plan->name }}
+                    </a>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="pricing-card">
-                    <h5 class="fw-bold">Premium</h5>
-                    <div class="price mt-2">৳599 <span>/ month</span></div>
-                    <hr>
-                    <ul class="list-unstyled mt-3">
-                        <li class="py-1"><i class="ti ti-check me-2 text-success"></i>Unlimited messes</li>
-                        <li class="py-1"><i class="ti ti-check me-2 text-success"></i>Up to 50 members per mess</li>
-                        <li class="py-1"><i class="ti ti-check me-2 text-success"></i>All Standard features</li>
-                        <li class="py-1"><i class="ti ti-check me-2 text-success"></i>Custom branding</li>
-                        <li class="py-1"><i class="ti ti-check me-2 text-success"></i>API access</li>
-                        <li class="py-1"><i class="ti ti-check me-2 text-success"></i>Dedicated support</li>
-                    </ul>
-                    <a href="{{ route('register') }}" class="btn-outline-custom d-block text-center mt-4">Go Premium</a>
-                </div>
+            @endforeach
+
+            {{-- Empty state: no paid plans yet --}}
+            @if($plans->where('price', '>', 0)->isEmpty())
+            <div class="col-12 text-center text-muted py-3">
+                <p class="small">Upgrade plans coming soon. Start with the free plan today!</p>
             </div>
+            @endif
+
         </div>
     </div>
 </section>

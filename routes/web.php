@@ -23,7 +23,11 @@ use App\Http\Controllers\Admin\SuperAdminController;
 */
 
 // Landing Page
-Route::get('/', fn() => view('landing'))->name('landing');
+Route::get('/', function () {
+    $plans       = \App\Models\SubscriptionPlan::active()->get();
+    $sysSettings = \App\Models\SystemSetting::instance();
+    return view('landing', compact('plans', 'sysSettings'));
+})->name('landing');
 
 // Auth Routes
 Route::get('signin',          [CustomAuthController::class, 'index'])->name('signin');

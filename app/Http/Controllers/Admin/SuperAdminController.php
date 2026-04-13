@@ -471,13 +471,18 @@ class SuperAdminController extends Controller
         $data = $request->validate([
             'name'            => 'required|string|max:100',
             'description'     => 'nullable|string|max:500',
+            'features'        => 'nullable|string',
+            'button_label'    => 'nullable|string|max:100',
             'max_members'     => 'required|integer|min:1|max:1000',
-            'price'           => 'required|numeric|min:0',
+            'price'           => 'required|numeric|min:1',
             'duration_months' => 'required|integer|min:1|max:24',
             'sort_order'      => 'nullable|integer|min:0|max:255',
+            'is_featured'     => 'nullable|boolean',
         ]);
 
+        $data['features']    = $this->parseFeatures($request->input('features'));
         $data['is_active']   = true;
+        $data['is_featured'] = $request->boolean('is_featured');
         $data['sort_order'] ??= 0;
 
         SubscriptionPlan::create($data);
@@ -490,19 +495,32 @@ class SuperAdminController extends Controller
         $data = $request->validate([
             'name'            => 'required|string|max:100',
             'description'     => 'nullable|string|max:500',
+            'features'        => 'nullable|string',
+            'button_label'    => 'nullable|string|max:100',
             'max_members'     => 'required|integer|min:1|max:1000',
-            'price'           => 'required|numeric|min:0',
+            'price'           => 'required|numeric|min:1',
             'duration_months' => 'required|integer|min:1|max:24',
             'sort_order'      => 'nullable|integer|min:0|max:255',
             'is_active'       => 'nullable|boolean',
+            'is_featured'     => 'nullable|boolean',
         ]);
 
+        $data['features']    = $this->parseFeatures($request->input('features'));
         $data['is_active']   = $request->boolean('is_active');
+        $data['is_featured'] = $request->boolean('is_featured');
         $data['sort_order'] ??= 0;
 
         $plan->update($data);
 
         return back()->with('success', "Plan \"{$plan->name}\" updated.");
+    }
+
+    private function parseFeatures(?string $raw): array
+    {
+        if (blank($raw)) return [];
+        return array_values(array_filter(
+            array_map('trim', explode("\n", str_replace("\r", '', $raw)))
+        ));
     }
 
     public function destroyPlan(SubscriptionPlan $plan)

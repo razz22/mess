@@ -1,0 +1,24 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('subscription_plans', function (Blueprint $table) {
+            $table->json('features')->nullable()->after('description');
+            $table->boolean('is_featured')->default(false)->after('is_active');
+            $table->string('button_label', 100)->nullable()->after('is_featured');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('subscription_plans', function (Blueprint $table) {
+            $table->dropColumn(['features', 'is_featured', 'button_label']);
+        });
+    }
+};

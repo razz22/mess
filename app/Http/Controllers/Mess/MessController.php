@@ -41,13 +41,14 @@ class MessController extends Controller
             return redirect()->route('mess.index')
                 ->with('error', 'Members cannot create a mess.');
         }
-        $maxMesses = $user->max_messes ?? 2;
+        $sysSettings = SystemSetting::instance();
+        $maxMesses   = $user->max_messes ?? $sysSettings->default_max_messes;
         if ($user->ownedMesses()->count() >= $maxMesses) {
             return redirect()->route('mess.index')
                 ->with('error', "You can only create up to {$maxMesses} messes.");
         }
 
-        return view('mess.create');
+        return view('mess.create', compact('sysSettings', 'maxMesses'));
     }
 
     public function store(Request $request)

@@ -106,7 +106,7 @@ class MealController extends Controller
 
         if (!$isManager) {
             $mealType = $mess->mealTypes()->where('name', $schedule->type)->first();
-            if ($mealType && $mealType->isExpired()) {
+            if ($mealType && $mealType->isExpired($schedule->date->toDateString())) {
                 return response()->json(['error' => 'Attendance time has expired for ' . $schedule->type . '.'], 422);
             }
         }
@@ -164,18 +164,23 @@ class MealController extends Controller
         if (!Auth::user()->isManagerOf($mess->id)) abort(403);
 
         $request->validate([
-            'name'       => 'required|string|max:50',
-            'close_time' => 'nullable|date_format:H:i',
-            'rate'       => 'nullable|numeric|min:0',
+            'name'                => 'required|string|max:50',
+            'close_time'          => 'nullable|date_format:H:i',
+            'closes_previous_day' => 'nullable|boolean',
+            'rate'                => 'nullable|numeric|min:0',
         ]);
+
+        $closeTime       = $request->close_time ? $request->close_time . ':00' : null;
+        $closesPrevDay   = $request->close_time ? $request->boolean('closes_previous_day') : false;
 
         // Re-activate if previously deactivated
         $existing = MessMealType::where('mess_id', $mess->id)->where('name', ucfirst($request->name))->first();
         if ($existing) {
             $existing->update([
-                'is_active'  => true,
-                'close_time' => $request->close_time ? $request->close_time . ':00' : $existing->close_time,
-                'rate'       => $request->rate ?? $existing->rate,
+                'is_active'           => true,
+                'close_time'          => $closeTime ?? $existing->close_time,
+                'closes_previous_day' => $closesPrevDay,
+                'rate'                => $request->rate ?? $existing->rate,
             ]);
             return back()->with('success', '"' . $existing->name . '" re-activated.');
         }
@@ -183,11 +188,12 @@ class MealController extends Controller
         $max = MessMealType::where('mess_id', $mess->id)->max('sort_order') ?? 0;
 
         MessMealType::create([
-            'mess_id'    => $mess->id,
-            'name'       => ucfirst($request->name),
-            'close_time' => $request->close_time ? $request->close_time . ':00' : null,
-            'rate'       => $request->rate ?? 0,
-            'sort_order' => $max + 1,
+            'mess_id'             => $mess->id,
+            'name'                => ucfirst($request->name),
+            'close_time'          => $closeTime,
+            'closes_previous_day' => $closesPrevDay,
+            'rate'                => $request->rate ?? 0,
+            'sort_order'          => $max + 1,
         ]);
 
         return back()->with('success', 'Meal type added.');
@@ -200,17 +206,22 @@ class MealController extends Controller
         if ($mealType->mess_id !== $mess->id) abort(403);
 
         $request->validate([
-            'name'       => 'required|string|max:50',
-            'close_time' => 'nullable|date_format:H:i',
-            'rate'       => 'nullable|numeric|min:0',
-            'is_active'  => 'nullable|boolean',
+            'name'                => 'required|string|max:50',
+            'close_time'          => 'nullable|date_format:H:i',
+            'closes_previous_day' => 'nullable|boolean',
+            'rate'                => 'nullable|numeric|min:0',
+            'is_active'           => 'nullable|boolean',
         ]);
 
+        $closeTime     = $request->close_time ? $request->close_time . ':00' : null;
+        $closesPrevDay = $closeTime ? $request->boolean('closes_previous_day') : false;
+
         $mealType->update([
-            'name'       => ucfirst($request->name),
-            'close_time' => $request->close_time ? $request->close_time . ':00' : null,
-            'rate'       => $request->rate ?? $mealType->rate,
-            'is_active'  => $request->has('is_active') ? (bool)$request->is_active : $mealType->is_active,
+            'name'                => ucfirst($request->name),
+            'close_time'          => $closeTime,
+            'closes_previous_day' => $closesPrevDay,
+            'rate'                => $request->rate ?? $mealType->rate,
+            'is_active'           => $request->has('is_active') ? (bool)$request->is_active : $mealType->is_active,
         ]);
 
         return back()->with('success', $mealType->name . ' updated.');

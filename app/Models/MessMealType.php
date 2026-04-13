@@ -10,11 +10,12 @@ class MessMealType extends Model
     protected $table = 'mess_meal_types';
 
     protected $fillable = [
-        'mess_id', 'name', 'close_time', 'rate', 'sort_order', 'is_active',
+        'mess_id', 'name', 'close_time', 'closes_previous_day', 'rate', 'sort_order', 'is_active',
     ];
 
     protected $casts = [
-        'is_active' => 'boolean',
+        'is_active'           => 'boolean',
+        'closes_previous_day' => 'boolean',
     ];
 
     public function mess(): BelongsTo
@@ -22,16 +23,28 @@ class MessMealType extends Model
         return $this->belongsTo(Mess::class);
     }
 
-    public function isExpired(string $date = null): bool
+    public function isExpired(?string $date = null): bool
     {
         if (!$this->close_time) return false;
 
-        $date = $date ?? now()->toDateString();
+        $date  = $date ?? now()->toDateString();
+        $today = now()->toDateString();
 
-        if ($date > now()->toDateString()) return false; // future date — never expired
-        if ($date < now()->toDateString()) return true;  // past date — always expired
+        if ($this->closes_previous_day) {
+            // Cutoff is close_time on the day BEFORE the meal date
+            $cutoffDate = \Carbon\Carbon::parse($date)->subDay()->toDateString();
 
-        // Today: compare current time against close_time
+            if ($today < $cutoffDate) return false; // cutoff day hasn't arrived yet
+            if ($today > $cutoffDate) return true;  // past the cutoff day
+
+            // Today IS the cutoff day — compare current time
+            return now()->format('H:i:s') > $this->close_time;
+        }
+
+        // Same-day cutoff (original behaviour)
+        if ($date > $today) return false; // future meal date — not expired
+        if ($date < $today) return true;  // past meal date — always expired
+
         return now()->format('H:i:s') > $this->close_time;
     }
 }

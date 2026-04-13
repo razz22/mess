@@ -62,8 +62,8 @@
                             <div class="alert alert-info d-flex align-items-start gap-2 mb-4">
                                 <i class="ti ti-info-circle fs-5 mt-1"></i>
                                 <div>
-                                    <strong>Free Plan:</strong> Default 20 members per mess. Upgrade subscription to add more members (up to 50+).
-                                    You can create up to <strong>2 messes</strong>.
+                                    <strong>Free Plan:</strong> Default <strong>{{ $sysSettings->default_max_members }}</strong> members per mess. Upgrade subscription to add more members.
+                                    You can create up to <strong>{{ $maxMesses }} {{ Str::plural('mess', $maxMesses) }}</strong>.
                                 </div>
                             </div>
 
