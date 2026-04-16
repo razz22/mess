@@ -9,16 +9,19 @@ class MessMember extends Model
 {
     protected $fillable = [
         'mess_id', 'user_id', 'role', 'is_active', 'carry_forward', 'joined_at',
-        'room_no', 'house_rent', 'advance_amount', 'advance_date', 'notes',
+        'room_no', 'house_rent', 'service_charge', 'service_charge_date',
+        'advance_amount', 'advance_date', 'notes',
     ];
 
     protected $casts = [
-        'is_active'      => 'boolean',
-        'carry_forward'  => 'decimal:2',
-        'house_rent'     => 'decimal:2',
-        'advance_amount' => 'decimal:2',
-        'joined_at'      => 'datetime',
-        'advance_date'   => 'date',
+        'is_active'           => 'boolean',
+        'carry_forward'       => 'decimal:2',
+        'house_rent'          => 'decimal:2',
+        'service_charge'      => 'decimal:2',
+        'service_charge_date' => 'date',
+        'advance_amount'      => 'decimal:2',
+        'joined_at'           => 'datetime',
+        'advance_date'        => 'date',
     ];
 
     public function mess(): BelongsTo

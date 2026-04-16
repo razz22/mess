@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Mess;
 use App\Models\MealAttendance;
 use App\Models\MealSchedule;
+use App\Models\MessContact;
 use App\Models\MessMealType;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -63,14 +64,30 @@ class MealController extends Controller
 
         $allMealTypes = MessMealType::where('mess_id', $mess->id)
             ->orderByRaw('CASE WHEN close_time IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('close_days_before', 'desc')
             ->orderBy('close_time')
             ->orderBy('sort_order')
             ->get();
 
+        // Meal totals for WhatsApp sending (manager only)
+        $mealTotals = [];
+        foreach ($mealTypes as $mt) {
+            $sch = $schedules[$mt->name] ?? null;
+            $total = $sch
+                ? $allAttendances->filter(fn($g, $k) => str_starts_with($k, $sch->id . '_'))->flatten()->sum('quantity')
+                : 0;
+            $mealTotals[$mt->name] = (float) $total;
+        }
+
+        $contacts = $isManager
+            ? MessContact::where('mess_id', $mess->id)->orderBy('label')->orderBy('name')->get()
+            : collect();
+
         return view('mess.meal-attendance', compact(
             'mess', 'mealTypes', 'allMealTypes', 'schedules', 'members',
             'allAttendances', 'date', 'today', 'isPast',
-            'isManager', 'isBasic', 'member', 'myChangesToday'
+            'isManager', 'isBasic', 'member', 'myChangesToday',
+            'mealTotals', 'contacts'
         ));
     }
 
@@ -164,18 +181,20 @@ class MealController extends Controller
         if (!Auth::user()->isManagerOf($mess->id)) abort(403);
 
         $request->validate([
-            'name'       => 'required|string|max:50',
-            'close_time' => 'nullable|date_format:H:i',
-            'rate'       => 'nullable|numeric|min:0',
+            'name'             => 'required|string|max:50',
+            'close_time'       => 'nullable|date_format:H:i',
+            'close_days_before'=> 'nullable|integer|min:0|max:30',
+            'rate'             => 'nullable|numeric|min:0',
         ]);
 
         // Re-activate if previously deactivated
         $existing = MessMealType::where('mess_id', $mess->id)->where('name', ucfirst($request->name))->first();
         if ($existing) {
             $existing->update([
-                'is_active'  => true,
-                'close_time' => $request->close_time ? $request->close_time . ':00' : $existing->close_time,
-                'rate'       => $request->rate ?? $existing->rate,
+                'is_active'         => true,
+                'close_time'        => $request->close_time ? $request->close_time . ':00' : $existing->close_time,
+                'close_days_before' => $request->close_days_before ?? $existing->close_days_before,
+                'rate'              => $request->rate ?? $existing->rate,
             ]);
             return back()->with('success', '"' . $existing->name . '" re-activated.');
         }
@@ -183,14 +202,62 @@ class MealController extends Controller
         $max = MessMealType::where('mess_id', $mess->id)->max('sort_order') ?? 0;
 
         MessMealType::create([
-            'mess_id'    => $mess->id,
-            'name'       => ucfirst($request->name),
-            'close_time' => $request->close_time ? $request->close_time . ':00' : null,
-            'rate'       => $request->rate ?? 0,
-            'sort_order' => $max + 1,
+            'mess_id'           => $mess->id,
+            'name'              => ucfirst($request->name),
+            'close_time'        => $request->close_time ? $request->close_time . ':00' : null,
+            'close_days_before' => $request->close_days_before ?? 0,
+            'rate'              => $request->rate ?? 0,
+            'sort_order'        => $max + 1,
         ]);
 
         return back()->with('success', 'Meal type added.');
+    }
+
+    public function bulkAttendance(Request $request, Mess $mess)
+    {
+        if (!Auth::user()->isManagerOf($mess->id)) abort(403);
+
+        $request->validate([
+            'user_ids'   => 'required|array|min:1',
+            'user_ids.*' => 'exists:users,id',
+            'dates'      => 'required|array|min:1',
+            'dates.*'    => 'date',
+            'meal_types' => 'required|array|min:1',
+            'meal_types.*'=> 'string|max:50',
+            'quantity'   => ['required', 'numeric', 'min:0', 'max:99', function ($attr, $value, $fail) {
+                if (fmod(round($value * 10), 5) !== 0.0) {
+                    $fail('Quantity must be in steps of 0.5.');
+                }
+            }],
+        ]);
+
+        $quantity  = (float) $request->quantity;
+        $status    = $quantity > 0 ? 'on' : 'off';
+        $mealTypes = $mess->mealTypes()->pluck('name')->toArray();
+        $count     = 0;
+
+        foreach ($request->dates as $date) {
+            // Ensure schedules exist for this date
+            foreach ($request->meal_types as $typeName) {
+                if (!in_array($typeName, $mealTypes)) continue;
+
+                $schedule = MealSchedule::firstOrCreate(
+                    ['mess_id' => $mess->id, 'date' => $date, 'type' => $typeName],
+                    ['status' => 'open']
+                );
+
+                foreach ($request->user_ids as $userId) {
+                    MealAttendance::updateOrCreate(
+                        ['meal_schedule_id' => $schedule->id, 'user_id' => $userId],
+                        ['mess_id' => $mess->id, 'status' => $status, 'quantity' => $quantity, 'marked_at' => now()]
+                    );
+                    $count++;
+                }
+            }
+        }
+
+        $label = $quantity > 0 ? "set to {$quantity}" : 'marked as Off';
+        return back()->with('success', "{$count} attendance record(s) {$label} successfully.");
     }
 
     // Manager: update meal type (name, rate, close_time, active)
@@ -200,17 +267,19 @@ class MealController extends Controller
         if ($mealType->mess_id !== $mess->id) abort(403);
 
         $request->validate([
-            'name'       => 'required|string|max:50',
-            'close_time' => 'nullable|date_format:H:i',
-            'rate'       => 'nullable|numeric|min:0',
-            'is_active'  => 'nullable|boolean',
+            'name'              => 'required|string|max:50',
+            'close_time'        => 'nullable|date_format:H:i',
+            'close_days_before' => 'nullable|integer|min:0|max:30',
+            'rate'              => 'nullable|numeric|min:0',
+            'is_active'         => 'nullable|boolean',
         ]);
 
         $mealType->update([
-            'name'       => ucfirst($request->name),
-            'close_time' => $request->close_time ? $request->close_time . ':00' : null,
-            'rate'       => $request->rate ?? $mealType->rate,
-            'is_active'  => $request->has('is_active') ? (bool)$request->is_active : $mealType->is_active,
+            'name'              => ucfirst($request->name),
+            'close_time'        => $request->close_time ? $request->close_time . ':00' : null,
+            'close_days_before' => $request->close_days_before ?? 0,
+            'rate'              => $request->rate ?? $mealType->rate,
+            'is_active'         => $request->has('is_active') ? (bool)$request->is_active : $mealType->is_active,
         ]);
 
         return back()->with('success', $mealType->name . ' updated.');

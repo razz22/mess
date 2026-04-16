@@ -30,6 +30,17 @@ class MessController extends Controller
             ->where('is_active', true)
             ->get();
 
+        // Pure members (no owner/manager role anywhere) go straight to their mess dashboard
+        $hasOwnerOrManager = $memberships->whereIn('role', ['owner', 'manager', 'author'])->isNotEmpty();
+        if (!$hasOwnerOrManager && $memberships->isNotEmpty()) {
+            $activeMess = $user->getActiveMess();
+            if (!$activeMess) {
+                $activeMess = $memberships->first()->mess;
+                session(['active_mess_id' => $activeMess->id]);
+            }
+            return redirect()->route('mess.dashboard', $activeMess->id);
+        }
+
         return view('mess.list', compact('memberships'));
     }
 
@@ -191,10 +202,46 @@ class MessController extends Controller
             'year'    => $currentYear,
         ])->first();
 
+        // Today's meal routine (all types)
+        $todayWeekNo    = \App\Models\MessMealRoutine::weekNoForDate(now());
+        $todayDayOfWeek = (int) now()->format('w');
+        $allRoutines = \App\Models\MessMealRoutine::where('mess_id', $mess->id)->get();
+        $todayMealRoutines = $allRoutines->where('week_no', $todayWeekNo)->where('day_of_week', $todayDayOfWeek)->values();
+        // Full grid keyed by [meal_type][week_no][day_of_week]
+        $routineGrid = [];
+        foreach ($allRoutines as $r) {
+            $routineGrid[$r->meal_type][$r->week_no][$r->day_of_week] = $r->items;
+        }
+        $routineMealTypes = $allRoutines->pluck('meal_type')->unique()->values();
+        // All configured meal types for this mess
+        $messMealTypes = \App\Models\MessMealType::where('mess_id', $mess->id)->orderBy('id')->pluck('name');
+
+        // Pending show causes for the authenticated member (awaiting their reply)
+        $myMessMember = $member; // already loaded
+        $pendingShowCauses = \App\Models\MessShowCause::where('mess_id', $mess->id)
+            ->where('member_id', $myMessMember->id)
+            ->where('status', 'pending')
+            ->with('issuedBy')
+            ->latest('issued_at')
+            ->get();
+
+        // Replied show causes for manager/owner (awaiting their final reply)
+        $repliedShowCauses = collect();
+        if (in_array($myMessMember->role, ['owner', 'manager'])) {
+            $repliedShowCauses = \App\Models\MessShowCause::where('mess_id', $mess->id)
+                ->where('status', 'replied')
+                ->with(['member.user'])
+                ->latest('replied_at')
+                ->get();
+        }
+
         return view('mess.dashboard', compact(
             'mess', 'member', 'currentManager', 'todayMeals',
             'todayRoutine', 'monthlyExpenses', 'monthlyDeposits',
-            'totalMembers', 'pendingReports', 'mySummary'
+            'totalMembers', 'pendingReports', 'mySummary',
+            'pendingShowCauses', 'repliedShowCauses',
+            'todayMealRoutines', 'routineGrid', 'routineMealTypes', 'messMealTypes',
+            'todayWeekNo', 'todayDayOfWeek'
         ));
     }
 
@@ -202,7 +249,8 @@ class MessController extends Controller
     {
         $this->authorizeOwnerOrManager($mess);
         $settings = $mess->settings ?? new MessSetting(['mess_id' => $mess->id]);
-        return view('mess.settings', compact('mess', 'settings'));
+        $contacts = \App\Models\MessContact::where('mess_id', $mess->id)->orderBy('label')->orderBy('name')->get();
+        return view('mess.settings', compact('mess', 'settings', 'contacts'));
     }
 
     public function update(Request $request, Mess $mess)
@@ -210,10 +258,11 @@ class MessController extends Controller
         $this->authorizeOwnerOrManager($mess);
 
         $validated = $request->validate([
-            'name'        => 'required|string|max:255',
-            'description' => 'nullable|string|max:1000',
-            'address'     => 'nullable|string|max:500',
-            'avatar'      => 'nullable|image|max:2048',
+            'name'                 => 'required|string|max:255',
+            'description'          => 'nullable|string|max:1000',
+            'address'              => 'nullable|string|max:500',
+            'avatar'               => 'nullable|image|max:2048',
+            'leave_notice_months'  => 'nullable|integer|min:1|max:6',
         ]);
 
         if (!empty($validated['avatar']) && $validated['avatar'] instanceof \Illuminate\Http\UploadedFile) {
@@ -223,6 +272,10 @@ class MessController extends Controller
             unset($validated['avatar']); // don't overwrite existing avatar if none uploaded
         }
 
+        if (isset($validated['leave_notice_months'])) {
+            $mess->leave_notice_months = $validated['leave_notice_months'];
+        }
+        unset($validated['leave_notice_months']);
         $mess->update($validated);
 
         // Update settings

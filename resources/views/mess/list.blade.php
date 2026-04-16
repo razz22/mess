@@ -117,7 +117,7 @@
                     <i class="ti ti-building-community fs-1 text-muted"></i>
                 </div>
                 <h5>No Mess Yet</h5>
-                <p class="text-muted">Create your first mess or join one using an invite code.</p>
+                <p class="text-muted">Create your first mess or join one using an invite code above.</p>
                 <a href="{{ route('mess.create') }}" class="btn btn-primary mt-2">
                     <i class="ti ti-circle-plus me-1"></i>Create Mess
                 </a>

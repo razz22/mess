@@ -12,12 +12,13 @@ class Mess extends Model
 {
     protected $fillable = [
         'owner_id', 'name', 'description', 'address', 'avatar',
-        'max_members', 'is_premium', 'status', 'invite_code',
+        'max_members', 'is_premium', 'status', 'invite_code', 'leave_notice_months',
     ];
 
     protected $casts = [
-        'is_premium' => 'boolean',
-        'max_members' => 'integer',
+        'is_premium'           => 'boolean',
+        'max_members'          => 'integer',
+        'leave_notice_months'  => 'integer',
     ];
 
     protected static function boot()
@@ -57,6 +58,7 @@ class Mess extends Model
     {
         return $this->hasMany(MessMealType::class)->where('is_active', true)
             ->orderByRaw('CASE WHEN close_time IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('close_days_before', 'desc')
             ->orderBy('close_time')
             ->orderBy('sort_order');
     }

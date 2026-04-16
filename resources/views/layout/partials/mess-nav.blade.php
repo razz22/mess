@@ -37,9 +37,19 @@
 <li class="submenu-open">
         <h6 class="submenu-hdr">Mess Management</h6>
         <ul>
+                @auth
+                @php
+                    $navUser = Auth::user();
+                    $navCanSeeList = $navUser->is_super_admin
+                        || $navUser->ownedMesses()->exists()
+                        || \App\Models\MessMember::where('user_id', $navUser->id)->where('is_active', true)->whereIn('role', ['owner','manager','author'])->exists();
+                @endphp
+                @if($navCanSeeList)
                 <li class="{{ Request::is('mess') ? 'active' : '' }}">
                         <a href="{{ route('mess.index') }}"><i class="ti ti-building-community fs-16 me-2"></i><span>My Messes</span></a>
                 </li>
+                @endif
+                @endauth
                 @auth
                 @php
                         if (!isset($sidebarActiveMess)) {
@@ -70,12 +80,10 @@
                         <a href="{{ route('mess.meals', $sma->id) }}"><i class="ti ti-tools-kitchen-2 fs-16 me-2"></i><span>Meal Attendance</span></a>
                 </li>
 
-                {{-- Meal Items Kanban — managers only --}}
-                @if($isManager)
-                <li class="{{ Request::routeIs('mess.meal-items') ? 'active' : '' }}">
-                        <a href="{{ route('mess.meal-items', $sma->id) }}"><i class="ti ti-layout-kanban fs-16 me-2"></i><span>Meal Items</span></a>
+                {{-- Meal Routine Chart — everyone --}}
+                <li class="{{ Request::routeIs('mess.meal-routine') ? 'active' : '' }}">
+                        <a href="{{ route('mess.meal-routine', $sma->id) }}"><i class="ti ti-calendar-event fs-16 me-2"></i><span>Meal Routine</span></a>
                 </li>
-                @endif
 
                 {{-- Market Routine — everyone --}}
                 <li class="{{ Request::routeIs('mess.market', 'mess.market.list') ? 'active' : '' }}">
@@ -101,6 +109,9 @@
                 <li class="{{ Request::routeIs('mess.members') ? 'active' : '' }}">
                         <a href="{{ route('mess.members', $sma->id) }}"><i class="ti ti-users fs-16 me-2"></i><span>Members</span></a>
                 </li>
+                <li class="{{ Request::routeIs('mess.show-causes.*') ? 'active' : '' }}">
+                        <a href="{{ route('mess.show-causes.index', $sma->id) }}"><i class="ti ti-file-alert fs-16 me-2"></i><span>Show Cause</span></a>
+                </li>
                 @endif
 
                 {{-- Manager Rotation — everyone (members can vote) --}}
@@ -122,6 +133,18 @@
                 <li class="{{ Request::routeIs('mess.report.members') ? 'active' : '' }}">
                         <a href="{{ route('mess.report.members', $sma->id) }}"><i class="ti ti-flag fs-16 me-2"></i><span>Member Reports</span></a>
                 </li>
+
+                {{-- My Leave — all members --}}
+                <li class="{{ Request::routeIs('mess.leave.my') ? 'active' : '' }}">
+                        <a href="{{ route('mess.leave.my', $sma->id) }}"><i class="ti ti-logout fs-16 me-2"></i><span>My Leave</span></a>
+                </li>
+
+                {{-- Leave Requests — managers only --}}
+                @if($isManager)
+                <li class="{{ Request::routeIs('mess.leave.index') ? 'active' : '' }}">
+                        <a href="{{ route('mess.leave.index', $sma->id) }}"><i class="ti ti-clipboard-list fs-16 me-2"></i><span>Leave Requests</span></a>
+                </li>
+                @endif
 
                 {{-- House Rent Management — owner only --}}
                 @if(Auth::user()->isOwnerOf($sma->id))

@@ -7,7 +7,7 @@
         <div class="page-header">
             <div class="page-title">
                 <h4 class="fw-bold"><i class="ti ti-packages me-2 text-primary"></i>Subscription Plans</h4>
-                <h6 class="text-muted">Create and manage subscription plans for mess owners</h6>
+                <h6 class="text-muted">Manage plans shown on the public pricing page</h6>
             </div>
         </div>
 
@@ -32,13 +32,13 @@
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">Plan Name <span class="text-danger">*</span></label>
                                 <input type="text" name="name" class="form-control @error('name') is-invalid @enderror"
-                                    placeholder="e.g. Basic, Standard, Premium" value="{{ old('name') }}">
+                                    placeholder="e.g. Free, Standard, Premium" value="{{ old('name') }}">
                                 @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                             <div class="mb-3">
-                                <label class="form-label fw-semibold">Description</label>
-                                <textarea name="description" class="form-control" rows="2"
-                                    placeholder="Features or notes…">{{ old('description') }}</textarea>
+                                <label class="form-label fw-semibold">Features <small class="text-muted fw-normal">(one per line — shown as bullets on landing page)</small></label>
+                                <textarea name="description" class="form-control" rows="5"
+                                    placeholder="Up to 20 members&#10;All core features&#10;Meal attendance&#10;Monthly reports">{{ old('description') }}</textarea>
                             </div>
                             <div class="row g-2 mb-3">
                                 <div class="col-6">
@@ -102,7 +102,7 @@
                                     <th class="text-center">Price</th>
                                     <th class="text-center">Duration</th>
                                     <th class="text-center">Status</th>
-                                    <th class="text-center">Sort</th>
+                                    <th class="text-center">Featured</th>
                                     <th class="text-center">Actions</th>
                                 </tr>
                             </thead>
@@ -130,7 +130,13 @@
                                         <span class="badge bg-secondary">Inactive</span>
                                         @endif
                                     </td>
-                                    <td class="text-center text-muted small">{{ $plan->sort_order }}</td>
+                                    <td class="text-center">
+                                        @if($plan->is_featured)
+                                        <span class="badge bg-warning text-dark"><i class="ti ti-star-filled me-1"></i>Popular</span>
+                                        @else
+                                        <span class="text-muted small">—</span>
+                                        @endif
+                                    </td>
                                     <td class="text-center">
                                         <div class="d-flex gap-1 justify-content-center">
                                             <button class="btn btn-sm btn-outline-primary" title="Edit"
@@ -175,8 +181,9 @@
                         <input type="text" name="name" id="ep_name" class="form-control" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Description</label>
-                        <textarea name="description" id="ep_description" class="form-control" rows="2"></textarea>
+                        <label class="form-label fw-semibold">Features <small class="text-muted fw-normal">(one per line)</small></label>
+                        <textarea name="description" id="ep_description" class="form-control" rows="5"
+                            placeholder="Up to 20 members&#10;All core features&#10;Monthly reports"></textarea>
                     </div>
                     <div class="row g-2 mb-3">
                         <div class="col-6">
@@ -198,9 +205,18 @@
                             <input type="number" name="sort_order" id="ep_sort_order" min="0" class="form-control">
                         </div>
                     </div>
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" name="is_active" id="ep_is_active" value="1">
-                        <label class="form-check-label fw-semibold" for="ep_is_active">Active (visible to mess owners)</label>
+                    <div class="d-flex gap-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="is_active" id="ep_is_active" value="1">
+                            <label class="form-check-label fw-semibold" for="ep_is_active">Active</label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="is_featured" id="ep_is_featured" value="1">
+                            <label class="form-check-label fw-semibold" for="ep_is_featured">
+                                <i class="ti ti-star text-warning me-1"></i>Featured / Popular
+                                <small class="text-muted fw-normal">(highlights this plan on landing page)</small>
+                            </label>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -224,6 +240,7 @@ function editPlan(id, plan) {
     document.getElementById('ep_duration_months').value = plan.duration_months;
     document.getElementById('ep_sort_order').value      = plan.sort_order;
     document.getElementById('ep_is_active').checked     = !!plan.is_active;
+    document.getElementById('ep_is_featured').checked   = !!plan.is_featured;
     new bootstrap.Modal(document.getElementById('editPlanModal')).show();
 }
 </script>

@@ -9,7 +9,7 @@
                 <h6>Monthly manager assignment & voting</h6>
             </div>
             <div class="page-btn">
-                @if($mess->owner_id === Auth::id())
+                @if($mess->owner_id === Auth::id() || ($member && $member->role === 'owner'))
                 <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#assignManagerModal">
                     <i class="ti ti-crown me-1"></i>Assign Manager
                 </button>
@@ -89,11 +89,18 @@
             </div>
         </div>
         @else
-        <div class="alert alert-warning">
-            <i class="ti ti-info-circle me-1"></i>No manager assigned for the current month.
-            @if($mess->owner_id === Auth::id())
-            Please assign a manager.
-            @endif
+        <div class="alert alert-warning d-flex align-items-center gap-2">
+            <i class="ti ti-info-circle fs-5"></i>
+            <div>
+                No manager assigned for the current month via the rotation system.
+                @if($mess->owner_id === Auth::id() || ($member && $member->role === 'owner'))
+                Use the <strong>Assign Manager</strong> button above to set one.
+                @php $manualManager = $mess->activeMembers()->where('role','manager')->with('user')->first(); @endphp
+                @if($manualManager)
+                <br><span class="small text-muted">Note: <strong>{{ $manualManager->user->name }}</strong> has the manager role but was not assigned through this system.</span>
+                @endif
+                @endif
+            </div>
         </div>
         @endif
 

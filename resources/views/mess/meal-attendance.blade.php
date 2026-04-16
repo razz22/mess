@@ -24,6 +24,12 @@
                 </div>
                 @endif
                 @if($isManager)
+                <button class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#bulkAttendanceModal">
+                    <i class="ti ti-calendar-stats me-1"></i>Bulk Attendance
+                </button>
+                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#whatsappModal">
+                    <i class="ti ti-brand-whatsapp me-1"></i>Share Meal Count
+                </button>
                 <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addMealTypeModal">
                     <i class="ti ti-plus me-1"></i>Add Meal Type
                 </button>
@@ -79,7 +85,7 @@
                         <div class="d-flex align-items-center gap-1">
                             <span class="badge bg-{{ $mt->isExpired($date) && !$isPast ? 'secondary' : 'primary' }}-subtle border border-{{ $mt->isExpired($date) && !$isPast ? 'secondary' : 'primary' }} text-dark">
                                 {{ $mt->name }}
-                                @if($mt->close_time) <span class="text-muted">· closes {{ \Carbon\Carbon::parse($mt->close_time)->format('g:i A') }}</span> @endif
+                                @if($mt->close_time) <span class="text-muted">· closes {{ $mt->closeLabel() }}</span> @endif
                             </span>
                             @if($isManager && $sch && $sch->status === 'open' && !$isPast)
                             <button class="btn btn-xs btn-outline-danger py-0" onclick="closeMeal({{ $sch->id }}, '{{ $mt->name }}')" title="Close {{ $mt->name }}">
@@ -163,7 +169,7 @@
                                     $sch       = $schedules[$mt->name] ?? null;
                                     $key       = $sch ? ($sch->id . '_' . $mem->user_id) : null;
                                     $att       = $key ? ($allAttendances[$key]->first() ?? null) : null;
-                                    $qty       = $att ? (float)$att->quantity : 1.0; // default 1
+                                    $qty       = $att ? (float)$att->quantity : 0.0; // no record = not marked
                                     $presets   = [0, 0.5, 1, 1.5, 2, 2.5, 3];
                                     $isCustom  = !in_array($qty, $presets);
                                     $locked    = $isPast || !$sch || $sch->status === 'closed'
@@ -267,13 +273,22 @@
                                     {{ $mt->name }}
                                     @if(!$mt->is_active)<span class="badge bg-secondary ms-1" style="font-size:10px">Disabled</span>@endif
                                 </td>
-                                <td class="align-middle">{{ $mt->close_time ? \Carbon\Carbon::parse($mt->close_time)->format('g:i A') : '—' }}</td>
+                                <td class="align-middle">
+                                    @if($mt->close_time)
+                                        {{ \Carbon\Carbon::parse($mt->close_time)->format('g:i A') }}
+                                        @if($mt->close_days_before > 0)
+                                            <br><small class="text-muted">{{ $mt->close_days_before === 1 ? 'prev. day' : $mt->close_days_before . ' days before' }}</small>
+                                        @endif
+                                    @else
+                                        —
+                                    @endif
+                                </td>
                                 <td class="align-middle">
                                     <span class="badge bg-{{ $mt->is_active ? 'success' : 'secondary' }}">{{ $mt->is_active ? 'Active' : 'Disabled' }}</span>
                                 </td>
                                 <td class="text-center align-middle">
                                     <button class="btn btn-xs btn-outline-primary py-0"
-                                        onclick="openEditMealType({{ $mt->id }},'{{ addslashes($mt->name) }}','{{ $mt->close_time ? substr($mt->close_time,0,5) : '' }}',{{ $mt->is_active ? 'true' : 'false' }})"
+                                        onclick="openEditMealType({{ $mt->id }},'{{ addslashes($mt->name) }}','{{ $mt->close_time ? substr($mt->close_time,0,5) : '' }}',{{ $mt->close_days_before ?? 0 }},{{ $mt->is_active ? 'true' : 'false' }})"
                                         title="Edit">
                                         <i class="ti ti-edit" style="font-size:11px"></i>
                                     </button>
@@ -317,10 +332,20 @@
                         <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
                         <input type="text" name="name" class="form-control" placeholder="e.g. Snacks, Brunch" required maxlength="50">
                     </div>
-                    <div class="mb-0">
+                    <div class="mb-3">
                         <label class="form-label fw-semibold">Attendance Closes At</label>
                         <input type="time" name="close_time" class="form-control">
                         <div class="form-text">Leave blank for no cutoff.</div>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label fw-semibold">Closes How Many Days Before?</label>
+                        <select name="close_days_before" class="form-select">
+                            <option value="0">Same day (default)</option>
+                            <option value="1">1 day before (previous day)</option>
+                            <option value="2">2 days before</option>
+                            <option value="3">3 days before</option>
+                        </select>
+                        <div class="form-text">e.g. set to "1 day before" if members must book dinner by 10 PM the previous night.</div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -351,6 +376,16 @@
                         <label class="form-label fw-semibold">Attendance Closes At</label>
                         <input type="time" name="close_time" id="edit-mt-close" class="form-control">
                         <div class="form-text">Leave blank for no cutoff.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Closes How Many Days Before?</label>
+                        <select name="close_days_before" id="edit-mt-days" class="form-select">
+                            <option value="0">Same day (default)</option>
+                            <option value="1">1 day before (previous day)</option>
+                            <option value="2">2 days before</option>
+                            <option value="3">3 days before</option>
+                        </select>
+                        <div class="form-text">e.g. "1 day before" means members must book by the previous day at the set time.</div>
                     </div>
                     <div class="mb-0">
                         <label class="form-label fw-semibold">Status</label>
@@ -401,6 +436,144 @@
     @csrf @method('DELETE')
 </form>
 
+{{-- ===================== BULK ATTENDANCE MODAL ===================== --}}
+<div class="modal fade" id="bulkAttendanceModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="ti ti-calendar-stats me-2"></i>Bulk Meal Attendance</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ route('mess.meals.bulk', $mess->id) }}" method="POST">
+                @csrf
+                <div class="modal-body">
+
+                    {{-- Step 1: Members --}}
+                    <div class="card mb-3">
+                        <div class="card-header bg-light py-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0 text-primary"><i class="ti ti-users me-2"></i>Step 1 — Select Members</h6>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-xs btn-outline-primary" onclick="bulkSelectAll()">All</button>
+                                    <button type="button" class="btn btn-xs btn-outline-secondary" onclick="bulkSelectNone()">None</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-2" id="bulkMemberList">
+                                @foreach($members as $m)
+                                <div class="col-md-4 col-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input bulk-member-cb" type="checkbox"
+                                            name="user_ids[]" value="{{ $m->user->id }}"
+                                            id="bm_{{ $m->user->id }}" checked>
+                                        <label class="form-check-label small" for="bm_{{ $m->user->id }}">
+                                            {{ $m->user->name }}
+                                            <span class="badge bg-secondary" style="font-size:9px">{{ ucfirst($m->role) }}</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Step 2: Dates --}}
+                    <div class="card mb-3">
+                        <div class="card-header bg-light py-2">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <h6 class="mb-0 text-success"><i class="ti ti-calendar me-2"></i>Step 2 — Select Dates</h6>
+                                <div class="d-flex flex-wrap gap-1">
+                                    <button type="button" class="btn btn-xs btn-outline-secondary" onclick="bulkQuick('fri')">All Fri</button>
+                                    <button type="button" class="btn btn-xs btn-outline-secondary" onclick="bulkQuick('sat')">All Sat</button>
+                                    <button type="button" class="btn btn-xs btn-outline-secondary" onclick="bulkQuick('weekend')">Weekends</button>
+                                    <button type="button" class="btn btn-xs btn-outline-success" onclick="bulkQuick('all')">All</button>
+                                    <button type="button" class="btn btn-xs btn-outline-danger" onclick="bulkQuick('clear')">Clear</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body p-2">
+                            {{-- Inline Calendar --}}
+                            <div class="d-flex align-items-center justify-content-between px-1 mb-2">
+                                <button type="button" class="btn btn-xs btn-outline-secondary px-2" onclick="bulkCalPrev()">&#8249;</button>
+                                <span class="fw-semibold small" id="bulkCalTitle"></span>
+                                <button type="button" class="btn btn-xs btn-outline-secondary px-2" onclick="bulkCalNext()">&#8250;</button>
+                            </div>
+                            <div id="bulkCalGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center;"></div>
+                            <div id="bulkDatesHidden" class="mt-2"></div>
+                            <div class="text-muted small mt-2 px-1" id="bulkDateCount">No dates selected.</div>
+                        </div>
+                    </div>
+
+                    {{-- Step 3: Meal Types --}}
+                    <div class="card mb-3">
+                        <div class="card-header bg-light py-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0 text-info"><i class="ti ti-bowl me-2"></i>Step 3 — Meal Types</h6>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-xs btn-outline-info" onclick="bulkMtAll()">All</button>
+                                    <button type="button" class="btn btn-xs btn-outline-secondary" onclick="bulkMtNone()">None</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-2">
+                                @foreach($mealTypes as $mt)
+                                <div class="col-auto">
+                                    <div class="form-check">
+                                        <input class="form-check-input bulk-mt-cb" type="checkbox"
+                                            name="meal_types[]" value="{{ $mt->name }}"
+                                            id="bmt_{{ $mt->id }}" checked>
+                                        <label class="form-check-label small" for="bmt_{{ $mt->id }}">
+                                            {{ $mt->name }}
+                                            @if($mt->close_time)
+                                            <span class="text-muted">· {{ $mt->closeLabel() }}</span>
+                                            @endif
+                                        </label>
+                                    </div>
+                                </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Step 4: Quantity --}}
+                    <div class="card mb-0">
+                        <div class="card-header bg-light py-2">
+                            <h6 class="mb-0 text-warning"><i class="ti ti-hash me-2"></i>Step 4 — Set Quantity</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex flex-wrap gap-2 mb-3" id="bulkQtyBtns">
+                                @foreach(['0' => 'Off', '0.5' => '½', '1' => '1', '1.5' => '1½', '2' => '2', '2.5' => '2½', '3' => '3'] as $val => $label)
+                                <button type="button"
+                                    class="btn btn-sm {{ $val === '1' ? 'btn-primary' : 'btn-outline-secondary' }} bulk-qty-btn"
+                                    data-val="{{ $val }}"
+                                    onclick="setBulkQty('{{ $val }}', this)">
+                                    {{ $label }}
+                                </button>
+                                @endforeach
+                            </div>
+                            <input type="hidden" name="quantity" id="bulkQtyInput" value="1">
+                            <div class="alert alert-info py-2 mb-0 small">
+                                <i class="ti ti-info-circle me-1"></i>
+                                <strong>Off (0)</strong> marks absence. Other values set the meal quantity for each selected member × date × meal type.
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <div class="me-auto text-muted small" id="bulkSummaryText"></div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success" id="bulkSubmitBtn">
+                        <i class="ti ti-check me-1"></i>Apply Bulk Attendance
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @endif
 
 <style>
@@ -414,6 +587,8 @@
 
 <div id="meal-toast-container" class="position-fixed top-0 end-0 p-3" style="z-index:99999;"></div>
 
+<link rel="stylesheet" href="{{ url('build/plugins/flatpickr/flatpickr.css') }}">
+<script src="{{ URL::asset('build/plugins/flatpickr/flatpickr.js') }}"></script>
 <script>
 var csrf        = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 var isManager   = {{ $isManager ? 'true' : 'false' }};
@@ -468,22 +643,18 @@ if (!isManager && myChanges >= 3) {
     window.addEventListener('DOMContentLoaded', function () { disableMySelects(); });
 }
 
-// ── Flatpickr — init after all footer scripts are loaded ─────
-window.addEventListener('load', function () {
-    if (typeof flatpickr !== 'undefined') {
-        flatpickr('#mealDatePicker', {
-            dateFormat: 'd M Y',
-            defaultDate: '{{ $date }}',
-            maxDate: '{{ $maxDate }}',
-            disableMobile: true,
-            onChange: function (selectedDates) {
-                var d   = selectedDates[0];
-                var y   = d.getFullYear();
-                var m   = String(d.getMonth() + 1).padStart(2, '0');
-                var day = String(d.getDate()).padStart(2, '0');
-                window.location.href = '?date=' + y + '-' + m + '-' + day;
-            }
-        });
+// ── Flatpickr date picker ────────────────────────────────────
+flatpickr('#mealDatePicker', {
+    dateFormat: 'd M Y',
+    defaultDate: '{{ \Carbon\Carbon::parse($date)->format("d M Y") }}',
+    maxDate: '{{ \Carbon\Carbon::parse($maxDate)->format("d M Y") }}',
+    disableMobile: true,
+    onChange: function (selectedDates) {
+        var d   = selectedDates[0];
+        var y   = d.getFullYear();
+        var m   = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        window.location.href = '?date=' + y + '-' + m + '-' + day;
     }
 });
 
@@ -745,12 +916,13 @@ function openToggleMealType(id, name, action) {
     new bootstrap.Modal(document.getElementById('toggleMealTypeModal')).show();
 }
 
-function openEditMealType(id, name, closeTime, isActive, action) {
+function openEditMealType(id, name, closeTime, daysBefore, isActive) {
     var base = mealTypeBase + '/' + id;
     document.getElementById('editMealTypeForm').action = base;
     document.getElementById('edit-mt-name').value  = name;
     document.getElementById('edit-mt-close').value = closeTime || '';
-    document.getElementById('edit-mt-active').value = (action === 'enable' || isActive) ? '1' : '0';
+    document.getElementById('edit-mt-days').value  = String(daysBefore || 0);
+    document.getElementById('edit-mt-active').value = isActive ? '1' : '0';
     var modal = new bootstrap.Modal(document.getElementById('editMealTypeModal'));
     modal.show();
 }
@@ -775,5 +947,366 @@ function closeMeal(scheduleId, mealName) {
         showToast('Failed to close meal.', 'danger');
     });
 }
+
+// ===================== BULK ATTENDANCE JS =====================
+(function () {
+    var bulkDates   = [];          // Set-like array of selected 'YYYY-MM-DD' strings
+    var calYear, calMonth;         // currently displayed calendar month
+
+    // ── helpers ──────────────────────────────────────────────────────────────
+    function pad(n) { return String(n).padStart(2, '0'); }
+    function toYMD(y, m, d) { return y + '-' + pad(m + 1) + '-' + pad(d); }
+    function toggle(d) {
+        var i = bulkDates.indexOf(d);
+        if (i === -1) bulkDates.push(d); else bulkDates.splice(i, 1);
+    }
+
+    // ── calendar render ───────────────────────────────────────────────────────
+    function renderCal() {
+        var grid  = document.getElementById('bulkCalGrid');
+        var title = document.getElementById('bulkCalTitle');
+        if (!grid) return;
+        var names = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        var monthNames = ['January','February','March','April','May','June',
+                          'July','August','September','October','November','December'];
+        title.textContent = monthNames[calMonth] + ' ' + calYear;
+        grid.innerHTML = '';
+
+        // Day-of-week headers
+        names.forEach(function (n) {
+            var h = document.createElement('div');
+            h.textContent = n;
+            h.style.cssText = 'font-size:10px;font-weight:600;color:#6c757d;padding:2px 0;';
+            grid.appendChild(h);
+        });
+
+        var firstDow = new Date(calYear, calMonth, 1).getDay();
+        var daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+        var today = new Date().toISOString().substring(0, 10);
+
+        // Empty cells before first day
+        for (var i = 0; i < firstDow; i++) {
+            grid.appendChild(document.createElement('div'));
+        }
+
+        for (var d = 1; d <= daysInMonth; d++) {
+            var ymd = toYMD(calYear, calMonth, d);
+            var cell = document.createElement('button');
+            cell.type = 'button';
+            cell.textContent = d;
+            var dow = new Date(calYear, calMonth, d).getDay();
+            var isWeekend = (dow === 5 || dow === 6); // Fri=5, Sat=6
+            var selected  = bulkDates.indexOf(ymd) !== -1;
+            var isToday   = ymd === today;
+
+            cell.style.cssText = [
+                'width:100%;border-radius:6px;font-size:12px;padding:5px 2px;border:1px solid;',
+                'cursor:pointer;transition:all .12s;font-weight:' + (isWeekend ? '600' : '400') + ';',
+                selected
+                    ? 'background:#198754;color:#fff;border-color:#198754;'
+                    : isToday
+                        ? 'background:#e8f5e9;color:#198754;border-color:#a5d6a7;'
+                        : isWeekend
+                            ? 'background:#fff8e1;color:#795548;border-color:#ffe082;'
+                            : 'background:#f8f9fa;color:#333;border-color:#dee2e6;'
+            ].join('');
+
+            cell.dataset.ymd = ymd;
+            cell.addEventListener('click', function () {
+                toggle(this.dataset.ymd);
+                renderCal();
+                syncHidden();
+                updateBulkSummary();
+            });
+            grid.appendChild(cell);
+        }
+
+        document.getElementById('bulkDateCount').textContent =
+            bulkDates.length > 0 ? bulkDates.length + ' date(s) selected' : 'No dates selected.';
+    }
+
+    function syncHidden() {
+        var hidden = document.getElementById('bulkDatesHidden');
+        hidden.innerHTML = '';
+        bulkDates.forEach(function (d) {
+            var inp = document.createElement('input');
+            inp.type = 'hidden'; inp.name = 'dates[]'; inp.value = d;
+            hidden.appendChild(inp);
+        });
+    }
+
+    // ── quick-select ──────────────────────────────────────────────────────────
+    window.bulkQuick = function (type) {
+        // Build list of all days in calendar month
+        var daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+        for (var d = 1; d <= daysInMonth; d++) {
+            var ymd = toYMD(calYear, calMonth, d);
+            var dow = new Date(calYear, calMonth, d).getDay(); // 0=Sun … 6=Sat, 5=Fri, 6=Sat
+            var already = bulkDates.indexOf(ymd) !== -1;
+            if (type === 'clear')   { bulkDates = []; }
+            else if (type === 'all')     { if (!already) bulkDates.push(ymd); }
+            else if (type === 'fri')     { if (dow === 5 && !already) bulkDates.push(ymd); }
+            else if (type === 'sat')     { if (dow === 6 && !already) bulkDates.push(ymd); }
+            else if (type === 'weekend') { if ((dow === 5 || dow === 6) && !already) bulkDates.push(ymd); }
+        }
+        if (type === 'clear') bulkDates = [];
+        renderCal(); syncHidden(); updateBulkSummary();
+    };
+
+    // ── month navigation ──────────────────────────────────────────────────────
+    window.bulkCalPrev = function () {
+        if (calMonth === 0) { calMonth = 11; calYear--; } else { calMonth--; }
+        renderCal();
+    };
+    window.bulkCalNext = function () {
+        if (calMonth === 11) { calMonth = 0; calYear++; } else { calMonth++; }
+        renderCal();
+    };
+
+    // ── quantity buttons ──────────────────────────────────────────────────────
+    window.setBulkQty = function (val, btn) {
+        document.getElementById('bulkQtyInput').value = val;
+        document.querySelectorAll('.bulk-qty-btn').forEach(function (b) {
+            b.classList.remove('btn-primary');
+            b.classList.add('btn-outline-secondary');
+        });
+        btn.classList.remove('btn-outline-secondary');
+        btn.classList.add('btn-primary');
+        updateBulkSummary();
+    };
+
+    // ── member / meal-type toggles ────────────────────────────────────────────
+    window.bulkSelectAll  = function () { document.querySelectorAll('.bulk-member-cb').forEach(function(c){ c.checked = true; }); updateBulkSummary(); };
+    window.bulkSelectNone = function () { document.querySelectorAll('.bulk-member-cb').forEach(function(c){ c.checked = false; }); updateBulkSummary(); };
+    window.bulkMtAll      = function () { document.querySelectorAll('.bulk-mt-cb').forEach(function(c){ c.checked = true; }); updateBulkSummary(); };
+    window.bulkMtNone     = function () { document.querySelectorAll('.bulk-mt-cb').forEach(function(c){ c.checked = false; }); updateBulkSummary(); };
+
+    // ── summary ───────────────────────────────────────────────────────────────
+    function updateBulkSummary() {
+        var members   = document.querySelectorAll('.bulk-member-cb:checked').length;
+        var mealTypes = document.querySelectorAll('.bulk-mt-cb:checked').length;
+        var dates     = bulkDates.length;
+        var qty       = document.getElementById('bulkQtyInput') ? document.getElementById('bulkQtyInput').value : 1;
+        var total     = members * mealTypes * dates;
+        var text      = document.getElementById('bulkSummaryText');
+        if (!text) return;
+        text.innerHTML = total > 0
+            ? '<strong>' + total + '</strong> record(s) → <strong>' + (qty == 0 ? 'Off' : qty) + '</strong>'
+            : 'Select members, dates and meal types.';
+    }
+    window.updateBulkSummary = updateBulkSummary;
+
+    // ── init ──────────────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function () {
+        var initDate = new Date('{{ $date }}');
+        calYear  = initDate.getFullYear();
+        calMonth = initDate.getMonth();
+        renderCal();
+
+        document.querySelectorAll('.bulk-member-cb, .bulk-mt-cb').forEach(function (cb) {
+            cb.addEventListener('change', updateBulkSummary);
+        });
+
+        // Re-init calendar when modal opens (in case month drifted)
+        var modal = document.getElementById('bulkAttendanceModal');
+        if (modal) {
+            modal.addEventListener('show.bs.modal', function () {
+                renderCal();
+                updateBulkSummary();
+            });
+        }
+    });
+}());
 </script>
+
+@if($isManager)
+{{-- ===================== WHATSAPP MODAL ===================== --}}
+@php
+    $dateLabel = \Carbon\Carbon::parse($date)->format('l, d M Y');
+    $messName  = $mess->name;
+@endphp
+<div class="modal fade" id="whatsappModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="ti ti-brand-whatsapp me-2"></i>Share Meal Count via WhatsApp</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+
+                {{-- Contact selector --}}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Send To <span class="text-danger">*</span></label>
+                    @if($contacts->isEmpty())
+                    <div class="alert alert-warning py-2 small">
+                        <i class="ti ti-alert-circle me-1"></i>No contacts saved.
+                        <a href="{{ route('mess.settings', $mess->id) }}" class="fw-semibold">Add contacts in Mess Settings → Phone Book</a>
+                    </div>
+                    @else
+                    <select id="waContact" class="form-select" onchange="buildWaMessage()">
+                        <option value="">— Select Contact —</option>
+                        @foreach($contacts as $c)
+                        <option value="{{ $c->waPhone() }}" data-name="{{ $c->name }}">
+                            {{ $c->name }} — {{ $c->phone }}
+                        </option>
+                        @endforeach
+                        <option value="custom">✎ Enter manually…</option>
+                    </select>
+                    <input type="text" id="waCustomPhone" class="form-control mt-2 d-none"
+                        placeholder="WhatsApp number with country code (e.g. 8801712345678)"
+                        oninput="buildWaMessage()">
+                    @endif
+                </div>
+
+                {{-- Meal checkboxes with totals --}}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Include Meals</label>
+                    <div class="row g-2">
+                        @foreach($mealTypes as $mt)
+                        @php $tot = $mealTotals[$mt->name] ?? 0; @endphp
+                        <div class="col-auto">
+                            <div class="form-check form-check-inline border rounded px-3 py-2">
+                                <input class="form-check-input wa-meal-check" type="checkbox"
+                                    id="waMeal_{{ $loop->index }}"
+                                    data-name="{{ $mt->name }}"
+                                    data-schedule="{{ ($schedules[$mt->name] ?? null)?->id ?? '' }}"
+                                    data-total="{{ $tot }}"
+                                    {{ $tot > 0 ? 'checked' : '' }}
+                                    onchange="buildWaMessage()">
+                                <label class="form-check-label" for="waMeal_{{ $loop->index }}">
+                                    <span class="fw-semibold">{{ $mt->name }}</span>
+                                    <span class="badge bg-{{ $tot > 0 ? 'primary' : 'secondary' }} ms-1">{{ $tot }}</span>
+                                </label>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                    <div class="mt-2 small text-muted">
+                        Total selected: <strong id="waTotalSel">0</strong> meals
+                    </div>
+                </div>
+
+                {{-- Custom note --}}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Extra Note <span class="text-muted fw-normal">(optional)</span></label>
+                    <input type="text" id="waNote" class="form-control" maxlength="200"
+                        placeholder="e.g. Please cook extra rice today" oninput="buildWaMessage()">
+                </div>
+
+                {{-- Message preview --}}
+                <div>
+                    <label class="form-label fw-semibold">Message Preview</label>
+                    <textarea id="waPreview" class="form-control font-monospace" rows="8" readonly
+                        style="font-size:13px;background:#f8f9fa;resize:none;"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="copyWaMessage()">
+                    <i class="ti ti-copy me-1"></i>Copy Message
+                </button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <a id="waSendBtn" href="#" target="_blank" rel="noopener"
+                        class="btn btn-success disabled" style="pointer-events:none;">
+                        <i class="ti ti-brand-whatsapp me-1"></i>Open WhatsApp
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const dateLabel = @json($dateLabel);
+    const messName  = @json($messName);
+
+    function buildWaMessage() {
+        const checks = document.querySelectorAll('.wa-meal-check:checked');
+        let lines = [], grand = 0;
+        checks.forEach(c => {
+            const n = c.dataset.name;
+            const schedId = c.dataset.schedule;
+            let t = parseFloat(c.dataset.total);
+            // Read live total from footer badge if available
+            if (schedId) {
+                const footCell = document.getElementById('foot-' + schedId);
+                if (footCell) {
+                    const badge = footCell.querySelector('.badge');
+                    if (badge) t = parseFloat(badge.textContent) || 0;
+                }
+            }
+            lines.push(n + ': ' + t + ' meal' + (t !== 1 ? 's' : ''));
+            grand += t;
+        });
+        document.getElementById('waTotalSel').textContent = grand;
+
+        let msg = '🍽️ *' + messName + '* — Meal Count\n';
+        msg += '📅 ' + dateLabel + '\n\n';
+        if (lines.length === 0) {
+            msg += '(No meals selected)';
+        } else {
+            lines.forEach(l => { msg += '• ' + l + '\n'; });
+            msg += '\n*Total: ' + grand + ' meal' + (grand !== 1 ? 's' : '') + '*';
+        }
+        const note = document.getElementById('waNote').value.trim();
+        if (note) msg += '\n\n📝 ' + note;
+
+        document.getElementById('waPreview').value = msg;
+
+        // Enable send button if contact chosen and at least one meal
+        const phone = getPhone();
+        const btn = document.getElementById('waSendBtn');
+        if (!phone || lines.length === 0) {
+            btn.classList.add('disabled');
+            btn.style.pointerEvents = 'none';
+            btn.href = '#';
+        } else {
+            const url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(msg);
+            btn.href = url;
+            btn.classList.remove('disabled');
+            btn.style.pointerEvents = '';
+        }
+    }
+
+    function getPhone() {
+        const sel = document.getElementById('waContact');
+        if (!sel) return null;
+        if (sel.value === 'custom') {
+            const v = document.getElementById('waCustomPhone').value.replace(/\D/g, '');
+            return v.length >= 7 ? v : null;
+        }
+        return sel.value || null;
+    }
+
+    window.buildWaMessage = buildWaMessage;
+
+    window.copyWaMessage = function() {
+        const ta = document.getElementById('waPreview');
+        navigator.clipboard.writeText(ta.value).then(() => {
+            const btn = event.target.closest('button');
+            const orig = btn.innerHTML;
+            btn.innerHTML = '<i class="ti ti-check me-1"></i>Copied!';
+            setTimeout(() => { btn.innerHTML = orig; }, 2000);
+        });
+    };
+
+    // Show/hide custom phone input
+    const contactSel = document.getElementById('waContact');
+    if (contactSel) {
+        contactSel.addEventListener('change', function() {
+            const custom = document.getElementById('waCustomPhone');
+            custom.classList.toggle('d-none', this.value !== 'custom');
+            buildWaMessage();
+        });
+    }
+
+    // Init message on modal open
+    const waModal = document.getElementById('whatsappModal');
+    if (waModal) {
+        waModal.addEventListener('show.bs.modal', buildWaMessage);
+    }
+}());
+</script>
+@endif
 @endsection

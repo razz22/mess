@@ -119,6 +119,11 @@ class ManagerController extends Controller
 
     private function authorizeOwner(Mess $mess): void
     {
-        if ($mess->owner_id !== Auth::id()) abort(403);
+        $isOwner = $mess->owner_id === Auth::id();
+        if (! $isOwner) {
+            $member  = Auth::user()->getMembershipIn($mess->id);
+            $isOwner = $member && $member->role === 'owner';
+        }
+        if (! $isOwner) abort(403);
     }
 }

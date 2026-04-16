@@ -117,6 +117,24 @@
                         </div>
                     </div>
 
+                    {{-- Leave Settings --}}
+                    <div class="card mb-4">
+                        <div class="card-header"><h6 class="mb-0"><i class="ti ti-logout me-2 text-danger"></i>Leave Settings</h6></div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Leave Notice Period</label>
+                                    <div class="input-group" style="max-width:220px;">
+                                        <input type="number" name="leave_notice_months" class="form-control"
+                                            min="1" max="6" value="{{ $mess->leave_notice_months ?? 1 }}">
+                                        <span class="input-group-text">month(s)</span>
+                                    </div>
+                                    <div class="form-text">Minimum months of notice a member must give before their last date. e.g. 1 = must give notice by end of current month.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
@@ -126,6 +144,60 @@
                 </button>
             </div>
         </form>
+
+        <!-- Phone Book -->
+        @if(session('contact_success'))
+        <div class="alert alert-success alert-dismissible fade show mt-3">{{ session('contact_success') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+        @endif
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="ti ti-address-book me-2 text-success"></i>Phone Book</h6>
+                <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addContactModal">
+                    <i class="ti ti-plus me-1"></i>Add Contact
+                </button>
+            </div>
+            @if($contacts->isEmpty())
+            <div class="card-body text-center text-muted py-4">
+                <i class="ti ti-address-book fs-2 d-block mb-2 opacity-30"></i>
+                No contacts yet. Add your cook or other contacts.
+            </div>
+            @else
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Name</th>
+                            <th>Phone (WhatsApp)</th>
+                            <th>Notes</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($contacts as $c)
+                        <tr>
+                            <td class="fw-semibold">{{ $c->name }}</td>
+                            <td><i class="ti ti-brand-whatsapp text-success me-1"></i>{{ $c->phone }}</td>
+                            <td class="text-muted small">{{ $c->notes ?? '—' }}</td>
+                            <td class="text-center">
+                                <button class="btn btn-xs btn-outline-primary py-0"
+                                    onclick="openEditContact({{ $c->id }}, '{{ addslashes($c->name) }}', '{{ $c->phone }}', '{{ addslashes($c->notes ?? '') }}')">
+                                    <i class="ti ti-edit" style="font-size:11px"></i>
+                                </button>
+                                <form action="{{ route('mess.contacts.destroy', [$mess->id, $c->id]) }}" method="POST" class="d-inline">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="btn btn-xs btn-outline-danger py-0 ms-1"
+                                        onclick="return confirm('Delete this contact?')">
+                                        <i class="ti ti-trash" style="font-size:11px"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @endif
+        </div>
 
         <!-- Danger Zone -->
         <div class="card mt-4 border-danger">
@@ -150,6 +222,76 @@
         </div>
     </div>
 </div>
+{{-- Add Contact Modal --}}
+<div class="modal fade" id="addContactModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="ti ti-address-book me-2"></i>Add Contact</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ route('mess.contacts.store', $mess->id) }}" method="POST">
+                @csrf
+                <div class="modal-body">
+                    <input type="hidden" name="label" value="contact">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" required maxlength="100" placeholder="e.g. Rahim, Cook, Supplier…">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">WhatsApp Number <span class="text-danger">*</span></label>
+                        <input type="text" name="phone" class="form-control" required maxlength="20"
+                            placeholder="e.g. 8801XXXXXXXXX (with country code)">
+                        <div class="form-text">Include country code without + (e.g. 8801712345678 for Bangladesh)</div>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label fw-semibold">Notes</label>
+                        <input type="text" name="notes" class="form-control" maxlength="255" placeholder="Optional note">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success"><i class="ti ti-check me-1"></i>Save Contact</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Edit Contact Modal --}}
+<div class="modal fade" id="editContactModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="ti ti-edit me-2"></i>Edit Contact</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editContactForm" method="POST">
+                @csrf @method('PUT')
+                <div class="modal-body">
+                    <input type="hidden" name="label" value="contact">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" id="ecName" class="form-control" required maxlength="100">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">WhatsApp Number <span class="text-danger">*</span></label>
+                        <input type="text" name="phone" id="ecPhone" class="form-control" required maxlength="20">
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label fw-semibold">Notes</label>
+                        <input type="text" name="notes" id="ecNotes" class="form-control" maxlength="255">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="ti ti-device-floppy me-1"></i>Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
 function previewAvatar(input) {
     if (input.files && input.files[0]) {
@@ -163,6 +305,15 @@ function previewAvatar(input) {
         };
         reader.readAsDataURL(input.files[0]);
     }
+}
+
+function openEditContact(id, name, phone, notes) {
+    const baseUrl = '{{ url("mess/" . $mess->id . "/contacts") }}';
+    document.getElementById('editContactForm').action = baseUrl + '/' + id;
+    document.getElementById('ecName').value  = name;
+    document.getElementById('ecPhone').value = phone;
+    document.getElementById('ecNotes').value = notes;
+    new bootstrap.Modal(document.getElementById('editContactModal')).show();
 }
 </script>
 @endsection

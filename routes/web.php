@@ -14,6 +14,10 @@ use App\Http\Controllers\Mess\ReportController;
 use App\Http\Controllers\Mess\RewardController;
 use App\Http\Controllers\Mess\TenantFormController;
 use App\Http\Controllers\Mess\HouseRentController;
+use App\Http\Controllers\Mess\ShowCauseController;
+use App\Http\Controllers\Mess\MessContactController;
+use App\Http\Controllers\Mess\LeaveRequestController;
+use App\Http\Controllers\Mess\MealRoutineController;
 use App\Http\Controllers\Admin\SuperAdminController;
 
 /*
@@ -23,7 +27,10 @@ use App\Http\Controllers\Admin\SuperAdminController;
 */
 
 // Landing Page
-Route::get('/', fn() => view('landing'))->name('landing');
+Route::get('/', function () {
+    $plans = \App\Models\SubscriptionPlan::active()->get();
+    return view('landing', compact('plans'));
+})->name('landing');
 
 // Auth Routes
 Route::get('signin',          [CustomAuthController::class, 'index'])->name('signin');
@@ -62,6 +69,28 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/mess/{mess}/members/{member}/role',      [MemberController::class, 'updateRole'])->name('mess.members.role');
     Route::delete('/mess/{mess}/members/{member}',        [MemberController::class, 'remove'])->name('mess.members.remove');
 
+    // Show Cause Letters
+    Route::get   ('/mess/{mess}/show-causes',                          [ShowCauseController::class, 'index'])->name('mess.show-causes.index');
+    Route::post  ('/mess/{mess}/show-causes',                          [ShowCauseController::class, 'store'])->name('mess.show-causes.store');
+    Route::get   ('/mess/{mess}/show-causes/{cause}',                  [ShowCauseController::class, 'show'])->name('mess.show-causes.show');
+    Route::post  ('/mess/{mess}/show-causes/{cause}/reply',            [ShowCauseController::class, 'memberReply'])->name('mess.show-causes.reply');
+    Route::post  ('/mess/{mess}/show-causes/{cause}/final-reply',      [ShowCauseController::class, 'finalReply'])->name('mess.show-causes.final-reply');
+    Route::delete('/mess/{mess}/show-causes/{cause}',                  [ShowCauseController::class, 'destroy'])->name('mess.show-causes.destroy');
+
+    // Phone Book Contacts
+    // Leave Requests
+    Route::get   ('/mess/{mess}/leave',                        [LeaveRequestController::class, 'index'])->name('mess.leave.index');
+    Route::get   ('/mess/{mess}/leave/my',                     [LeaveRequestController::class, 'myLeave'])->name('mess.leave.my');
+    Route::post  ('/mess/{mess}/leave',                        [LeaveRequestController::class, 'store'])->name('mess.leave.store');
+    Route::post  ('/mess/{mess}/leave/{leave}/approve',        [LeaveRequestController::class, 'approve'])->name('mess.leave.approve');
+    Route::post  ('/mess/{mess}/leave/{leave}/reject',         [LeaveRequestController::class, 'reject'])->name('mess.leave.reject');
+    Route::post  ('/mess/{mess}/leave/{leave}/cancel',         [LeaveRequestController::class, 'cancel'])->name('mess.leave.cancel');
+    Route::post  ('/mess/{mess}/leave/{leave}/refund',         [LeaveRequestController::class, 'refundAdvance'])->name('mess.leave.refund');
+
+    Route::post  ('/mess/{mess}/contacts',                 [MessContactController::class, 'store'])->name('mess.contacts.store');
+    Route::put   ('/mess/{mess}/contacts/{contact}',       [MessContactController::class, 'update'])->name('mess.contacts.update');
+    Route::delete('/mess/{mess}/contacts/{contact}',       [MessContactController::class, 'destroy'])->name('mess.contacts.destroy');
+
     // Tenant Registration Form
     Route::get('/mess/{mess}/tenant-form',                        [TenantFormController::class, 'edit'])->name('mess.tenant-form.edit');
     Route::post('/mess/{mess}/tenant-form',                       [TenantFormController::class, 'save'])->name('mess.tenant-form.save');
@@ -72,6 +101,7 @@ Route::middleware(['auth'])->group(function () {
     // Meals & Attendance
     Route::get('/mess/{mess}/meals',                      [MealController::class, 'index'])->name('mess.meals');
     Route::post('/mess/{mess}/meals/attendance',          [MealController::class, 'markAttendance'])->name('mess.meals.attendance');
+    Route::post('/mess/{mess}/meals/bulk-attendance',     [MealController::class, 'bulkAttendance'])->name('mess.meals.bulk');
     Route::post('/mess/{mess}/meals/{schedule}/close',    [MealController::class, 'closeMeal'])->name('mess.meals.close');
     Route::post('/mess/{mess}/meal-types',                [MealController::class, 'storeMealType'])->name('mess.meal-types.store');
     Route::put('/mess/{mess}/meal-types/{mealType}',      [MealController::class, 'updateMealType'])->name('mess.meal-types.update');
@@ -81,6 +111,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/mess/{mess}/meal-items',          [MealController::class, 'mealItems'])->name('mess.meal-items');
     Route::post('/mess/{mess}/meal-items',         [MealController::class, 'storeMealItem'])->name('mess.meal-items.store');
     Route::delete('/mess/{mess}/meal-items/{item}',[MealController::class, 'destroyMealItem'])->name('mess.meal-items.destroy');
+
+    // Meal Routine (monthly chart)
+    Route::get   ('/mess/{mess}/meal-routine',         [MealRoutineController::class, 'index'])->name('mess.meal-routine');
+    Route::post  ('/mess/{mess}/meal-routine/upsert',  [MealRoutineController::class, 'upsert'])->name('mess.meal-routine.upsert');
+    Route::delete('/mess/{mess}/meal-routine/destroy', [MealRoutineController::class, 'destroy'])->name('mess.meal-routine.destroy');
 
     // Market Routines
     Route::get('/mess/{mess}/market',                          [MarketController::class, 'index'])->name('mess.market');
@@ -142,6 +177,19 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/mess/{mess}/rent/advances/{advance}',                 [HouseRentController::class, 'updateAdvance'])->name('mess.rent.advances.update');
     Route::delete('/mess/{mess}/rent/advances/{advance}',              [HouseRentController::class, 'destroyAdvance'])->name('mess.rent.advances.destroy');
 
+    // Rent Invoices
+    Route::post  ('/mess/{mess}/rent/invoices',                        [HouseRentController::class, 'storeInvoice'])->name('mess.rent.invoices.store');
+    Route::get   ('/mess/{mess}/rent/invoices/{invoice}',              [HouseRentController::class, 'showInvoice'])->name('mess.rent.invoices.show');
+    Route::post  ('/mess/{mess}/rent/invoices/{invoice}/expense',          [HouseRentController::class, 'invoiceExpense'])->name('mess.rent.invoices.expense');
+    Route::delete('/mess/{mess}/rent/invoices/expenses/{expense}',         [HouseRentController::class, 'destroyInvoiceExpense'])->name('mess.rent.invoices.expense.destroy');
+    Route::post  ('/mess/{mess}/rent/invoices/{invoice}/paid',         [HouseRentController::class, 'markInvoicePaid'])->name('mess.rent.invoices.paid');
+    Route::post  ('/mess/{mess}/rent/invoices/{invoice}/cancel',       [HouseRentController::class, 'cancelInvoice'])->name('mess.rent.invoices.cancel');
+    Route::delete('/mess/{mess}/rent/invoices/{invoice}',              [HouseRentController::class, 'destroyInvoice'])->name('mess.rent.invoices.destroy');
+
+    // House Rent Fund
+    Route::post  ('/mess/{mess}/rent/fund/expense',                    [HouseRentController::class, 'storeFundExpense'])->name('mess.rent.fund.expense');
+    Route::delete('/mess/{mess}/rent/fund/{transaction}',              [HouseRentController::class, 'destroyFundTransaction'])->name('mess.rent.fund.destroy');
+
 });
 
 // -------------------------------------------------------------------------
@@ -192,6 +240,66 @@ Route::middleware(['auth', 'super_admin'])->prefix('admin')->name('admin.')->gro
 
 // Exit impersonation (accessible while impersonating, auth only)
 Route::middleware('auth')->post('/admin/exit-impersonation', [SuperAdminController::class, 'exitImpersonation'])->name('admin.exit-impersonation');
+
+// -------------------------------------------------------------------------
+// Developer Log Viewer  — /get-logs
+// Access: super admin (logged in) OR ?token=<DEV_LOG_TOKEN from .env>
+// -------------------------------------------------------------------------
+Route::get('/get-logs', function (\Illuminate\Http\Request $request) {
+    // Auth: super admin OR valid token from .env
+    $tokenFromEnv = config('app.dev_log_token');
+    $authenticated = auth()->check() && auth()->user()->is_super_admin;
+    $tokenMatch    = $tokenFromEnv && $request->query('token') === $tokenFromEnv;
+
+    if (! $authenticated && ! $tokenMatch) {
+        abort(403, 'Access denied.');
+    }
+
+    $logFile  = storage_path('logs/laravel.log');
+    $lines    = (int) $request->query('lines', 200);
+    $filter   = $request->query('filter', '');
+    $download = $request->query('download') === '1';
+
+    if (! file_exists($logFile)) {
+        $rawLines = ['[No log file found at ' . $logFile . ']'];
+    } else {
+        if ($download) {
+            return response()->download($logFile, 'laravel.log', [
+                'Content-Type' => 'text/plain',
+            ]);
+        }
+        // Read last N lines efficiently
+        $all = file($logFile, FILE_IGNORE_NEW_LINES);
+        if ($filter !== '') {
+            $all = array_filter($all, fn($l) => stripos($l, $filter) !== false);
+        }
+        $rawLines = array_slice($all, -$lines);
+    }
+
+    $logText = implode("\n", $rawLines);
+
+    return response()->view('devtools.log-viewer', [
+        'logText'   => $logText,
+        'lines'     => $lines,
+        'filter'    => $filter,
+        'logFile'   => $logFile,
+        'fileSize'  => file_exists($logFile) ? round(filesize($logFile) / 1024, 1) . ' KB' : '—',
+        'tokenMode' => $tokenMatch && ! $authenticated,
+    ]);
+})->name('dev.logs');
+
+Route::post('/get-logs/clear', function (\Illuminate\Http\Request $request) {
+    $tokenFromEnv = config('app.dev_log_token');
+    $authenticated = auth()->check() && auth()->user()->is_super_admin;
+    $tokenMatch    = $tokenFromEnv && $request->query('token') === $tokenFromEnv;
+    if (! $authenticated && ! $tokenMatch) abort(403);
+
+    $logFile = storage_path('logs/laravel.log');
+    if (file_exists($logFile)) file_put_contents($logFile, '');
+
+    $back = url('/get-logs') . ($tokenMatch && ! $authenticated ? '?token=' . $request->query('token') : '');
+    return redirect($back)->with('success', 'Log cleared.');
+})->name('dev.logs.clear');
 
 // Legacy template routes (kept for template pages)
 Route::get('/template-index', function () {

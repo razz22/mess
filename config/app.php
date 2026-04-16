@@ -65,7 +65,7 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => env('APP_TIMEZONE', 'Asia/Dhaka'),
 
     /*
     |--------------------------------------------------------------------------
@@ -122,5 +122,8 @@ return [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
+
+    // Developer log viewer token (set DEV_LOG_TOKEN in .env to enable token-based access)
+    'dev_log_token' => env('DEV_LOG_TOKEN', null),
 
 ];

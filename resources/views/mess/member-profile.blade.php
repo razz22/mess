@@ -168,6 +168,19 @@
                             </div>
                         </div>
                     </div>
+                    @if($member->service_charge > 0)
+                    <div class="col-sm-3">
+                        <div class="card text-center border-0 bg-warning-subtle h-100">
+                            <div class="card-body py-3">
+                                <div class="fs-4 fw-bold text-warning">৳{{ number_format($member->service_charge,0) }}</div>
+                                <div class="small text-muted">Service Charge</div>
+                                @if($member->service_charge_date)
+                                <div style="font-size:10px" class="text-muted">{{ $member->service_charge_date->format('d M Y') }}</div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                    @endif
                     <div class="col-sm-3">
                         <div class="card text-center border-0 bg-success-subtle h-100">
                             <div class="card-body py-3">
@@ -382,6 +395,14 @@
                                     <input type="number" name="house_rent" class="form-control" step="0.01" min="0" value="{{ old('house_rent', $member->house_rent) }}">
                                 </div>
                                 <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Service Charge (৳) <span class="text-muted fw-normal small">(optional)</span></label>
+                                    <input type="number" name="service_charge" class="form-control" step="0.01" min="0" value="{{ old('service_charge', $member->service_charge ?? 0) }}" placeholder="0.00">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Service Charge Date <span class="text-muted fw-normal small">(optional)</span></label>
+                                    <input type="date" name="service_charge_date" class="form-control" value="{{ old('service_charge_date', $member->service_charge_date?->format('Y-m-d')) }}">
+                                </div>
+                                <div class="col-md-4">
                                     <label class="form-label fw-semibold">Advance Amount (৳)</label>
                                     <input type="number" name="advance_amount" class="form-control" step="0.01" min="0" value="{{ old('advance_amount', $member->advance_amount) }}">
                                 </div>
@@ -413,6 +434,144 @@
                 </div>
                 @endif
             </div>
+
+            {{-- ── Show Cause Letters ── --}}
+            @if($showCauses->count() > 0 || $isManager)
+            <div class="card mt-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 text-danger"><i class="ti ti-file-alert me-2"></i>Show Cause Letters</h6>
+                    <span class="badge bg-{{ $showCauses->count() > 0 ? 'danger' : 'secondary' }}">{{ $showCauses->count() }}</span>
+                </div>
+                @if($showCauses->count() > 0)
+                <div class="list-group list-group-flush">
+                    @foreach($showCauses as $sc)
+                    <a href="{{ route('mess.show-causes.show', [$mess->id, $sc->id]) }}"
+                       class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="fw-semibold small">{{ $sc->subject }}</div>
+                            <small class="text-muted">
+                                {{ $sc->issued_at->format('d M Y') }} · by {{ $sc->issuedBy->name }}
+                                @if($isSelf && $sc->status === 'pending')
+                                <span class="text-danger fw-semibold ms-1">⚠ Reply required</span>
+                                @endif
+                            </small>
+                        </div>
+                        {!! $sc->statusBadge() !!}
+                    </a>
+                    @endforeach
+                </div>
+                @else
+                <div class="card-body text-muted small">No show cause letters issued.</div>
+                @endif
+                @if($isManager && $member->role !== 'owner')
+                <div class="card-footer">
+                    <a href="{{ route('mess.show-causes.index', $mess->id) }}" class="btn btn-sm btn-outline-danger">
+                        <i class="ti ti-file-plus me-1"></i>Issue New Letter
+                    </a>
+                </div>
+                @endif
+            </div>
+            @endif
+
+            {{-- ── Leave Requests ── --}}
+            @php
+                $noticeMonths = $mess->leave_notice_months ?? 1;
+                $minLastDate  = \App\Models\MessLeaveRequest::minLastDate(now(), $noticeMonths);
+            @endphp
+            <div class="card mt-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 text-danger"><i class="ti ti-logout me-2"></i>Leave Requests</h6>
+                    <span class="badge bg-secondary">{{ $leaveRequests->count() }}</span>
+                </div>
+
+                {{-- Active / pending notice --}}
+                @if($activeLeavePending)
+                <div class="alert alert-{{ $activeLeavePending->status === 'approved' ? 'success' : 'warning' }} m-3 mb-0">
+                    <strong>{{ $activeLeavePending->status === 'approved' ? 'Leave Approved' : 'Leave Pending' }}:</strong>
+                    Last date is <strong>{{ $activeLeavePending->last_date->format('d M Y') }}</strong>.
+                    @if($activeLeavePending->status === 'pending' && $isSelf)
+                    <form action="{{ route('mess.leave.cancel', [$mess->id, $activeLeavePending->id]) }}" method="POST" class="d-inline ms-2">
+                        @csrf
+                        <button type="submit" class="btn btn-xs btn-outline-danger" onclick="return confirm('Cancel your leave request?')">
+                            <i class="ti ti-x"></i> Cancel Request
+                        </button>
+                    </form>
+                    @endif
+                </div>
+                @endif
+
+                {{-- Apply form — only if no active/pending leave and viewing own profile --}}
+                @if($isSelf && !$activeLeavePending && $member->is_active)
+                <div class="card-body border-bottom">
+                    <h6 class="fw-semibold mb-3">Apply for Leave</h6>
+                    <form action="{{ route('mess.leave.store', $mess->id) }}" method="POST">
+                        @csrf
+                        @if($errors->has('last_date'))
+                        <div class="alert alert-danger py-2 small">{{ $errors->first('last_date') }}</div>
+                        @endif
+                        <div class="row g-3">
+                            <div class="col-md-5">
+                                <label class="form-label fw-semibold">Last Date <span class="text-danger">*</span></label>
+                                <input type="date" name="last_date" class="form-control {{ $errors->has('last_date') ? 'is-invalid' : '' }}"
+                                    min="{{ $minLastDate->toDateString() }}"
+                                    value="{{ old('last_date', $minLastDate->toDateString()) }}" required>
+                                <div class="form-text">
+                                    Notice required: <strong>{{ $noticeMonths }} month(s)</strong>.
+                                    Earliest last date: <strong>{{ $minLastDate->format('d M Y') }}</strong>.
+                                </div>
+                            </div>
+                            <div class="col-md-7">
+                                <label class="form-label fw-semibold">Reason <span class="text-muted fw-normal">(optional)</span></label>
+                                <input type="text" name="reason" class="form-control" maxlength="500"
+                                    value="{{ old('reason') }}" placeholder="e.g. Moving to a new city">
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Submit a leave request? This will need manager approval.')">
+                                    <i class="ti ti-logout me-1"></i>Submit Leave Request
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                @endif
+
+                {{-- Leave history --}}
+                @if($leaveRequests->isNotEmpty())
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Applied</th>
+                                <th>Last Date</th>
+                                <th>Reason</th>
+                                <th>Status</th>
+                                <th>Note</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($leaveRequests as $lv)
+                            <tr>
+                                <td class="small">{{ $lv->applied_at->format('d M Y') }}</td>
+                                <td class="small fw-semibold">{{ $lv->last_date->format('d M Y') }}</td>
+                                <td class="small text-muted">{{ $lv->reason ?: '—' }}</td>
+                                <td>{!! $lv->statusBadge() !!}</td>
+                                <td class="small text-muted">
+                                    @if($lv->review_note)
+                                    <span title="{{ $lv->reviewedBy?->name }}">{{ $lv->review_note }}</span>
+                                    @else
+                                    —
+                                    @endif
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                @else
+                <div class="card-body text-muted small">No leave history.</div>
+                @endif
+            </div>
+
         </div>
     </div>
 </div>

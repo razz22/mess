@@ -15,6 +15,7 @@ class MemberMonthlySummary extends Model
     ];
 
     protected $casts = [
+        'total_meal_days' => 'decimal:2',
         'meal_cost' => 'decimal:2',
         'total_expenses' => 'decimal:2',
         'market_expense' => 'decimal:2',

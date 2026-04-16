@@ -311,6 +311,14 @@
                                     <input type="number" name="house_rent" class="form-control" step="0.01" min="0" value="0" placeholder="0.00">
                                 </div>
                                 <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Service Charge (৳) <span class="text-muted fw-normal small">(optional)</span></label>
+                                    <input type="number" name="service_charge" class="form-control" step="0.01" min="0" value="0" placeholder="0.00">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Service Charge Date <span class="text-muted fw-normal small">(optional)</span></label>
+                                    <input type="date" name="service_charge_date" class="form-control">
+                                </div>
+                                <div class="col-md-4">
                                     <label class="form-label fw-semibold">Advance Amount (৳)</label>
                                     <input type="number" name="advance_amount" class="form-control" step="0.01" min="0" value="0" placeholder="0.00">
                                 </div>
@@ -496,6 +504,14 @@
                                     <input type="number" name="house_rent" id="eRent" class="form-control" step="0.01" min="0">
                                 </div>
                                 <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Service Charge (৳) <span class="text-muted fw-normal small">(optional)</span></label>
+                                    <input type="number" name="service_charge" id="eServiceCharge" class="form-control" step="0.01" min="0" placeholder="0.00">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Service Charge Date <span class="text-muted fw-normal small">(optional)</span></label>
+                                    <input type="date" name="service_charge_date" id="eServiceChargeDate" class="form-control">
+                                </div>
+                                <div class="col-md-4">
                                     <label class="form-label fw-semibold">Advance Amount (৳)</label>
                                     <input type="number" name="advance_amount" id="eAdvance" class="form-control" step="0.01" min="0">
                                 </div>
@@ -612,10 +628,12 @@ function openEditModal(memberId, u, m) {
     document.getElementById('eEcRel').value   = u.emergency_contact_relation || '';
 
     // Housing
-    document.getElementById('eRent').value    = m.house_rent || 0;
-    document.getElementById('eAdvance').value = m.advance_amount || 0;
-    document.getElementById('eAdvDate').value = m.advance_date || '';
-    document.getElementById('eNotes').value   = m.notes || '';
+    document.getElementById('eRent').value               = m.house_rent || 0;
+    document.getElementById('eServiceCharge').value      = m.service_charge || 0;
+    document.getElementById('eServiceChargeDate').value  = m.service_charge_date || '';
+    document.getElementById('eAdvance').value            = m.advance_amount || 0;
+    document.getElementById('eAdvDate').value            = m.advance_date || '';
+    document.getElementById('eNotes').value              = m.notes || '';
 
     new bootstrap.Modal(document.getElementById('editMemberModal')).show();
 }
