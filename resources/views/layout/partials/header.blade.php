@@ -66,7 +66,7 @@
 					</li>
 					<!-- /Search -->
 @php
-$_messId = session('active_mess_id') ?? (auth()->check() ? optional(auth()->user()->memberships()->first())->mess_id : null);
+$_messId = session('active_mess_id') ?? (auth()->check() ? optional(auth()->user()->messMembers()->first())->mess_id : null);
 @endphp
 <script>
 (function(){
