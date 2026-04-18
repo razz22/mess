@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Mess;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\AuthorizesMessAccess;
 use App\Models\Mess;
 use App\Models\MessMember;
 use App\Models\MessShowCause;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 
 class ShowCauseController extends Controller
 {
+    use AuthorizesMessAccess;
     /** Manager: list all show causes for this mess */
     public function index(Mess $mess)
     {

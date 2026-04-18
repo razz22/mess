@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Mess;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\AuthorizesMessAccess;
 use App\Models\AdvancePayment;
 use App\Models\Mess;
 use App\Models\MessFund;
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\DB;
 
 class HouseRentController extends Controller
 {
+    use AuthorizesMessAccess;
     private function assertOwner(Mess $mess): void
     {
         if (!Auth::user()->isOwnerOf($mess->id)) {

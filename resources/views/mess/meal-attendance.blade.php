@@ -23,10 +23,10 @@
                     </span>
                 </div>
                 @endif
-                @if($isManager)
                 <button class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#bulkAttendanceModal">
                     <i class="ti ti-calendar-stats me-1"></i>Bulk Attendance
                 </button>
+                @if($isManager)
                 <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#whatsappModal">
                     <i class="ti ti-brand-whatsapp me-1"></i>Share Meal Count
                 </button>
@@ -126,7 +126,14 @@
                                     $totalQ  = $sch ? $allAttendances->filter(fn($g,$k) => str_starts_with($k, $sch->id.'_'))->flatten()->sum('quantity') : 0;
                                 @endphp
                                 <th class="text-center {{ $closed ? 'bg-secondary bg-opacity-10' : 'bg-light' }}" style="min-width:140px;">
-                                    <div class="fw-semibold">{{ $mt->name }}</div>
+                                    <div class="d-flex align-items-center justify-content-center gap-1">
+                                        <span class="fw-semibold">{{ $mt->name }}</span>
+                                        <button type="button" class="routine-view-btn btn btn-xs p-0 border-0 {{ isset($routineItems[$mt->name]) ? 'text-primary' : 'text-muted opacity-50' }}"
+                                            data-meal-type="{{ $mt->name }}"
+                                            onclick="showRoutineItems(this.dataset.mealType)">
+                                            <i class="ti ti-list-details" style="font-size:16px;"></i>
+                                        </button>
+                                    </div>
                                     @if($closed)
                                         <span class="badge bg-secondary" style="font-size:10px">Closed</span>
                                     @elseif($expired)
@@ -436,7 +443,9 @@
     @csrf @method('DELETE')
 </form>
 
-{{-- ===================== BULK ATTENDANCE MODAL ===================== --}}
+@endif {{-- end @if($isManager) for add-meal-type modal --}}
+
+{{-- ===================== BULK ATTENDANCE MODAL (available to all members) ===================== --}}
 <div class="modal fade" id="bulkAttendanceModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -449,6 +458,7 @@
                 <div class="modal-body">
 
                     {{-- Step 1: Members --}}
+                    @if($isManager)
                     <div class="card mb-3">
                         <div class="card-header bg-light py-2">
                             <div class="d-flex justify-content-between align-items-center">
@@ -477,6 +487,28 @@
                             </div>
                         </div>
                     </div>
+                    @else
+                    {{-- Non-manager: show own name, submit only own user id --}}
+                    <div class="card mb-3">
+                        <div class="card-header bg-light py-2">
+                            <h6 class="mb-0 text-primary"><i class="ti ti-user me-2"></i>Step 1 — Member</h6>
+                        </div>
+                        <div class="card-body py-2">
+                            <div class="d-flex align-items-center gap-2">
+                                @if(Auth::user()->avatar)
+                                <img src="{{ asset('storage/'.Auth::user()->avatar) }}" class="rounded-circle" width="32" height="32" style="object-fit:cover;">
+                                @else
+                                <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold" style="width:32px;height:32px;font-size:13px;">
+                                    {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
+                                </div>
+                                @endif
+                                <span class="fw-semibold">{{ Auth::user()->name }}</span>
+                                <span class="badge bg-secondary ms-1" style="font-size:10px;">{{ ucfirst($member->role ?? 'member') }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" name="user_ids[]" value="{{ Auth::id() }}">
+                    @endif
 
                     {{-- Step 2: Dates --}}
                     <div class="card mb-3">
@@ -543,7 +575,7 @@
                             <h6 class="mb-0 text-warning"><i class="ti ti-hash me-2"></i>Step 4 — Set Quantity</h6>
                         </div>
                         <div class="card-body">
-                            <div class="d-flex flex-wrap gap-2 mb-3" id="bulkQtyBtns">
+                            <div class="d-flex flex-wrap gap-2 mb-2" id="bulkQtyBtns">
                                 @foreach(['0' => 'Off', '0.5' => '½', '1' => '1', '1.5' => '1½', '2' => '2', '2.5' => '2½', '3' => '3'] as $val => $label)
                                 <button type="button"
                                     class="btn btn-sm {{ $val === '1' ? 'btn-primary' : 'btn-outline-secondary' }} bulk-qty-btn"
@@ -552,6 +584,17 @@
                                     {{ $label }}
                                 </button>
                                 @endforeach
+                                <button type="button" class="btn btn-sm btn-outline-info bulk-qty-btn" id="bulkCustomQtyBtn" onclick="toggleBulkCustomQty()">
+                                    Custom
+                                </button>
+                            </div>
+                            <div id="bulkCustomQtyWrap" class="d-none mb-2" style="max-width:200px;">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text"><i class="ti ti-hash"></i></span>
+                                    <input type="number" id="bulkCustomQtyField" class="form-control" min="0" max="99" step="0.5" placeholder="e.g. 1.5">
+                                    <button type="button" class="btn btn-info" onclick="applyBulkCustomQty()">Set</button>
+                                </div>
+                                <div class="form-text">Enter any value in steps of 0.5</div>
                             </div>
                             <input type="hidden" name="quantity" id="bulkQtyInput" value="1">
                             <div class="alert alert-info py-2 mb-0 small">
@@ -573,8 +616,6 @@
         </div>
     </div>
 </div>
-
-@endif
 
 <style>
 .meal-sheet th, .meal-sheet td { border-color: #dee2e6 !important; }
@@ -644,10 +685,10 @@ if (!isManager && myChanges >= 3) {
 }
 
 // ── Flatpickr date picker ────────────────────────────────────
+@php $dateParts = explode('-', $date); @endphp
 flatpickr('#mealDatePicker', {
     dateFormat: 'd M Y',
-    defaultDate: '{{ \Carbon\Carbon::parse($date)->format("d M Y") }}',
-    maxDate: '{{ \Carbon\Carbon::parse($maxDate)->format("d M Y") }}',
+    defaultDate: new Date({{ (int)$dateParts[0] }}, {{ (int)$dateParts[1] - 1 }}, {{ (int)$dateParts[2] }}),
     disableMobile: true,
     onChange: function (selectedDates) {
         var d   = selectedDates[0];
@@ -1067,11 +1108,46 @@ function closeMeal(scheduleId, mealName) {
     window.setBulkQty = function (val, btn) {
         document.getElementById('bulkQtyInput').value = val;
         document.querySelectorAll('.bulk-qty-btn').forEach(function (b) {
-            b.classList.remove('btn-primary');
+            b.classList.remove('btn-primary', 'btn-info');
             b.classList.add('btn-outline-secondary');
         });
         btn.classList.remove('btn-outline-secondary');
         btn.classList.add('btn-primary');
+        document.getElementById('bulkCustomQtyWrap').classList.add('d-none');
+        updateBulkSummary();
+    };
+
+    window.toggleBulkCustomQty = function () {
+        var wrap = document.getElementById('bulkCustomQtyWrap');
+        var btn  = document.getElementById('bulkCustomQtyBtn');
+        wrap.classList.toggle('d-none');
+        if (!wrap.classList.contains('d-none')) {
+            document.querySelectorAll('.bulk-qty-btn').forEach(function (b) {
+                b.classList.remove('btn-primary', 'btn-info');
+                b.classList.add('btn-outline-secondary');
+            });
+            btn.classList.remove('btn-outline-secondary');
+            btn.classList.add('btn-info');
+            document.getElementById('bulkCustomQtyField').focus();
+        }
+    };
+
+    window.applyBulkCustomQty = function () {
+        var field = document.getElementById('bulkCustomQtyField');
+        var val   = parseFloat(field.value);
+        if (isNaN(val) || val < 0 || val > 99) { field.classList.add('is-invalid'); return; }
+        if ((val * 10) % 5 !== 0) { field.classList.add('is-invalid'); return; }
+        field.classList.remove('is-invalid');
+        document.getElementById('bulkQtyInput').value = val;
+        document.getElementById('bulkCustomQtyWrap').classList.add('d-none');
+        document.querySelectorAll('.bulk-qty-btn').forEach(function (b) {
+            b.classList.remove('btn-primary', 'btn-info');
+            b.classList.add('btn-outline-secondary');
+        });
+        var btn = document.getElementById('bulkCustomQtyBtn');
+        btn.classList.remove('btn-outline-secondary');
+        btn.classList.add('btn-info');
+        btn.textContent = 'Custom (' + val + ')';
         updateBulkSummary();
     };
 
@@ -1309,4 +1385,103 @@ function closeMeal(scheduleId, mealName) {
 }());
 </script>
 @endif
+{{-- Routine Items Viewer Modal --}}
+<div class="modal fade" id="routineItemsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white py-2">
+                <h6 class="modal-title mb-0"><i class="ti ti-list-details me-2"></i><span id="routineModalTitle"></span></h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-muted small mb-2" id="routineModalDate"></div>
+                <div style="white-space:pre-wrap;font-size:14px;" id="routineModalItems"></div>
+                <div id="routineModalForm" class="mt-3 d-none">
+                    <label class="form-label small fw-semibold">Add menu items:</label>
+                    <textarea id="routineModalTextarea" class="form-control" rows="4"
+                        placeholder="e.g. Plain Rice, Chicken Curry&#10;Vegetables, Dal, Salad"></textarea>
+                    <div class="form-text">Each item on a new line or separated by commas.</div>
+                    <button type="button" class="btn btn-primary btn-sm mt-2 w-100" id="routineModalSaveBtn">
+                        <i class="ti ti-check me-1"></i>Save Menu
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function(){
+    var _mealType;
+    var _weekNo    = {{ \App\Models\MessMealRoutine::weekNoForDate(\Carbon\Carbon::parse($date)) }};
+    var _dayOfWeek = {{ (int)\Carbon\Carbon::parse($date)->format('w') }};
+    var upsertUrl  = '{{ route("mess.meal-routine.upsert", $mess->id) }}';
+    var csrf       = '{{ csrf_token() }}';
+
+    // JS map of mealType -> items (initialized from server data, updated after save)
+    var routineMap = @json($routineItems->toArray());
+
+    window.showRoutineItems = function(mealType) {
+        _mealType    = mealType;
+        var items    = routineMap[mealType] || null;
+        document.getElementById('routineModalTitle').textContent = mealType + ' Menu';
+        document.getElementById('routineModalDate').textContent  = '{{ \Carbon\Carbon::parse($date)->format("l, d M Y") }}';
+        var el       = document.getElementById('routineModalItems');
+        var form     = document.getElementById('routineModalForm');
+        var textarea = document.getElementById('routineModalTextarea');
+        if (items) {
+            el.textContent = items;
+            el.classList.remove('text-muted', 'fst-italic');
+            form.classList.add('d-none');
+        } else {
+            el.textContent = 'No menu set for today.';
+            el.classList.add('text-muted', 'fst-italic');
+            textarea.value = '';
+            textarea.classList.remove('is-invalid');
+            form.classList.remove('d-none');
+        }
+        new bootstrap.Modal(document.getElementById('routineItemsModal')).show();
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('routineModalSaveBtn').addEventListener('click', function() {
+            var textarea = document.getElementById('routineModalTextarea');
+            var items    = textarea.value.trim();
+            if (!items) { textarea.classList.add('is-invalid'); return; }
+            textarea.classList.remove('is-invalid');
+            var btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving…';
+            fetch(upsertUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                body: JSON.stringify({ meal_type: _mealType, week_no: _weekNo, day_of_week: _dayOfWeek, items: items })
+            })
+            .then(function(r){ return r.json(); })
+            .then(function(d){
+                if (d.success) {
+                    // Update the in-memory map so next click shows fresh data
+                    routineMap[_mealType] = items;
+                    // Update the icon button styling
+                    document.querySelectorAll('.routine-view-btn').forEach(function(b) {
+                        if (b.dataset.mealType === _mealType) {
+                            b.classList.remove('text-muted', 'opacity-50');
+                            b.classList.add('text-primary');
+                        }
+                    });
+                    document.getElementById('routineModalItems').textContent = items;
+                    document.getElementById('routineModalItems').classList.remove('text-muted','fst-italic');
+                    document.getElementById('routineModalForm').classList.add('d-none');
+                }
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ti ti-check me-1"></i>Save Menu';
+            })
+            .catch(function(){
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ti ti-check me-1"></i>Save Menu';
+            });
+        });
+    });
+})();
+</script>
+</script>
 @endsection

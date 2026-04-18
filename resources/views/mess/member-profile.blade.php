@@ -20,7 +20,7 @@
                 <a href="{{ route('mess.members', $mess->id) }}" class="btn btn-outline-secondary btn-sm">
                     <i class="ti ti-arrow-left me-1"></i>Back to Members
                 </a>
-                @if($isManager || $isSelf)
+                @if($isManager || $isSelf || $isSuperAdmin)
                 <button class="btn btn-warning btn-sm" onclick="document.getElementById('editProfileForm').scrollIntoView({behavior:'smooth'})">
                     <i class="ti ti-edit me-1"></i>Edit Profile
                 </button>
@@ -237,7 +237,7 @@
                 @endif
 
                 <!-- Edit Form -->
-                @if($isManager || $isSelf)
+                @if($isManager || $isSelf || $isSuperAdmin)
                 <div id="editProfileForm">
                 <form action="{{ route('mess.members.update', [$mess->id, $member->id]) }}" method="POST" enctype="multipart/form-data">
                     @csrf @method('PUT')
@@ -278,7 +278,7 @@
                                     <label class="form-label fw-semibold">Phone</label>
                                     <input type="text" name="phone" class="form-control" value="{{ old('phone', $u->phone) }}">
                                 </div>
-                                @if($isManager && $member->role !== 'owner')
+                                @if(($isManager || $isSuperAdmin) && $member->role !== 'owner')
                                 <div class="col-md-4">
                                     <label class="form-label fw-semibold">Role</label>
                                     <select name="role" class="form-select">
@@ -327,7 +327,7 @@
                                         @endforeach
                                     </select>
                                 </div>
-                                @if($isManager)
+                                @if($isManager || $isSuperAdmin)
                                 <div class="col-md-3">
                                     <label class="form-label fw-semibold">Join Date</label>
                                     <input type="date" name="joined_at" class="form-control" value="{{ old('joined_at', $member->joined_at?->format('Y-m-d')) }}">
@@ -415,7 +415,7 @@
                     </div>
                     @endif
 
-                    @if($isManager)
+                    @if($isManager || $isSuperAdmin)
                     <div class="card mb-3">
                         <div class="card-header bg-light py-2"><h6 class="mb-0 text-secondary"><i class="ti ti-notes me-2"></i>Internal Notes</h6></div>
                         <div class="card-body">

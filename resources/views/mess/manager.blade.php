@@ -125,7 +125,11 @@
                             <td>
                                 <div class="d-flex align-items-center gap-2">
                                     <div class="avatar avatar-sm">
+                                        @if($rotation->user->avatar)
+                                        <img src="{{ asset('storage/'.$rotation->user->avatar) }}" class="avatar-title rounded-circle" style="object-fit:cover;" alt="">
+                                        @else
                                         <span class="avatar-title rounded-circle bg-warning text-white">{{ strtoupper(substr($rotation->user->name, 0, 1)) }}</span>
+                                        @endif
                                     </div>
                                     {{ $rotation->user->name }}
                                 </div>

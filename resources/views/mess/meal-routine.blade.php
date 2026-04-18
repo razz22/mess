@@ -7,9 +7,9 @@
         <div class="page-header">
             <div class="page-title">
                 <h4 class="fw-bold"><i class="ti ti-calendar-event me-2 text-primary"></i>Monthly Meal Routine</h4>
-                <h6 class="text-muted">{{ $mess->name }} &mdash; Weekly Menu Chart</h6>
+                <h6 class="text-muted">{{ $mess->name }} &mdash; {{ $monthStart->format('F Y') }}</h6>
             </div>
-            <div class="page-btn">
+            <div class="page-btn d-flex gap-2">
                 <button class="btn btn-outline-secondary btn-sm" onclick="window.print()">
                     <i class="ti ti-printer me-1"></i>Print
                 </button>
@@ -20,18 +20,10 @@
         <div class="alert alert-success alert-dismissible fade show">{{ session('success') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
         @endif
 
-        @php
-            $dayNames   = \App\Models\MessMealRoutine::$dayNames;
-            $weekLabels = \App\Models\MessMealRoutine::$weekLabels;
-            $displayDays = [0,1,2,3,4,5,6];
-        @endphp
-
         @if($mealTypes->isEmpty())
         <div class="alert alert-warning">
             <i class="ti ti-alert-triangle me-2"></i>No meal types configured for this mess yet.
-            @if($isManager)
             Please add meal types from <a href="{{ route('mess.meals', $mess->id) }}">Meal Attendance</a> first.
-            @endif
         </div>
         @else
 
@@ -40,9 +32,9 @@
             <div class="card-body py-3">
                 <div class="d-flex align-items-center gap-3 flex-wrap">
                     <span class="fw-semibold text-muted small">Select Meal:</span>
-                    <div class="d-flex gap-2 flex-wrap" id="mealTypeTabs">
+                    <div class="d-flex gap-2 flex-wrap">
                         @foreach($mealTypes as $mt)
-                        <a href="{{ route('mess.meal-routine', $mess->id) }}?meal_type={{ urlencode($mt->name) }}"
+                        <a href="{{ route('mess.meal-routine', $mess->id) }}?meal_type={{ urlencode($mt->name) }}&month={{ $monthParam }}"
                            class="btn btn-sm {{ $selectedType === $mt->name ? 'btn-primary' : 'btn-outline-primary' }}">
                             <i class="ti ti-tools-kitchen-2 me-1"></i>{{ $mt->name }}
                         </a>
@@ -59,7 +51,7 @@
             <div>
                 <div class="fw-bold mb-1">
                     Today's {{ $selectedType }} Menu
-                    <span class="fw-normal text-muted small">— {{ $dayNames[$dayOfWeek] }}, {{ $weekLabels[$weekNo] }}</span>
+                    <span class="fw-normal text-muted small">— {{ $today->format('l') }}, Week {{ $weekNo }}</span>
                 </div>
                 <div style="white-space:pre-wrap;">{{ $todayItems }}</div>
             </div>
@@ -67,84 +59,89 @@
         @else
         <div class="alert alert-secondary d-flex align-items-center gap-2 mb-3">
             <i class="ti ti-info-circle"></i>
-            <span>No <strong>{{ $selectedType }}</strong> menu set for today ({{ $dayNames[$dayOfWeek] }}, {{ $weekLabels[$weekNo] }}).</span>
-            @if($isManager)
-            <span class="ms-1 small text-muted">Click a cell below to add.</span>
-            @endif
+            <span>No <strong>{{ $selectedType }}</strong> menu set for today ({{ $today->format('l') }}, Week {{ $weekNo }}).</span>
+            @if($canEdit)<span class="ms-1 small text-muted">Click a date below to add.</span>@endif
         </div>
         @endif
 
-        {{-- Routine Grid --}}
+        {{-- Month Navigation + Calendar --}}
         <div class="card">
-            <div class="card-header d-flex align-items-center justify-content-between">
-                <h6 class="mb-0 fw-semibold">
-                    <i class="ti ti-table me-2"></i>
-                    <span class="badge bg-primary me-1">{{ $selectedType }}</span>
-                    Weekly Menu Chart
-                </h6>
-                @if($isManager)
-                <span class="badge bg-info text-dark">Click any cell to edit</span>
+            <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-3">
+                    <a href="{{ route('mess.meal-routine', $mess->id) }}?meal_type={{ urlencode($selectedType) }}&month={{ $prevMonth }}"
+                       class="btn btn-sm btn-outline-secondary px-2">&#8249;</a>
+                    <h6 class="mb-0 fw-semibold">
+                        <span class="badge bg-primary me-1">{{ $selectedType }}</span>
+                        {{ $monthStart->format('F Y') }}
+                    </h6>
+                    <a href="{{ route('mess.meal-routine', $mess->id) }}?meal_type={{ urlencode($selectedType) }}&month={{ $nextMonth }}"
+                       class="btn btn-sm btn-outline-secondary px-2">&#8250;</a>
+                    @if($monthParam !== now()->format('Y-m'))
+                    <a href="{{ route('mess.meal-routine', $mess->id) }}?meal_type={{ urlencode($selectedType) }}&month={{ now()->format('Y-m') }}"
+                       class="btn btn-sm btn-outline-primary">Today</a>
+                    @endif
+                </div>
+                @if($canEdit)
+                <span class="badge bg-info text-dark small">Click any date to edit</span>
                 @endif
             </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-bordered mb-0 routine-table" style="min-width:700px;">
-                        <thead class="table-dark">
-                            <tr>
-                                <th class="text-center" style="width:110px;">Day</th>
-                                @foreach($weekLabels as $wn => $wl)
-                                <th class="text-center">{{ $wl }}</th>
-                                @endforeach
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($displayDays as $dow)
-                            @php $isToday = ($dow === $dayOfWeek); @endphp
-                            <tr class="{{ $isToday ? 'table-success' : '' }}">
-                                <td class="fw-semibold text-center align-middle {{ $isToday ? 'bg-success bg-opacity-25' : 'bg-light' }}" style="font-size:13px;">
-                                    {{ $dayNames[$dow] }}
-                                    @if($isToday)<br><span class="badge bg-success" style="font-size:10px;">Today</span>@endif
-                                </td>
-                                @foreach($weekLabels as $wn => $wl)
-                                @php
-                                    $items = $grid[$wn][$dow] ?? null;
-                                    $isHighlight = $isToday && ($wn === $weekNo);
-                                @endphp
-                                <td class="align-middle p-0 {{ $isHighlight ? 'bg-success bg-opacity-10' : '' }}">
-                                    @if($isManager)
-                                    <div class="routine-cell"
-                                         onclick="openEdit({{ $wn }}, {{ $dow }}, {{ json_encode($items) }})"
-                                         style="cursor:pointer;min-height:64px;padding:10px 12px;transition:background .15s;"
-                                         onmouseenter="this.style.background='rgba(13,110,253,0.07)'"
-                                         onmouseleave="this.style.background=''">
-                                        @if($items)
-                                        <div class="small" style="white-space:pre-wrap;">{{ $items }}</div>
-                                        @else
-                                        <div class="text-muted small d-flex align-items-center gap-1 opacity-40">
-                                            <i class="ti ti-plus"></i><span>Add</span>
-                                        </div>
-                                        @endif
-                                    </div>
-                                    @else
-                                    <div style="min-height:64px;padding:10px 12px;">
-                                        @if($items)
-                                        <div class="small" style="white-space:pre-wrap;">{{ $items }}</div>
-                                        @else
-                                        <span class="text-muted small">—</span>
-                                        @endif
-                                    </div>
-                                    @endif
-                                </td>
-                                @endforeach
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+            <div class="card-body p-2">
+                {{-- Day headers --}}
+                <div class="routine-cal-grid mb-1">
+                    @foreach(['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] as $dh)
+                    <div class="text-center fw-semibold small text-muted py-1">{{ $dh }}</div>
+                    @endforeach
+                </div>
+                {{-- Calendar days --}}
+                <div class="routine-cal-grid">
+                    @foreach($calDays as $day)
+                    @php
+                        $inMonth  = $day->month === $monthStart->month;
+                        $isToday  = $day->isSameDay($today);
+                        $dow      = (int) $day->format('w');
+                        $wn       = \App\Models\MessMealRoutine::weekNoForDate($day);
+                        $items    = $grid[$wn][$dow] ?? null;
+                        $isWeekend = $dow === 5 || $dow === 6;
+                        $mrPalette = [
+                            '#fff8e1','#fce4ec','#e8f5e9','#e3f2fd','#f3e5f5',
+                            '#e0f7fa','#fff3e0','#e8eaf6','#f1f8e9','#fdf3e7',
+                            '#fce8ff','#e0f2f1','#fff9c4','#e1f5fe','#fbe9e7',
+                            '#e8f8f5','#fef9e7','#eaf4fb','#fdedec','#f9ebea',
+                        ];
+                        $mrCellBg = !$inMonth ? '#f8f9fa' : ($isToday ? '#dbeafe' : $mrPalette[$day->day % count($mrPalette)]);
+                    @endphp
+                    <div class="routine-day-cell {{ $isToday ? 'today' : '' }} {{ !$inMonth ? 'out-of-month' : '' }} {{ $isWeekend && $inMonth ? 'weekend' : '' }} {{ $canEdit && $inMonth ? 'editable' : '' }}"
+                        style="background:{{ $mrCellBg }}"
+                        @if($canEdit && $inMonth)
+                        data-week="{{ $wn }}" data-day="{{ $dow }}" data-items="{{ e($items ?? '') }}"
+                        onclick="openEdit(this)"
+                        onmouseenter="if(this.classList.contains('editable'))this.style.background='rgba(13,110,253,0.07)'"
+                        onmouseleave="this.style.background='{{ $mrCellBg }}'"
+                        @endif
+                    >
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <span class="day-num {{ $isToday ? 'text-white bg-primary rounded-circle' : ($inMonth ? '' : 'text-muted') }}"
+                                  style="{{ $isToday ? 'width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;' : '' }}">
+                                {{ $day->format('j') }}
+                            </span>
+                            @if($inMonth)
+                            <span class="badge" style="font-size:9px;background:#e9ecef;color:#555;">W{{ $wn }}</span>
+                            @endif
+                        </div>
+                        @if($inMonth)
+                            @if($items)
+                            <div class="routine-items">{{ $items }}</div>
+                            @elseif($canEdit)
+                            <div class="add-hint"><i class="ti ti-plus" style="font-size:10px;"></i></div>
+                            @endif
+                        @endif
+                    </div>
+                    @endforeach
                 </div>
             </div>
-            @if($isManager)
+            @if($canEdit)
             <div class="card-footer text-muted small">
-                <i class="ti ti-pencil me-1"></i>Click any cell to add or edit items for <strong>{{ $selectedType }}</strong>.
+                <i class="ti ti-pencil me-1"></i>Click any date to add or edit items for <strong>{{ $selectedType }}</strong>.
             </div>
             @endif
         </div>
@@ -153,7 +150,7 @@
     </div>
 </div>
 
-@if($isManager)
+@if($canEdit)
 <div class="modal fade" id="editRoutineModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -162,16 +159,16 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div class="mb-1">
-                    <label class="form-label fw-semibold">Items for <span class="badge bg-primary" id="editMealTypeLabel"></span> <span class="text-danger">*</span></label>
-                    <textarea id="editItems" class="form-control" rows="5"
-                        placeholder="e.g. Plain Rice, Chicken Curry (150g)&#10;Vegetables, Dal, Salad"></textarea>
-                    <div class="form-text">Each item on a new line or separated by commas.</div>
-                </div>
+                <label class="form-label fw-semibold">
+                    Items for <span class="badge bg-primary" id="editMealTypeLabel"></span> <span class="text-danger">*</span>
+                </label>
+                <textarea id="editItems" class="form-control" rows="5"
+                    placeholder="e.g. Plain Rice, Chicken Curry (150g)&#10;Vegetables, Dal, Salad"></textarea>
+                <div class="form-text">Each item on a new line or separated by commas.</div>
             </div>
             <div class="modal-footer d-flex justify-content-between">
                 <button type="button" class="btn btn-outline-danger btn-sm" id="clearRoutineBtn">
-                    <i class="ti ti-trash me-1"></i>Clear Cell
+                    <i class="ti ti-trash me-1"></i>Clear
                 </button>
                 <div class="d-flex gap-2">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -186,77 +183,108 @@
 @endif
 
 <style>
+.routine-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+}
+.routine-day-cell {
+    min-height: 80px;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 6px 7px;
+    font-size: 12px;
+    position: relative;
+}
+.routine-day-cell.out-of-month {
+    border-color: #f0f0f0;
+}
+.routine-day-cell.today {
+    border-color: #0d6efd;
+    border-width: 2px;
+}
+.routine-day-cell.editable {
+    cursor: pointer;
+    transition: background .15s;
+}
+.day-num {
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+}
+.routine-items {
+    font-size: 11px;
+    color: #333;
+    white-space: pre-wrap;
+    line-height: 1.4;
+    margin-top: 2px;
+}
+.add-hint {
+    color: #bbb;
+    margin-top: 4px;
+}
+@media (max-width: 576px) {
+    .routine-day-cell { min-height: 60px; padding: 4px 5px; }
+    .routine-items { font-size: 10px; }
+}
 @media print {
-    .page-header, .alert, .card-footer, .btn, nav, aside, .sidebar,
-    #mealTypeTabs, .card:first-of-type { display:none!important; }
-    .routine-table { font-size:12px; }
-    .routine-cell { cursor:default!important; }
-    body { margin:0; }
+    .page-header, .alert, .card-footer, .btn, nav, aside, .sidebar { display:none!important; }
+    .routine-day-cell { min-height: 60px; font-size: 10px; }
+    body { margin: 0; }
 }
 </style>
 
-@if($isManager)
+@if($canEdit)
 <script>
 (function(){
     const upsertUrl  = '{{ route("mess.meal-routine.upsert", $mess->id) }}';
     const destroyUrl = '{{ route("mess.meal-routine.destroy", $mess->id) }}';
     const csrf       = '{{ csrf_token() }}';
-    const dayNames   = @json(\App\Models\MessMealRoutine::$dayNames);
-    const weekLabels = @json(\App\Models\MessMealRoutine::$weekLabels);
     const mealType   = @json($selectedType);
+    const dayNames   = @json(\App\Models\MessMealRoutine::$dayNames);
 
-    let modal, editWeek, editDay, editItems;
+    let modal, editWeek, editDay, editItemsEl;
 
-    document.addEventListener('DOMContentLoaded', function() {
-        modal     = new bootstrap.Modal(document.getElementById('editRoutineModal'));
-        editWeek  = document.getElementById('editWeek_hidden') || (function(){
-            const i = document.createElement('input'); i.type='hidden'; i.id='editWeek_hidden';
-            document.body.appendChild(i); return i;
-        })();
-        editDay   = document.getElementById('editDay_hidden') || (function(){
-            const i = document.createElement('input'); i.type='hidden'; i.id='editDay_hidden';
-            document.body.appendChild(i); return i;
-        })();
-        editItems = document.getElementById('editItems');
+    document.addEventListener('DOMContentLoaded', function () {
+        modal       = new bootstrap.Modal(document.getElementById('editRoutineModal'));
+        editWeek    = document.createElement('input'); editWeek.type = 'hidden';
+        editDay     = document.createElement('input'); editDay.type  = 'hidden';
+        editItemsEl = document.getElementById('editItems');
         document.getElementById('editMealTypeLabel').textContent = mealType;
         document.getElementById('saveRoutineBtn').addEventListener('click', saveRoutine);
         document.getElementById('clearRoutineBtn').addEventListener('click', clearRoutine);
     });
 
-    window.openEdit = function(week, day, items) {
-        editWeek.value  = week;
-        editDay.value   = day;
-        editItems.value = items || '';
-        editItems.classList.remove('is-invalid');
+    window.openEdit = function (cell) {
+        editWeek.value    = cell.dataset.week;
+        editDay.value     = cell.dataset.day;
+        editItemsEl.value = cell.dataset.items || '';
+        editItemsEl.classList.remove('is-invalid');
         document.getElementById('editRoutineTitle').innerHTML =
-            '<i class="ti ti-pencil me-2"></i>' + dayNames[day] + ' &mdash; ' + weekLabels[week];
+            '<i class="ti ti-pencil me-2"></i>' + cell.closest('.routine-day-cell').querySelector('.day-num').textContent.trim()
+            + ' ' + '{{ $monthStart->format("M Y") }}' + ' &mdash; ' + dayNames[editDay.value];
         modal.show();
-        setTimeout(() => editItems.focus(), 300);
+        setTimeout(() => editItemsEl.focus(), 300);
     };
 
     function saveRoutine() {
-        const items = editItems.value.trim();
-        if (!items) { editItems.classList.add('is-invalid'); return; }
-        editItems.classList.remove('is-invalid');
-
+        const items = editItemsEl.value.trim();
+        if (!items) { editItemsEl.classList.add('is-invalid'); return; }
+        editItemsEl.classList.remove('is-invalid');
         fetch(upsertUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
             body: JSON.stringify({ meal_type: mealType, week_no: editWeek.value, day_of_week: editDay.value, items })
-        })
-        .then(r => r.json())
-        .then(d => { if (d.success) location.reload(); });
+        }).then(r => r.json()).then(d => { if (d.success) location.reload(); });
     }
 
     function clearRoutine() {
-        if (!confirm('Clear items for this cell?')) return;
+        if (!confirm('Clear items for this date?')) return;
         fetch(destroyUrl, {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
             body: JSON.stringify({ meal_type: mealType, week_no: editWeek.value, day_of_week: editDay.value })
-        })
-        .then(r => r.json())
-        .then(d => { if (d.success) location.reload(); });
+        }).then(r => r.json()).then(d => { if (d.success) location.reload(); });
     }
 })();
 </script>

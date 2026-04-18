@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Mess;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\AuthorizesMessAccess;
 use App\Models\Mess;
 use App\Models\MessContact;
 use Illuminate\Http\Request;
@@ -10,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 
 class MessContactController extends Controller
 {
+    use AuthorizesMessAccess;
     public function store(Request $request, Mess $mess)
     {
         $this->authorizeManager($mess);

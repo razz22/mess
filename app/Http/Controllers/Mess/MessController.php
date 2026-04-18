@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Mess;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\AuthorizesMessAccess;
 use App\Models\ExpenseCategory;
 use App\Models\Mess;
 use App\Models\MessMember;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\Storage;
 
 class MessController extends Controller
 {
+    use AuthorizesMessAccess;
     public function index()
     {
         $user = Auth::user();
@@ -216,18 +218,28 @@ class MessController extends Controller
         // All configured meal types for this mess
         $messMealTypes = \App\Models\MessMealType::where('mess_id', $mess->id)->orderBy('id')->pluck('name');
 
+        // Calendar days for the routine modal (current month, padded Sun–Sat)
+        $routineMonthStart = now()->startOfMonth();
+        $routineCalStart   = $routineMonthStart->copy()->startOfWeek(\Carbon\Carbon::SUNDAY);
+        $routineCalEnd     = now()->endOfMonth()->endOfWeek(\Carbon\Carbon::SATURDAY);
+        $routineCalDays    = [];
+        $cur = $routineCalStart->copy();
+        while ($cur <= $routineCalEnd) { $routineCalDays[] = $cur->copy(); $cur->addDay(); }
+
         // Pending show causes for the authenticated member (awaiting their reply)
         $myMessMember = $member; // already loaded
-        $pendingShowCauses = \App\Models\MessShowCause::where('mess_id', $mess->id)
-            ->where('member_id', $myMessMember->id)
-            ->where('status', 'pending')
-            ->with('issuedBy')
-            ->latest('issued_at')
-            ->get();
+        $pendingShowCauses = $myMessMember && $myMessMember->id
+            ? \App\Models\MessShowCause::where('mess_id', $mess->id)
+                ->where('member_id', $myMessMember->id)
+                ->where('status', 'pending')
+                ->with('issuedBy')
+                ->latest('issued_at')
+                ->get()
+            : collect();
 
         // Replied show causes for manager/owner (awaiting their final reply)
         $repliedShowCauses = collect();
-        if (in_array($myMessMember->role, ['owner', 'manager'])) {
+        if ($myMessMember && in_array($myMessMember->role, ['owner', 'manager'])) {
             $repliedShowCauses = \App\Models\MessShowCause::where('mess_id', $mess->id)
                 ->where('status', 'replied')
                 ->with(['member.user'])
@@ -241,7 +253,8 @@ class MessController extends Controller
             'totalMembers', 'pendingReports', 'mySummary',
             'pendingShowCauses', 'repliedShowCauses',
             'todayMealRoutines', 'routineGrid', 'routineMealTypes', 'messMealTypes',
-            'todayWeekNo', 'todayDayOfWeek'
+            'todayWeekNo', 'todayDayOfWeek',
+            'routineMonthStart', 'routineCalDays'
         ));
     }
 
@@ -348,15 +361,18 @@ class MessController extends Controller
     private function authorizeMember(Mess $mess): void
     {
         $user = Auth::user();
+        if ($user->is_super_admin) return;
         if (!$user->getMembershipIn($mess->id)) {
-            abort(403, 'You are not a member of this mess.');
+            abort(redirect()->route('mess.index')->with('error', 'You are not a member of this mess.'));
         }
     }
 
     private function authorizeOwner(Mess $mess): void
     {
-        if ($mess->owner_id !== Auth::id()) {
-            abort(403, 'Only the owner can do this.');
+        $user = Auth::user();
+        if ($user->is_super_admin) return;
+        if ($mess->owner_id !== $user->id) {
+            abort(redirect()->route('mess.index')->with('error', 'Only the owner can do this.'));
         }
     }
 
@@ -368,7 +384,7 @@ class MessController extends Controller
         if ($user->is_super_admin) return;
 
         if (! $member || ! in_array($member->role, ['owner', 'manager'])) {
-            abort(403, 'Only the mess owner or manager can access settings.');
+            abort(redirect()->route('mess.index')->with('error', 'Only the mess owner or manager can access settings.'));
         }
     }
 }

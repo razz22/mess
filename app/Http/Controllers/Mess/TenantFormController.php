@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Mess;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\AuthorizesMessAccess;
 use App\Models\Mess;
 use App\Models\MessMember;
 use App\Models\TenantRegistrationForm;
@@ -13,6 +14,7 @@ use Illuminate\Support\Facades\Storage;
 
 class TenantFormController extends Controller
 {
+    use AuthorizesMessAccess;
     /** Member fills / edits their own form */
     public function edit(Mess $mess)
     {

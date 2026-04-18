@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Mess;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\AuthorizesMessAccess;
 use App\Models\ManagerRotation;
 use App\Models\ManagerVote;
 use App\Models\Mess;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 
 class ManagerController extends Controller
 {
+    use AuthorizesMessAccess;
     public function index(Mess $mess)
     {
         $this->authorizeMember($mess);

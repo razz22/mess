@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Mess;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\AuthorizesMessAccess;
 use App\Models\AdvancePayment;
 use App\Models\Mess;
 use App\Models\MessLeaveRequest;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 
 class LeaveRequestController extends Controller
 {
+    use AuthorizesMessAccess;
     // Manager: list all leave requests
     public function index(Mess $mess)
     {

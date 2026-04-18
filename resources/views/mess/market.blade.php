@@ -10,13 +10,15 @@
         <div class="page-header">
             <div class="page-title">
                 <h4 class="fw-bold">Market Routine — {{ $mess->name }}</h4>
-                <h6>{{ \Carbon\Carbon::createFromDate($year, $month, 1)->format('F Y') }}</h6>
+                <h6 class="fs-14">{{ \Carbon\Carbon::createFromDate($year, $month, 1)->format('F Y') }}</h6>
             </div>
             <div class="page-btn d-flex gap-2 flex-wrap">
-                @if($isManager)
+                @if($member)
                 <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#assignModal">
-                    <i class="ti ti-user-check me-1"></i>Assign Range
+                    <i class="ti ti-user-check me-1"></i>Assign Dates
                 </button>
+                @endif
+                @if($isManager)
                 <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#quickExpenseModal">
                     <i class="ti ti-plus me-1"></i>Add Market Expense
                 </button>
@@ -77,33 +79,62 @@
                             $isFriday = $calDay->dayOfWeek === 5;
                             $isRangeStart = $routine && $routine->start_date->format('Y-m-d') === $dateStr;
                             $isRangeEnd   = $routine && $routine->end_date->format('Y-m-d') === $dateStr;
+                            $calPalette = [
+                                '#fff8e1','#fce4ec','#e8f5e9','#e3f2fd','#f3e5f5',
+                                '#e0f7fa','#fff3e0','#e8eaf6','#f1f8e9','#fdf3e7',
+                                '#fce8ff','#e0f2f1','#fff9c4','#e1f5fe','#fbe9e7',
+                                '#e8f8f5','#fef9e7','#eaf4fb','#fdedec','#f9ebea',
+                            ];
+                            $cellBg = $isToday ? '#dbeafe' : $calPalette[$calDay->day % count($calPalette)];
                         @endphp
-                        <div class="cal-inner h-100 d-flex flex-column {{ $isToday ? 'bg-primary-subtle' : '' }}">
+                        @php
+                            $hasItems      = $routine ? $routine->listItems->count() > 0 : false;
+                            $displayStatus = $routine ? ($routine->status === 'pending' && !$hasItems ? 'assigned' : $routine->status) : null;
+                            $statusColor   = match($displayStatus) {
+                                'completed' => 'success',
+                                'pending'   => 'warning',
+                                'exchanged' => 'info',
+                                'assigned'  => 'secondary',
+                                default     => null,
+                            };
+                            $firstName    = $routine ? explode(' ', $routine->assignedTo->name)[0] : null;
+                            $isAssignedToMe = $routine && $routine->assigned_to === Auth::id();
+                            $canAddItem   = $routine && $routine->status !== 'completed' && ($isManager || $isAssignedToMe);
+                            $calCanSuperRemove  = Auth::user()->is_super_admin || $isOwner;
+                            $calIsCompleted     = $routine && $routine->status === 'completed';
+                            $calHasItems        = $routine && $routine->listItems->isNotEmpty();
+                            $calIsAssignedToMe2 = $routine && $routine->assigned_to === Auth::id();
+                            $calCanRemove       = $routine && ($calCanSuperRemove
+                                || ($isManager && !$calIsCompleted)
+                                || ($calIsAssignedToMe2 && !$calIsCompleted && !$calHasItems));
+                            // build JSON for mobile modal
+                            $dayData = json_encode([
+                                'date'        => $dateStr,
+                                'label'       => $calDay->format('d M Y') . ($isFriday ? ' (Fri)' : ''),
+                                'hasRoutine'  => (bool)$routine,
+                                'name'        => $routine ? $routine->assignedTo->name : null,
+                                'status'      => $displayStatus,
+                                'statusColor' => $statusColor,
+                                'totalSpent'  => $routine ? $routine->total_spent : 0,
+                                'listUrl'     => $routine ? route('mess.market.list', [$mess->id, $routine->id]) : null,
+                                'canAdd'      => (bool)($canAddItem && $isRangeStart),
+                                'canRemove'   => (bool)$calCanRemove,
+                                'unassignUrl' => $routine ? route('mess.market.unassign', [$mess->id, $routine->id]) : null,
+                                'canAssign'   => !$routine && (bool)$member,
+                                'hasItems'    => (bool)$calHasItems,
+                                'isCompleted' => (bool)$calIsCompleted,
+                            ]);
+                        @endphp
+                        {{-- Desktop cell --}}
+                        <div class="cal-inner h-100 d-flex flex-column d-none d-sm-flex" style="background:{{ $cellBg }}">
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <span class="cal-date-num fw-bold {{ $isToday ? 'text-primary' : 'text-muted' }}">{{ $calDay->day }}</span>
                                 @if($isFriday)<span class="cal-fri-badge badge bg-warning-subtle text-warning d-none d-sm-inline">Fri</span>@endif
                             </div>
                             @if($routine)
-                            @php
-                                $statusColor = match($routine->status) {
-                                    'completed' => 'success',
-                                    'pending'   => 'warning',
-                                    'exchanged' => 'info',
-                                    default     => 'secondary',
-                                };
-                                $rangeLabel = '';
-                                if ($isRangeStart && $isRangeEnd) $rangeLabel = '';
-                                elseif ($isRangeStart) $rangeLabel = ' ▶';
-                                elseif ($isRangeEnd)   $rangeLabel = ' ◀';
-                                else $rangeLabel = ' ─';
-                                $firstName = explode(' ', $routine->assignedTo->name)[0];
-                            @endphp
                             <div class="cal-routine-block rounded p-1 bg-{{ $statusColor }}-subtle flex-grow-1 d-flex flex-column">
-                                <div class="cal-name fw-semibold text-truncate">
-                                    <span class="d-none d-sm-inline">{{ $routine->assignedTo->name }}{{ $rangeLabel }}</span>
-                                    <span class="d-inline d-sm-none">{{ $firstName }}{{ $rangeLabel }}</span>
-                                </div>
-                                <span class="cal-status-badge badge bg-{{ $statusColor }} mt-auto">{{ ucfirst($routine->status) }}</span>
+                                <div class="cal-name fw-semibold text-truncate">{{ $routine->assignedTo->name }}</div>
+                                <span class="cal-status-badge badge bg-{{ $statusColor }} mt-auto">{{ ucfirst($displayStatus) }}</span>
                                 @if($routine->status === 'completed' && $routine->total_spent > 0)
                                 <div class="cal-cost mt-1 rounded text-center">
                                     <span class="cal-cost-label d-none d-sm-inline text-muted">Cost: </span>
@@ -115,22 +146,38 @@
                                        class="btn btn-xs btn-outline-primary flex-grow-1 cal-btn">
                                        <i class="ti ti-list"></i><span class="d-none d-md-inline"> List</span>
                                     </a>
-                                    @if($isManager && $isRangeStart)
+                                    @if($canAddItem && $isRangeStart)
                                     <button onclick="openQuickAdd('{{ $dateStr }}')"
                                         class="btn btn-xs btn-outline-success cal-btn" title="Add item">
                                         <i class="ti ti-plus"></i>
                                     </button>
                                     @endif
+                                    @if($calCanRemove)
+                                    <button class="btn btn-xs btn-outline-danger cal-btn" title="Remove"
+                                        onclick="openUnassignModal('{{ route('mess.market.unassign', [$mess->id, $routine->id]) }}','{{ addslashes($routine->assignedTo->name) }}','{{ $routine->start_date->format('d M Y') }}',{{ $calHasItems ? 'true' : 'false' }},{{ $calIsCompleted ? 'true' : 'false' }})">
+                                        <i class="ti ti-x"></i>
+                                    </button>
+                                    @endif
                                 </div>
                             </div>
-                            @elseif($isManager)
+                            @elseif($isManager || $member)
                             <div class="flex-grow-1 d-flex align-items-center justify-content-center">
                                 <button onclick="prefillAssign('{{ $dateStr }}')"
-                                    class="btn btn-xs btn-outline-secondary cal-btn" style="opacity:0.5"
-                                    title="Assign duty for this day">
+                                    class="btn btn-xs btn-outline-{{ $isManager ? 'secondary' : 'primary' }} cal-btn" style="opacity:0.55">
                                     <i class="ti ti-plus"></i>
                                 </button>
                             </div>
+                            @endif
+                        </div>
+                        {{-- Mobile cell: minimal, tap opens detail modal --}}
+                        <div class="cal-mobile-cell d-flex d-sm-none flex-column align-items-center justify-content-start pt-1 h-100"
+                             style="background:{{ $cellBg }}"
+                             onclick="openDayModal({{ $dayData }})" style="cursor:pointer;min-height:52px">
+                            <span class="fw-bold {{ $isToday ? 'text-primary' : 'text-muted' }}" style="font-size:13px;line-height:1.2">{{ $calDay->day }}</span>
+                            @if($routine)
+                            <i class="ti ti-list mt-auto mb-1 text-{{ $statusColor }}" style="font-size:12px"></i>
+                            @elseif($member || $isManager)
+                            <i class="ti ti-plus mt-auto mb-1 text-muted" style="font-size:11px"></i>
                             @endif
                         </div>
                         @endif
@@ -158,7 +205,11 @@
                     </thead>
                     <tbody>
                         @forelse($routines as $routine)
-                        @php $statusColor = match($routine->status) { 'completed'=>'success','pending'=>'warning','exchanged'=>'info',default=>'secondary' }; @endphp
+                        @php
+                            $hasItems = $routine->listItems->count() > 0;
+                            $displayStatus = $routine->status === 'pending' && !$hasItems ? 'assigned' : $routine->status;
+                            $statusColor = match($displayStatus) { 'completed'=>'success','pending'=>'warning','exchanged'=>'info',default=>'secondary' };
+                        @endphp
                         <tr>
                             <td>
                                 <div class="fw-semibold">{{ $routine->start_date->format('d M') }}
@@ -171,13 +222,17 @@
                             </td>
                             <td>
                                 <div class="d-flex align-items-center gap-2">
+                                    @if($routine->assignedTo->avatar)
+                                    <img src="{{ asset('storage/'.$routine->assignedTo->avatar) }}" class="rounded-circle" style="width:30px;height:30px;object-fit:cover;flex-shrink:0;" alt="">
+                                    @else
                                     <div style="width:30px;height:30px;border-radius:50%;background:#6c757d;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;flex-shrink:0">
                                         {{ strtoupper(substr($routine->assignedTo->name,0,1)) }}
                                     </div>
+                                    @endif
                                     {{ $routine->assignedTo->name }}
                                 </div>
                             </td>
-                            <td><span class="badge bg-{{ $statusColor }}">{{ ucfirst($routine->status) }}</span></td>
+                            <td><span class="badge bg-{{ $statusColor }}">{{ ucfirst($displayStatus) }}</span></td>
                             <td class="text-end fw-semibold">{{ $routine->total_spent > 0 ? '৳'.number_format($routine->total_spent,2) : '—' }}</td>
                             <td>
                                 <div class="d-flex gap-1 flex-wrap">
@@ -185,14 +240,15 @@
                                         <i class="ti ti-list me-1"></i>List
                                     </a>
                                     @php
-                                        $canSuperRemove = Auth::user()->is_super_admin || $isOwner;
-                                        $hasItems       = $routine->listItems->isNotEmpty();
-                                        $isCompleted    = $routine->status === 'completed';
-                                        // Remove allowed: manager if pending+no items; owner/super always
-                                        $canRemove = $isManager && (
-                                            $canSuperRemove ||
-                                            (! $isCompleted && ! $hasItems)
-                                        );
+                                        $canSuperRemove  = Auth::user()->is_super_admin || $isOwner;
+                                        $hasItems        = $routine->listItems->isNotEmpty();
+                                        $isCompleted     = $routine->status === 'completed';
+                                        $isAssignedToMe2 = $routine->assigned_to === Auth::id();
+                                        // Manager/owner/super: can always remove (owner/super even if completed)
+                                        // Assigned member: can remove own pending assignment only if no items
+                                        $canRemove = $canSuperRemove
+                                            || ($isManager && !$isCompleted)
+                                            || ($isAssignedToMe2 && !$isCompleted && !$hasItems);
                                     @endphp
 
                                     @if($routine->status === 'pending')
@@ -262,11 +318,9 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0"><i class="ti ti-receipt me-2"></i>Individual Market Expenses This Month</h6>
-                @if($isManager)
                 <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#quickExpenseModal">
                     <i class="ti ti-plus me-1"></i>Add
                 </button>
-                @endif
             </div>
             <div class="table-responsive">
                 <table class="table table-sm align-middle mb-0">
@@ -307,25 +361,17 @@
 
 <!-- Assign Date Range Modal -->
 <div class="modal fade" id="assignModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><i class="ti ti-calendar-plus me-2"></i>Assign Market Duty</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form action="{{ route('mess.market.assign', $mess->id) }}" method="POST">
+            <form action="{{ route('mess.market.assign', $mess->id) }}" method="POST" id="assignForm">
                 @csrf
                 <div class="modal-body">
-                    <div class="row g-2 mb-3">
-                        <div class="col-6">
-                            <label class="form-label fw-semibold">From Date <span class="text-danger">*</span></label>
-                            <input type="date" name="start_date" id="assignStartDate" class="form-control" value="{{ now()->toDateString() }}" required>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold">To Date <span class="text-danger">*</span></label>
-                            <input type="date" name="end_date" id="assignEndDate" class="form-control" value="{{ now()->toDateString() }}" required>
-                        </div>
-                    </div>
+                    <!-- Member selector -->
+                    @if($isManager)
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Assign To <span class="text-danger">*</span></label>
                         <select name="assigned_to" class="form-select" required>
@@ -334,6 +380,32 @@
                             @endforeach
                         </select>
                     </div>
+                    @else
+                    <input type="hidden" name="assigned_to" value="{{ Auth::id() }}">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Assigning As</label>
+                        <div class="form-control bg-light text-muted">{{ Auth::user()->name }}</div>
+                    </div>
+                    @endif
+
+                    <!-- Multi-select calendar -->
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold">Select Dates <span class="text-danger">*</span>
+                            <small class="text-muted fw-normal ms-2">Click dates to toggle selection</small>
+                        </label>
+                    </div>
+                    <!-- Calendar nav -->
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="assignCalPrev"><i class="ti ti-chevron-left"></i></button>
+                        <span class="fw-semibold flex-grow-1 text-center" id="assignCalTitle"></span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="assignCalNext"><i class="ti ti-chevron-right"></i></button>
+                    </div>
+                    <div id="assignCalGrid" class="assign-cal-grid mb-2"></div>
+                    <!-- Hidden date inputs injected by JS -->
+                    <div id="assignDatesInputs"></div>
+                    <!-- Selected summary -->
+                    <div id="assignSelectedSummary" class="small text-muted mb-2"></div>
+
                     <div class="mb-3">
                         <label class="form-label">Notes</label>
                         <textarea name="notes" class="form-control" rows="2" placeholder="Optional instructions..."></textarea>
@@ -345,8 +417,9 @@
                     @endif
                 </div>
                 <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="assignClearBtn">Clear Selection</button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Assign</button>
+                    <button type="submit" class="btn btn-primary" id="assignSubmitBtn" disabled>Assign Selected Dates</button>
                 </div>
             </form>
         </div>
@@ -429,6 +502,7 @@
                             <input type="date" name="expense_date" class="form-control" value="{{ now()->toDateString() }}" required>
                         </div>
                     </div>
+                    @if($isManager)
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Bought By <span class="text-danger">*</span></label>
                         <select name="member_id" class="form-select" required>
@@ -437,6 +511,13 @@
                             @endforeach
                         </select>
                     </div>
+                    @else
+                    <input type="hidden" name="member_id" value="{{ Auth::id() }}">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Bought By</label>
+                        <div class="form-control bg-light text-muted">{{ Auth::user()->name }}</div>
+                    </div>
+                    @endif
                     <div class="alert alert-info py-2 small mb-0">
                         <i class="ti ti-info-circle me-1"></i>This expense will count toward meal cost calculation.
                     </div>
@@ -505,6 +586,48 @@ foreach($routines as $r) {
     .cal-name  { font-size: 7px; }
     .cal-status-badge { display: none !important; }
 }
+/* Mobile calendar cell */
+.cal-mobile-cell { border-radius: 0; transition: background .1s; }
+.cal-mobile-cell:active { background: #e9ecef !important; }
+
+/* Assign modal multi-select calendar */
+.assign-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 8px;
+    background: #f8f9fa;
+}
+.assign-cal-header {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #6c757d;
+    padding: 4px 0;
+    text-transform: uppercase;
+}
+.assign-cal-day {
+    text-align: center;
+    padding: 6px 2px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    border: 2px solid transparent;
+    transition: all .15s;
+    user-select: none;
+    background: #fff;
+}
+.assign-cal-day:hover:not(.ac-empty):not(.ac-taken) { background: #d1e7dd; border-color: #198754; }
+.assign-cal-day.ac-empty { visibility: hidden; }
+.assign-cal-day.ac-today { border-color: #0d6efd; background: #e7f1ff; }
+.assign-cal-day.ac-selected { background: #198754; color: #fff; border-color: #198754; }
+.assign-cal-day.ac-taken { background: #f8d7da; color: #842029; cursor: not-allowed; font-size: 10px; }
+.assign-cal-day.ac-taken:hover { background: #f8d7da; border-color: transparent; }
+.assign-cal-day.ac-weekend { color: #6f42c1; }
+.assign-cal-day.ac-selected.ac-weekend { color: #fff; }
 </style>
 
 <script>
@@ -513,9 +636,83 @@ const routineByDate = @json($routineJs);
 const members = @json($members->map(fn($m) => ['id' => $m->user->id, 'name' => $m->user->name])->values());
 const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
 
+// ---- Multi-select assign calendar ----
+const takenDates = new Set(@json(array_keys($dateRoutineMap)));
+let acYear  = {{ $year }};
+let acMonth = {{ $month }}; // 1-based
+let acSelected = new Set();
+
+function acRender() {
+    const grid  = document.getElementById('assignCalGrid');
+    const title = document.getElementById('assignCalTitle');
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    title.textContent = months[acMonth - 1] + ' ' + acYear;
+
+    const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    let html = days.map(d => `<div class="assign-cal-header">${d}</div>`).join('');
+
+    const first = new Date(acYear, acMonth - 1, 1);
+    const daysInMonth = new Date(acYear, acMonth, 0).getDate();
+    const startDow = first.getDay();
+    const today = new Date().toISOString().slice(0,10);
+
+    for (let i = 0; i < startDow; i++) html += `<div class="assign-cal-day ac-empty"></div>`;
+    for (let d = 1; d <= daysInMonth; d++) {
+        const dt   = `${acYear}-${String(acMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const dow  = (startDow + d - 1) % 7;
+        const isTaken    = takenDates.has(dt);
+        const isSelected = acSelected.has(dt);
+        const isToday    = dt === today;
+        const isWeekend  = dow === 0 || dow === 6;
+        let cls = 'assign-cal-day';
+        if (isTaken)    cls += ' ac-taken';
+        else if (isSelected) cls += ' ac-selected' + (isWeekend ? ' ac-weekend' : '');
+        else { if (isToday) cls += ' ac-today'; if (isWeekend) cls += ' ac-weekend'; }
+        const label = isTaken ? `${d}<br><span style="font-size:9px">taken</span>` : d;
+        html += `<div class="${cls}" data-date="${dt}" onclick="acToggle('${dt}',${isTaken})">${label}</div>`;
+    }
+    grid.innerHTML = html;
+    acUpdateInputs();
+}
+
+function acToggle(dt, isTaken) {
+    if (isTaken) return;
+    acSelected.has(dt) ? acSelected.delete(dt) : acSelected.add(dt);
+    acRender();
+}
+
+function acUpdateInputs() {
+    const container = document.getElementById('assignDatesInputs');
+    const summary   = document.getElementById('assignSelectedSummary');
+    const btn       = document.getElementById('assignSubmitBtn');
+    const sorted    = [...acSelected].sort();
+    container.innerHTML = sorted.map(d => `<input type="hidden" name="dates[]" value="${d}">`).join('');
+    if (sorted.length === 0) {
+        summary.textContent = 'No dates selected';
+        btn.disabled = true;
+    } else {
+        summary.textContent = `${sorted.length} date(s) selected: ${sorted.join(', ')}`;
+        btn.disabled = false;
+    }
+}
+
+document.getElementById('assignCalPrev').addEventListener('click', () => {
+    acMonth--; if (acMonth < 1) { acMonth = 12; acYear--; } acRender();
+});
+document.getElementById('assignCalNext').addEventListener('click', () => {
+    acMonth++; if (acMonth > 12) { acMonth = 1; acYear++; } acRender();
+});
+document.getElementById('assignClearBtn').addEventListener('click', () => {
+    acSelected.clear(); acRender();
+});
+document.getElementById('assignModal').addEventListener('shown.bs.modal', () => acRender());
+
 function prefillAssign(dateStr) {
-    document.getElementById('assignStartDate').value = dateStr;
-    document.getElementById('assignEndDate').value = dateStr;
+    acSelected.clear();
+    acSelected.add(dateStr);
+    // Navigate calendar to the date's month
+    const parts = dateStr.split('-');
+    acYear = parseInt(parts[0]); acMonth = parseInt(parts[1]);
     new bootstrap.Modal(document.getElementById('assignModal')).show();
 }
 
@@ -540,8 +737,14 @@ function openExchangeModal(routineId, isAssigned) {
     new bootstrap.Modal(document.getElementById('exchangeModal')).show();
 }
 
+function openMemberExpense(dateStr) {
+    var dateInput = document.querySelector('#quickExpenseModal input[name="expense_date"]');
+    if (dateInput) dateInput.value = dateStr;
+    new bootstrap.Modal(document.getElementById('quickExpenseModal')).show();
+}
+
 function openReassignModal(routineId) {
-    document.getElementById('assignModal').querySelectorAll('input[type=date]').forEach(el => el.value = '');
+    acSelected.clear();
     new bootstrap.Modal(document.getElementById('assignModal')).show();
 }
 
@@ -577,6 +780,56 @@ function openUnassignModal(action, name, period, hasItems, isCompleted) {
     new bootstrap.Modal(document.getElementById('unassignModal')).show();
 }
 
+function openDayModal(d) {
+    document.getElementById('dayDetailTitle').textContent = d.label;
+    const body   = document.getElementById('dayDetailBody');
+    const footer = document.getElementById('dayDetailFooter');
+    let html = '';
+
+    if (d.hasRoutine) {
+        const colorMap = {success:'#198754',warning:'#ffc107',info:'#0dcaf0',secondary:'#6c757d'};
+        const dotColor = colorMap[d.statusColor] || '#6c757d';
+        html += `<div class="d-flex align-items-center gap-2 mb-3">
+            <span style="width:10px;height:10px;border-radius:50%;background:${dotColor};display:inline-block;flex-shrink:0"></span>
+            <div>
+                <div class="fw-bold fs-6">${d.name}</div>
+                <span class="badge" style="background:${dotColor};font-size:11px">${d.status.charAt(0).toUpperCase()+d.status.slice(1)}</span>
+            </div>
+        </div>`;
+        if (d.totalSpent > 0) {
+            html += `<div class="alert alert-success py-2 mb-2 d-flex justify-content-between align-items-center">
+                <span><i class="ti ti-receipt me-1"></i>Total Spent</span>
+                <strong>৳${Number(d.totalSpent).toLocaleString()}</strong>
+            </div>`;
+        }
+    } else {
+        html += `<p class="text-muted mb-2"><i class="ti ti-calendar-off me-1"></i>No assignment for this date.</p>`;
+    }
+
+    body.innerHTML = html;
+
+    // Footer actions
+    let fhtml = `<button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>`;
+    if (d.hasRoutine && d.listUrl) {
+        fhtml += `<a href="${d.listUrl}" class="btn btn-primary btn-sm"><i class="ti ti-list me-1"></i>View List</a>`;
+    }
+    if (d.canAdd) {
+        fhtml += `<button class="btn btn-success btn-sm" onclick="bootstrap.Modal.getInstance(document.getElementById('dayDetailModal')).hide();openQuickAdd('${d.date}')">
+            <i class="ti ti-plus me-1"></i>Add Item</button>`;
+    }
+    if (d.canAssign) {
+        fhtml += `<button class="btn btn-outline-primary btn-sm" onclick="bootstrap.Modal.getInstance(document.getElementById('dayDetailModal')).hide();prefillAssign('${d.date}')">
+            <i class="ti ti-user-check me-1"></i>Assign</button>`;
+    }
+    if (d.canRemove && d.unassignUrl) {
+        fhtml += `<button class="btn btn-danger btn-sm" onclick="bootstrap.Modal.getInstance(document.getElementById('dayDetailModal')).hide();openUnassignModal('${d.unassignUrl}','${d.name}','${d.label}',${d.hasItems},${d.isCompleted})">
+            <i class="ti ti-x me-1"></i>Remove</button>`;
+    }
+    footer.innerHTML = fhtml;
+
+    new bootstrap.Modal(document.getElementById('dayDetailModal')).show();
+}
+
 function openApproveModal(action, name, date, spent) {
     document.getElementById('approveRoutineForm').action = action;
     document.getElementById('approveModalName').textContent  = name;
@@ -592,9 +845,23 @@ function openApproveModal(action, name, date, spent) {
 }
 </script>
 
+{{-- Mobile Day Detail Modal --}}
+<div class="modal fade" id="dayDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title fw-bold" id="dayDetailTitle"></h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="dayDetailBody"></div>
+            <div class="modal-footer py-2 d-flex flex-wrap gap-2" id="dayDetailFooter"></div>
+        </div>
+    </div>
+</div>
+
 {{-- Unassign Routine Confirmation Modal --}}
 <div class="modal fade" id="unassignModal" tabindex="-1">
-    <div class="modal-dialog modal-sm modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header border-0 pb-0">
                 <h5 class="modal-title d-flex align-items-center gap-2">

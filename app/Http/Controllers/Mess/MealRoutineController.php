@@ -3,20 +3,31 @@
 namespace App\Http\Controllers\Mess;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\AuthorizesMessAccess;
 use App\Models\Mess;
 use App\Models\MessMealRoutine;
 use App\Models\MessMealType;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class MealRoutineController extends Controller
 {
+    use AuthorizesMessAccess;
     public function index(Mess $mess, Request $request)
     {
         $member = $mess->members()->where('user_id', Auth::id())->where('is_active', true)->first();
-        abort_if(!$member, 403);
+        abort_if(!$member && !Auth::user()->is_super_admin, 403);
 
         $isManager = Auth::user()->isManagerOf($mess->id);
+        $canEdit   = true; // all active members can add/edit the routine
+
+        // Month navigation
+        $monthParam  = $request->get('month', now()->format('Y-m'));
+        $monthStart  = Carbon::parse($monthParam . '-01')->startOfMonth();
+        $monthEnd    = $monthStart->copy()->endOfMonth();
+        $prevMonth   = $monthStart->copy()->subMonth()->format('Y-m');
+        $nextMonth   = $monthStart->copy()->addMonth()->format('Y-m');
 
         // All meal types for this mess
         $mealTypes = MessMealType::where('mess_id', $mess->id)->orderBy('id')->get();
@@ -34,21 +45,36 @@ class MealRoutineController extends Controller
             $grid[$r->week_no][$r->day_of_week] = $r->items;
         }
 
-        // Today's routine for selected type
-        $today     = now();
-        $weekNo    = MessMealRoutine::weekNoForDate($today);
-        $dayOfWeek = (int) $today->format('w');
+        // Today info
+        $today      = now();
+        $weekNo     = MessMealRoutine::weekNoForDate($today);
+        $dayOfWeek  = (int) $today->format('w');
         $todayItems = $grid[$weekNo][$dayOfWeek] ?? null;
 
+        // Build calendar days array for the month
+        // Pad from Sunday of first week to Saturday of last week
+        $calStart = $monthStart->copy()->startOfWeek(Carbon::SUNDAY);
+        $calEnd   = $monthEnd->copy()->endOfWeek(Carbon::SATURDAY);
+
+        $calDays = [];
+        $cursor  = $calStart->copy();
+        while ($cursor <= $calEnd) {
+            $calDays[] = $cursor->copy();
+            $cursor->addDay();
+        }
+
         return view('mess.meal-routine', compact(
-            'mess', 'member', 'isManager', 'grid', 'todayItems',
-            'weekNo', 'dayOfWeek', 'mealTypes', 'selectedType'
+            'mess', 'member', 'isManager', 'canEdit', 'grid', 'todayItems',
+            'weekNo', 'dayOfWeek', 'mealTypes', 'selectedType',
+            'monthStart', 'monthEnd', 'monthParam', 'prevMonth', 'nextMonth',
+            'calDays', 'today'
         ));
     }
 
     public function upsert(Request $request, Mess $mess)
     {
-        abort_unless(Auth::user()->isManagerOf($mess->id), 403);
+        $member = $mess->members()->where('user_id', Auth::id())->where('is_active', true)->first();
+        abort_if(!$member && !Auth::user()->is_super_admin, 403);
 
         $request->validate([
             'meal_type'   => 'required|string|max:80',
@@ -72,7 +98,8 @@ class MealRoutineController extends Controller
 
     public function destroy(Request $request, Mess $mess)
     {
-        abort_unless(Auth::user()->isManagerOf($mess->id), 403);
+        $member = $mess->members()->where('user_id', Auth::id())->where('is_active', true)->first();
+        abort_if(!$member && !Auth::user()->is_super_admin, 403);
 
         $request->validate([
             'meal_type'   => 'required|string|max:80',

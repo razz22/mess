@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Mess;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\AuthorizesMessAccess;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\Mess;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 
 class ExpenseController extends Controller
 {
+    use AuthorizesMessAccess;
     public function index(Mess $mess)
     {
         if (!Auth::user()->isManagerOf($mess->id)) abort(403, 'Managers only.');

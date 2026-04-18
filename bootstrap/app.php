@@ -17,5 +17,18 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpException $e, \Illuminate\Http\Request $request) {
+            if ($e->getStatusCode() !== 403) return null;
+            \Illuminate\Support\Facades\Log::warning('403 Forbidden intercepted globally', [
+                'url'     => $request->fullUrl(),
+                'user_id' => $request->user()?->id,
+                'message' => $e->getMessage(),
+            ]);
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
+            $fallback = auth()->check() ? route('mess.index') : route('signin');
+            $message  = $e->getMessage() ?: 'You do not have permission to perform this action.';
+            return redirect($request->header('referer', $fallback))->with('error', $message);
+        });
     })->create();

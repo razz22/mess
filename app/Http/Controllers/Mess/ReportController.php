@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Mess;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\AuthorizesMessAccess;
 use App\Models\MealAttendance;
 use App\Models\MealSchedule;
 use App\Models\MemberExpenseExclusion as MemberCategoryExclusion;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
 {
+    use AuthorizesMessAccess;
     public function monthly(Mess $mess)
     {
         $this->authorizeMember($mess);

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Mess;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\AuthorizesMessAccess;
 use App\Models\Mess;
 use App\Models\MessUpgrade;
 use App\Models\SubscriptionPlan;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 
 class UpgradeController extends Controller
 {
+    use AuthorizesMessAccess;
     // Owner or manager: view upgrade page (plan cards only)
     public function index(Mess $mess)
     {

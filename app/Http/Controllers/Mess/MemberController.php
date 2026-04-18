@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Mess;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\AuthorizesMessAccess;
 use App\Models\Mess;
 use App\Models\MessMember;
 use App\Models\MessShowCause;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\Storage;
 
 class MemberController extends Controller
 {
+    use AuthorizesMessAccess;
     public function index(Mess $mess)
     {
         $this->authorizeManager($mess);
@@ -25,7 +27,8 @@ class MemberController extends Controller
     public function show(Mess $mess, MessMember $member)
     {
         $authUser = Auth::user();
-        if (! $authUser->getMembershipIn($mess->id) && ! $authUser->is_super_admin) abort(403);
+        $isOwner  = $mess->owner_id === $authUser->id;
+        if (! $isOwner && ! $authUser->getMembershipIn($mess->id) && ! $authUser->is_super_admin) abort(403);
         if ($member->mess_id !== $mess->id) abort(403);
 
         $isManager    = $authUser->isManagerOf($mess->id);
@@ -272,15 +275,17 @@ class MemberController extends Controller
 
     private function authorizeManager(Mess $mess): void
     {
-        if (!Auth::user()->isManagerOf($mess->id)) {
-            abort(403, 'Only managers and owners can access this.');
+        $user = Auth::user();
+        if (!$user->isManagerOf($mess->id) && $mess->owner_id !== $user->id) {
+            abort(redirect()->route('mess.index')->with('error', 'Only managers and owners can access this.'));
         }
     }
 
     private function authorizeOwner(Mess $mess): void
     {
-        if ($mess->owner_id !== Auth::id()) {
-            abort(403, 'Owners only.');
+        $user = Auth::user();
+        if ($mess->owner_id !== $user->id && !$user->is_super_admin) {
+            abort(redirect()->route('mess.index')->with('error', 'Only the mess owner can perform this action.'));
         }
     }
 }

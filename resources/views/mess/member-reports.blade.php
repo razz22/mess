@@ -51,13 +51,13 @@
                             <td>{{ $report->created_at->format('d M Y') }}</td>
                             <td>
                                 <div class="d-flex align-items-center gap-2">
-                                    <div class="avatar avatar-sm"><span class="avatar-title rounded-circle bg-info text-white">{{ strtoupper(substr($report->reporter->name, 0, 1)) }}</span></div>
+                                    <div class="avatar avatar-sm">@if($report->reporter->avatar)<img src="{{ asset('storage/'.$report->reporter->avatar) }}" class="avatar-title rounded-circle" style="object-fit:cover;" alt="">@else<span class="avatar-title rounded-circle bg-info text-white">{{ strtoupper(substr($report->reporter->name, 0, 1)) }}</span>@endif</div>
                                     {{ $report->reporter->name }}
                                 </div>
                             </td>
                             <td>
                                 <div class="d-flex align-items-center gap-2">
-                                    <div class="avatar avatar-sm"><span class="avatar-title rounded-circle bg-danger text-white">{{ strtoupper(substr($report->reported->name, 0, 1)) }}</span></div>
+                                    <div class="avatar avatar-sm">@if($report->reported->avatar)<img src="{{ asset('storage/'.$report->reported->avatar) }}" class="avatar-title rounded-circle" style="object-fit:cover;" alt="">@else<span class="avatar-title rounded-circle bg-danger text-white">{{ strtoupper(substr($report->reported->name, 0, 1)) }}</span>@endif</div>
                                     {{ $report->reported->name }}
                                 </div>
                             </td>

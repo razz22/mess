@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Mess;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\AuthorizesMessAccess;
 use App\Models\Expense;
 use App\Models\MarketListItem;
 use App\Models\MarketRoutine;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\Auth;
 
 class MarketController extends Controller
 {
+    use AuthorizesMessAccess;
     public function index(Mess $mess)
     {
         $this->authorizeMember($mess);
@@ -70,38 +72,58 @@ class MarketController extends Controller
 
     public function assign(Request $request, Mess $mess)
     {
-        if (!Auth::user()->isManagerOf($mess->id)) abort(403);
+        $user   = Auth::user();
+        $member = $user->getMembershipIn($mess->id);
+        if (!$member && !$user->is_super_admin) abort(403);
+
+        $isManager = $user->isManagerOf($mess->id);
 
         $request->validate([
-            'start_date'  => 'required|date',
-            'end_date'    => 'required|date|after_or_equal:start_date',
+            'dates'       => 'required|array|min:1',
+            'dates.*'     => 'required|date',
             'assigned_to' => 'required|exists:users,id',
         ]);
 
-        // Check overlap with existing routines unless force-override by owner
-        $isOwner = $mess->owner_id === Auth::id();
-        if (!$isOwner) {
-            $overlap = MarketRoutine::where('mess_id', $mess->id)
-                ->where('start_date', '<=', $request->end_date)
-                ->where('end_date', '>=', $request->start_date)
-                ->exists();
+        // Non-managers can only assign themselves
+        $assignedTo = $isManager ? $request->assigned_to : $user->id;
 
-            if ($overlap) {
-                return back()->with('error', 'Date range overlaps with an existing assignment. Only the owner can override.');
+        $isOwner = $mess->owner_id === $user->id || $user->is_super_admin;
+        $created = 0;
+        $skipped = 0;
+
+        foreach ($request->dates as $date) {
+            if (!$isOwner) {
+                $overlap = MarketRoutine::where('mess_id', $mess->id)
+                    ->where('start_date', '<=', $date)
+                    ->where('end_date', '>=', $date)
+                    ->exists();
+
+                if ($overlap) {
+                    $skipped++;
+                    continue;
+                }
             }
+
+            MarketRoutine::create([
+                'mess_id'     => $mess->id,
+                'start_date'  => $date,
+                'end_date'    => $date,
+                'assigned_to' => $assignedTo,
+                'assigned_by' => Auth::id(),
+                'status'      => 'pending',
+                'notes'       => $request->notes,
+            ]);
+            $created++;
         }
 
-        MarketRoutine::create([
-            'mess_id'     => $mess->id,
-            'start_date'  => $request->start_date,
-            'end_date'    => $request->end_date,
-            'assigned_to' => $request->assigned_to,
-            'assigned_by' => Auth::id(),
-            'status'      => 'pending',
-            'notes'       => $request->notes,
-        ]);
+        if ($created === 0) {
+            return back()->with('error', 'All selected dates overlap with existing assignments. Only the owner can override.');
+        }
 
-        return back()->with('success', 'Market duty assigned.');
+        $msg = $created . ' date' . ($created > 1 ? 's' : '') . ' assigned.';
+        if ($skipped) $msg .= " {$skipped} date(s) skipped due to overlap.";
+
+        return back()->with('success', $msg);
     }
 
     public function listItems(Mess $mess, MarketRoutine $routine)
@@ -158,13 +180,15 @@ class MarketController extends Controller
     {
         if ($routine->mess_id !== $mess->id) abort(403);
 
-        $user      = Auth::user();
+        $user         = Auth::user();
         $isSuperAdmin = $user->is_super_admin;
-        $isOwner   = $mess->owner_id === $user->id;
+        $isOwner      = $mess->owner_id === $user->id;
+        $isManager    = $user->isManagerOf($mess->id);
+        $isAssigned   = $routine->assigned_to === $user->id;
 
-        // Only owner, super admin, or managers can remove
-        if (! $isSuperAdmin && ! $user->isManagerOf($mess->id)) {
-            abort(403, 'Only the mess owner or manager can remove assignments.');
+        // Access: super admin, owner, manager, or the assigned member
+        if (! $isSuperAdmin && ! $isManager && ! $isAssigned) {
+            abort(403, 'You do not have permission to remove this assignment.');
         }
 
         // Completed routines: only owner or super admin can remove
@@ -172,7 +196,14 @@ class MarketController extends Controller
             return back()->with('error', 'Completed routines can only be removed by the owner or super admin.');
         }
 
-        // Pending with items: only allow removal if items have been cleared, or owner/super admin
+        // Assigned member (non-manager): can only remove if no items
+        if ($isAssigned && ! $isManager && ! $isSuperAdmin && ! $isOwner) {
+            if ($routine->listItems()->exists()) {
+                return back()->with('error', 'Remove all list items first before removing your assignment.');
+            }
+        }
+
+        // Manager (non-owner/super): cannot remove if has items (only owner/super can force)
         if ($routine->status === 'pending' && $routine->listItems()->exists()) {
             if (! $isSuperAdmin && ! $isOwner) {
                 return back()->with('error', 'Remove all list items first before unassigning this routine.');
@@ -255,14 +286,20 @@ class MarketController extends Controller
 
     public function addQuickExpense(Request $request, Mess $mess)
     {
-        if (!Auth::user()->isManagerOf($mess->id)) abort(403);
+        $user      = Auth::user();
+        $member    = $user->getMembershipIn($mess->id);
+        $isManager = $user->isManagerOf($mess->id);
+        if (!$member && !$user->is_super_admin) abort(403);
 
         $request->validate([
             'item_name'    => 'required|string|max:255',
             'amount'       => 'required|numeric|min:0.01',
             'expense_date' => 'required|date',
-            'member_id'    => 'required|exists:users,id',
+            'member_id'    => 'nullable|exists:users,id',
         ]);
+
+        // Non-managers can only submit for themselves
+        $memberId = $isManager ? ($request->member_id ?? $user->id) : $user->id;
 
         Expense::create([
             'mess_id'           => $mess->id,
@@ -270,7 +307,7 @@ class MarketController extends Controller
             'amount'            => $request->amount,
             'expense_date'      => $request->expense_date,
             'added_by'          => Auth::id(),
-            'member_id'         => $request->member_id,
+            'member_id'         => $memberId,
             'is_market_expense' => true,
         ]);
 

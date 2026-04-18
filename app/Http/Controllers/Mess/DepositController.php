@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Mess;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\AuthorizesMessAccess;
 use App\Models\MemberDeposit;
 use App\Models\Mess;
 use Illuminate\Http\Request;
@@ -10,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 
 class DepositController extends Controller
 {
+    use AuthorizesMessAccess;
     public function index(Mess $mess)
     {
         if (!Auth::user()->isManagerOf($mess->id)) abort(403, 'Managers only.');

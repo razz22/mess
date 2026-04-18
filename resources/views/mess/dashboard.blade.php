@@ -188,10 +188,17 @@
                     <div class="card-body">
                         @if($todayRoutine)
                         <div class="d-flex align-items-center gap-3 mb-3">
-                            <div class="avatar avatar-md">
-                                <span class="avatar-title rounded-circle bg-success text-white">
+                            <div class="avatar avatar-md flex-shrink-0">
+                                @if($todayRoutine->assignedTo->avatar)
+                                <img src="{{ asset('storage/'.$todayRoutine->assignedTo->avatar) }}"
+                                     alt="{{ $todayRoutine->assignedTo->name }}"
+                                     class="rounded-circle" style="width:40px;height:40px;object-fit:cover;">
+                                @else
+                                <span class="avatar-title rounded-circle bg-success text-white fw-bold"
+                                      style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:16px">
                                     {{ strtoupper(substr($todayRoutine->assignedTo->name, 0, 1)) }}
                                 </span>
+                                @endif
                             </div>
                             <div>
                                 <div class="fw-semibold">{{ $todayRoutine->assignedTo->name }}</div>
@@ -377,12 +384,7 @@
 {{-- MODAL: Monthly Meal Routine Chart (view only)                 --}}
 {{-- ============================================================== --}}
 @php
-    $routineDayNames  = \App\Models\MessMealRoutine::$dayNames;
-    $routineWeekLabels = \App\Models\MessMealRoutine::$weekLabels;
-    $routineDisplayDays = [0,1,2,3,4,5,6];
-    // All meal types that have any routine data, merged with configured types
     $allRoutineTypes = $messMealTypes->merge($routineMealTypes)->unique()->values();
-    $firstRoutineType = $allRoutineTypes->first();
 @endphp
 
 <div class="modal fade" id="routineChartModal" tabindex="-1">
@@ -425,45 +427,45 @@
                 @endif
             </div>
 
-            <div class="modal-body p-0">
+            <div class="modal-body p-3">
                 @foreach($allRoutineTypes as $rmt)
                 @php $rGrid = $routineGrid[$rmt] ?? []; @endphp
                 <div class="routine-type-pane {{ $loop->first ? '' : 'd-none' }}" data-type="{{ $rmt }}">
-                    <div class="table-responsive">
-                        <table class="table table-bordered mb-0" style="min-width:650px;">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th class="text-center" style="width:100px;">Day</th>
-                                    @foreach($routineWeekLabels as $wn => $wl)
-                                    <th class="text-center">{{ $wl }}</th>
-                                    @endforeach
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($routineDisplayDays as $dow)
-                                @php $isToday = ($dow === $todayDayOfWeek); @endphp
-                                <tr class="{{ $isToday ? 'table-success' : '' }}">
-                                    <td class="fw-semibold text-center align-middle {{ $isToday ? 'bg-success bg-opacity-25' : 'bg-light' }}" style="font-size:13px;">
-                                        {{ $routineDayNames[$dow] }}
-                                        @if($isToday)<br><span class="badge bg-success" style="font-size:9px;">Today</span>@endif
-                                    </td>
-                                    @foreach($routineWeekLabels as $wn => $wl)
-                                    @php
-                                        $ritems = $rGrid[$wn][$dow] ?? null;
-                                        $isHL   = $isToday && ($wn === $todayWeekNo);
-                                    @endphp
-                                    <td class="align-middle {{ $isHL ? 'bg-success bg-opacity-10' : '' }}" style="min-height:56px;padding:10px 12px;">
-                                        @if($ritems)
-                                        <div class="small" style="white-space:pre-wrap;">{{ $ritems }}</div>
-                                        @else
-                                        <span class="text-muted small">—</span>
-                                        @endif
-                                    </td>
-                                    @endforeach
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                    {{-- Day headers --}}
+                    <div class="dash-cal-grid mb-1">
+                        @foreach(['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] as $dh)
+                        <div class="text-center fw-semibold small text-muted py-1">{{ $dh }}</div>
+                        @endforeach
+                    </div>
+                    {{-- Calendar days --}}
+                    <div class="dash-cal-grid">
+                        @foreach($routineCalDays as $rday)
+                        @php
+                            $rInMonth  = $rday->month === $routineMonthStart->month;
+                            $rIsToday  = $rday->isToday();
+                            $rDow      = (int) $rday->format('w');
+                            $rWn       = \App\Models\MessMealRoutine::weekNoForDate($rday);
+                            $rItems    = $rGrid[$rWn][$rDow] ?? null;
+                            $rWeekend  = $rDow === 5 || $rDow === 6;
+                            $dbPalette = [
+                                '#fff8e1','#fce4ec','#e8f5e9','#e3f2fd','#f3e5f5',
+                                '#e0f7fa','#fff3e0','#e8eaf6','#f1f8e9','#fdf3e7',
+                                '#fce8ff','#e0f2f1','#fff9c4','#e1f5fe','#fbe9e7',
+                                '#e8f8f5','#fef9e7','#eaf4fb','#fdedec','#f9ebea',
+                            ];
+                            $dbCellBg = !$rInMonth ? '#f8f9fa' : ($rIsToday ? '#dbeafe' : $dbPalette[$rday->day % count($dbPalette)]);
+                        @endphp
+                        <div class="dash-day-cell {{ $rIsToday ? 'r-today' : '' }} {{ !$rInMonth ? 'r-out' : '' }} {{ $rWeekend && $rInMonth ? 'r-weekend' : '' }}" style="background:{{ $dbCellBg }}">
+                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                <span class="r-day-num {{ $rIsToday ? 'r-today-num' : (!$rInMonth ? 'text-muted' : '') }}">{{ $rday->format('j') }}</span>
+                                @if($rInMonth)<span class="badge" style="font-size:8px;background:#e9ecef;color:#555;">W{{ $rWn }}</span>@endif
+                            </div>
+                            @if($rInMonth)
+                                @if($rItems)<div class="r-items">{{ $rItems }}</div>
+                                @else<div class="r-empty">—</div>@endif
+                            @endif
+                        </div>
+                        @endforeach
                     </div>
                 </div>
                 @endforeach
@@ -477,6 +479,16 @@
     </div>
 </div>
 
+<style>
+.dash-cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
+.dash-day-cell { min-height:72px; border:1px solid #e9ecef; border-radius:5px; padding:5px 6px; font-size:11px; }
+.dash-day-cell.r-out { border-color:#f0f0f0; }
+.dash-day-cell.r-today { border:2px solid #0d6efd; }
+.r-day-num { font-size:11px; font-weight:600; line-height:1; }
+.r-today-num { background:#0d6efd; color:#fff; border-radius:50%; width:20px; height:20px; display:inline-flex; align-items:center; justify-content:center; font-size:11px; }
+.r-items { font-size:10px; color:#333; white-space:pre-wrap; line-height:1.3; margin-top:2px; }
+.r-empty { font-size:10px; color:#ccc; }
+</style>
 <script>
 function switchRoutineTab(type, btn) {
     document.querySelectorAll('.routine-type-pane').forEach(p => p.classList.add('d-none'));

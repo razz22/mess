@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Mess;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\AuthorizesMessAccess;
 use App\Models\Mess;
 use App\Models\MealAttendance;
 use App\Models\MealSchedule;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Auth;
 
 class MealController extends Controller
 {
+    use AuthorizesMessAccess;
     public function index(Mess $mess)
     {
         $this->authorizeMember($mess);
@@ -41,7 +43,10 @@ class MealController extends Controller
             ->get()
             ->keyBy('type');
 
-        $members = $mess->activeMembers()->with('user')->get();
+        $myId    = Auth::id();
+        $members = $mess->activeMembers()->with('user')->get()
+            ->sortBy(fn($m) => $m->user_id === $myId ? 0 : 1)
+            ->values();
 
         // Load ALL attendances for this date
         $scheduleIds = $schedules->pluck('id');
@@ -83,11 +88,20 @@ class MealController extends Controller
             ? MessContact::where('mess_id', $mess->id)->orderBy('label')->orderBy('name')->get()
             : collect();
 
+        // Meal routine items for the viewed date (keyed by meal_type)
+        $viewDate   = \Carbon\Carbon::parse($date);
+        $weekNo     = \App\Models\MessMealRoutine::weekNoForDate($viewDate);
+        $dayOfWeek  = (int) $viewDate->format('w');
+        $routineItems = \App\Models\MessMealRoutine::where('mess_id', $mess->id)
+            ->where('week_no', $weekNo)
+            ->where('day_of_week', $dayOfWeek)
+            ->pluck('items', 'meal_type');
+
         return view('mess.meal-attendance', compact(
             'mess', 'mealTypes', 'allMealTypes', 'schedules', 'members',
             'allAttendances', 'date', 'today', 'isPast',
             'isManager', 'isBasic', 'member', 'myChangesToday',
-            'mealTotals', 'contacts'
+            'mealTotals', 'contacts', 'routineItems'
         ));
     }
 
@@ -215,7 +229,9 @@ class MealController extends Controller
 
     public function bulkAttendance(Request $request, Mess $mess)
     {
-        if (!Auth::user()->isManagerOf($mess->id)) abort(403);
+        $user      = Auth::user();
+        $isManager = $user->isManagerOf($mess->id);
+        if (!$user->getMembershipIn($mess->id)) abort(403);
 
         $request->validate([
             'user_ids'   => 'required|array|min:1',
@@ -230,6 +246,9 @@ class MealController extends Controller
                 }
             }],
         ]);
+
+        // Non-managers can only submit for themselves regardless of form data
+        $userIds = $isManager ? $request->user_ids : [$user->id];
 
         $quantity  = (float) $request->quantity;
         $status    = $quantity > 0 ? 'on' : 'off';
@@ -246,7 +265,7 @@ class MealController extends Controller
                     ['status' => 'open']
                 );
 
-                foreach ($request->user_ids as $userId) {
+                foreach ($userIds as $userId) {
                     MealAttendance::updateOrCreate(
                         ['meal_schedule_id' => $schedule->id, 'user_id' => $userId],
                         ['mess_id' => $mess->id, 'status' => $status, 'quantity' => $quantity, 'marked_at' => now()]

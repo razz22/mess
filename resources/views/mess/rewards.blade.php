@@ -53,9 +53,13 @@
                                 {{ $i === 0 ? '🥇' : ($i === 1 ? '🥈' : ($i === 2 ? '🥉' : '#'.($i+1))) }}
                             </div>
                             <div class="avatar avatar-sm">
+                                @if($entry->user->avatar)
+                                <img src="{{ asset('storage/'.$entry->user->avatar) }}" class="avatar-title rounded-circle" style="object-fit:cover;" alt="">
+                                @else
                                 <span class="avatar-title rounded-circle bg-{{ $i === 0 ? 'warning' : 'primary' }} text-white">
                                     {{ strtoupper(substr($entry->user->name, 0, 1)) }}
                                 </span>
+                                @endif
                             </div>
                             <div class="flex-fill">
                                 <div class="fw-semibold">{{ $entry->user->name }}</div>
@@ -136,7 +140,7 @@
                             <div class="col-md-9">
                                 @foreach($currentRotation->votes as $vote)
                                 <div class="d-flex align-items-center gap-2 mb-2">
-                                    <div class="avatar avatar-sm"><span class="avatar-title rounded-circle bg-secondary text-white">{{ strtoupper(substr($vote->voter->name, 0, 1)) }}</span></div>
+                                    <div class="avatar avatar-sm">@if($vote->voter->avatar)<img src="{{ asset('storage/'.$vote->voter->avatar) }}" class="avatar-title rounded-circle" style="object-fit:cover;" alt="">@else<span class="avatar-title rounded-circle bg-secondary text-white">{{ strtoupper(substr($vote->voter->name, 0, 1)) }}</span>@endif</div>
                                     <div>
                                         <span class="fw-semibold small">{{ $vote->voter->name }}</span>
                                         <div>@for($i = 1; $i <= 5; $i++)<i class="ti ti-star{{ $i <= $vote->rating ? '-filled text-warning' : ' text-muted' }}" style="font-size:11px"></i>@endfor</div>
