@@ -128,7 +128,7 @@ class MarketController extends Controller
 
     public function listItems(Mess $mess, MarketRoutine $routine)
     {
-        if ($routine->mess_id !== $mess->id) abort(403);
+        if ((int) $routine->mess_id !== (int) $mess->id) abort(403);
         $this->authorizeMember($mess);
 
         $items   = $routine->listItems()->with(['addedBy', 'assignedTo'])->get();
@@ -140,7 +140,7 @@ class MarketController extends Controller
 
     public function addListItem(Request $request, Mess $mess, MarketRoutine $routine)
     {
-        if ($routine->mess_id !== $mess->id) abort(403);
+        if ((int) $routine->mess_id !== (int) $mess->id) abort(403);
         $this->authorizeMember($mess);
 
         $request->validate([
@@ -178,7 +178,7 @@ class MarketController extends Controller
 
     public function unassign(Request $request, Mess $mess, MarketRoutine $routine)
     {
-        if ($routine->mess_id !== $mess->id) abort(403);
+        if ((int) $routine->mess_id !== (int) $mess->id) abort(403);
 
         $user         = Auth::user();
         $isSuperAdmin = $user->is_super_admin;
@@ -220,7 +220,7 @@ class MarketController extends Controller
 
     public function updateListItem(Request $request, Mess $mess, MarketListItem $item)
     {
-        if ($item->mess_id !== $mess->id) abort(403);
+        if ((int) $item->mess_id !== (int) $mess->id) abort(403);
 
         $data = [];
         if ($request->has('actual_cost')) $data['actual_cost'] = $request->actual_cost;
@@ -240,7 +240,7 @@ class MarketController extends Controller
 
     public function completeRoutine(Mess $mess, MarketRoutine $routine)
     {
-        if ($routine->mess_id !== $mess->id) abort(403);
+        if ((int) $routine->mess_id !== (int) $mess->id) abort(403);
 
         $canComplete = Auth::id() === $routine->assigned_to || Auth::user()->isManagerOf($mess->id);
         if (!$canComplete) abort(403);

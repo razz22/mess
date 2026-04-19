@@ -92,7 +92,12 @@
                                 <i class="ti ti-lock" style="font-size:11px"></i>
                             </button>
                             @elseif($sch && $sch->status === 'closed')
-                            <span class="badge bg-secondary" style="font-size:10px">Closed</span>
+                            <span class="badge bg-secondary" style="font-size:10px"><i class="ti ti-lock me-1" style="font-size:9px"></i>Closed</span>
+                            @if($isOwner || $isSuperAdmin)
+                            <button class="btn btn-xs btn-outline-success py-0" onclick="reopenMeal({{ $sch->id }}, '{{ $mt->name }}')" title="Reopen {{ $mt->name }}">
+                                <i class="ti ti-lock-open" style="font-size:11px"></i>
+                            </button>
+                            @endif
                             @endif
                         </div>
                         @endforeach
@@ -143,7 +148,6 @@
                                     @endif
                                 </th>
                                 @endforeach
-                                <th class="bg-light text-center" style="min-width:90px;">Total<br><span style="font-size:10px;font-weight:400">meals today</span></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -176,48 +180,81 @@
                                     $sch       = $schedules[$mt->name] ?? null;
                                     $key       = $sch ? ($sch->id . '_' . $mem->user_id) : null;
                                     $att       = $key ? ($allAttendances[$key]->first() ?? null) : null;
-                                    $qty       = $att ? (float)$att->quantity : 0.0; // no record = not marked
-                                    $presets   = [0, 0.5, 1, 1.5, 2, 2.5, 3];
-                                    $isCustom  = !in_array($qty, $presets);
+                                    $fullQty   = $att ? (int)$att->full_qty : 0;
+                                    $halfQty   = $att ? (int)$att->half_qty : 0;
+                                    $qty       = $fullQty + $halfQty * 0.5;
                                     $locked    = $isPast || !$sch || $sch->status === 'closed'
                                                  || (!$isManager && $mt->isExpired($date));
                                     $canChange = $canEdit && !$locked;
-                                    $totalQty += $qty;
-                                    $cost      = null; // rate calculated from market expenses, not meal type
+                                    $lockTitle = $locked ? ($isPast ? 'Past date' : ($sch && $sch->status==='closed' ? 'Meal closed' : 'Time expired')) : '';
                                 @endphp
                                 <td class="text-center align-middle p-1 {{ $locked ? 'bg-light' : '' }}">
                                     @if($sch)
-                                    <div class="d-flex flex-column align-items-center gap-1">
-                                        <select class="meal-qty-select form-select form-select-sm text-center fw-semibold"
-                                            style="width:100px;font-size:13px;border-radius:20px;
-                                                   background:{{ $qty == 0 ? '#fff5f5' : ($qty > 1 ? '#f0f8ff' : '#f0fff4') }};
-                                                   color:{{ $qty == 0 ? '#dc3545' : ($qty > 1 ? '#0d6efd' : '#198754') }};
-                                                   border-color:{{ $qty == 0 ? '#dc3545' : ($qty > 1 ? '#0d6efd' : '#198754') }};"
-                                            data-schedule="{{ $sch->id }}"
-                                            data-user="{{ $mem->user_id }}"
-                                            {{ !$canChange ? 'disabled' : '' }}
-                                            onchange="{{ $canChange ? 'changeMealQty(this)' : '' }}"
-                                            title="{{ $locked ? ($isPast ? 'Past date' : ($sch->status==='closed' ? 'Meal closed' : 'Time expired')) : '' }}"
-                                        >
-                                            <option value="0"      {{ (!$isCustom && $qty == 0)   ? 'selected' : '' }}>✕ Off</option>
-                                            <option value="0.5"    {{ (!$isCustom && $qty == 0.5) ? 'selected' : '' }}>½ meal</option>
-                                            <option value="1"      {{ (!$isCustom && $qty == 1)   ? 'selected' : '' }}>1 meal</option>
-                                            <option value="1.5"    {{ (!$isCustom && $qty == 1.5) ? 'selected' : '' }}>1½ meals</option>
-                                            <option value="2"      {{ (!$isCustom && $qty == 2)   ? 'selected' : '' }}>2 meals</option>
-                                            <option value="2.5"    {{ (!$isCustom && $qty == 2.5) ? 'selected' : '' }}>2½ meals</option>
-                                            <option value="3"      {{ (!$isCustom && $qty == 3)   ? 'selected' : '' }}>3 meals</option>
-                                            <option value="custom" {{ $isCustom ? 'selected' : '' }}>✎ Custom…</option>
-                                        </select>
-                                        <input type="number"
-                                            class="meal-custom-input form-control form-control-sm text-center fw-semibold {{ $isCustom ? '' : 'd-none' }}"
-                                            style="width:100px;font-size:13px;border-radius:20px;"
-                                            min="0" step="0.5" placeholder="e.g. 4"
-                                            value="{{ $isCustom ? $qty : '' }}"
-                                            data-schedule="{{ $sch->id }}"
-                                            data-user="{{ $mem->user_id }}"
-                                            {{ !$canChange ? 'disabled' : '' }}
-                                            onkeydown="if(event.key==='Enter'){event.preventDefault();submitCustomQty(this);}"
-                                            onblur="submitCustomQty(this)">
+                                    @php
+                                        $cellBg = $qty == 0 ? '#fff5f5' : ($fullQty > 0 && $halfQty > 0 ? '#f5f0ff' : ($halfQty > 0 ? '#fff8e1' : '#f0fff4'));
+                                    @endphp
+                                    <div class="meal-cell d-flex flex-column align-items-center gap-1"
+                                         data-schedule="{{ $sch->id }}" data-user="{{ $mem->user_id }}"
+                                         style="min-width:110px;">
+                                        {{-- Full meals spinner --}}
+                                        <div class="d-flex align-items-center gap-1 w-100 justify-content-center">
+                                            <span class="text-muted" style="font-size:10px;width:28px;text-align:right;">Full</span>
+                                            <div class="input-group input-group-sm" style="width:80px;">
+                                                <button type="button" class="btn btn-outline-secondary px-1 py-0 qty-btn" style="font-size:12px;"
+                                                    data-target="full" data-dir="-1" data-schedule="{{ $sch->id }}" data-user="{{ $mem->user_id }}"
+                                                    {{ !$canChange ? 'disabled' : '' }} title="{{ $lockTitle }}">−</button>
+                                                <input type="number" min="0" max="20" value="{{ $fullQty }}"
+                                                    class="form-control text-center fw-bold px-0 full-qty-input"
+                                                    style="font-size:13px;background:{{ $cellBg }};"
+                                                    data-schedule="{{ $sch->id }}" data-user="{{ $mem->user_id }}"
+                                                    {{ !$canChange ? 'disabled' : '' }}
+                                                    onchange="submitMealQty({{ $sch->id }}, {{ $mem->user_id }})"
+                                                    title="{{ $lockTitle }}">
+                                                <button type="button" class="btn btn-outline-secondary px-1 py-0 qty-btn" style="font-size:12px;"
+                                                    data-target="full" data-dir="1" data-schedule="{{ $sch->id }}" data-user="{{ $mem->user_id }}"
+                                                    {{ !$canChange ? 'disabled' : '' }} title="{{ $lockTitle }}">+</button>
+                                            </div>
+                                        </div>
+                                        {{-- Half meals spinner --}}
+                                        <div class="d-flex align-items-center gap-1 w-100 justify-content-center">
+                                            <span class="text-muted" style="font-size:10px;width:28px;text-align:right;">½</span>
+                                            <div class="input-group input-group-sm" style="width:80px;">
+                                                <button type="button" class="btn btn-outline-secondary px-1 py-0 qty-btn" style="font-size:12px;"
+                                                    data-target="half" data-dir="-1" data-schedule="{{ $sch->id }}" data-user="{{ $mem->user_id }}"
+                                                    {{ !$canChange ? 'disabled' : '' }} title="{{ $lockTitle }}">−</button>
+                                                <input type="number" min="0" max="20" value="{{ $halfQty }}"
+                                                    class="form-control text-center fw-bold px-0 half-qty-input"
+                                                    style="font-size:13px;background:{{ $cellBg }};"
+                                                    data-schedule="{{ $sch->id }}" data-user="{{ $mem->user_id }}"
+                                                    {{ !$canChange ? 'disabled' : '' }}
+                                                    onchange="submitMealQty({{ $sch->id }}, {{ $mem->user_id }})"
+                                                    title="{{ $lockTitle }}">
+                                                <button type="button" class="btn btn-outline-secondary px-1 py-0 qty-btn" style="font-size:12px;"
+                                                    data-target="half" data-dir="1" data-schedule="{{ $sch->id }}" data-user="{{ $mem->user_id }}"
+                                                    {{ !$canChange ? 'disabled' : '' }} title="{{ $lockTitle }}">+</button>
+                                            </div>
+                                        </div>
+                                        {{-- Off button --}}
+                                        @if($canChange)
+                                        <button type="button" class="btn btn-xs off-btn px-2 py-0 {{ $qty == 0 ? 'btn-danger' : 'btn-outline-danger' }}"
+                                            style="font-size:11px;border-radius:20px;"
+                                            data-schedule="{{ $sch->id }}" data-user="{{ $mem->user_id }}"
+                                            onclick="setMealOff({{ $sch->id }}, {{ $mem->user_id }}, this)"
+                                            title="Mark as Off (not eating)">
+                                            ✕ Off
+                                        </button>
+                                        @endif
+                                        {{-- Summary badge --}}
+                                        <div class="meal-summary-badge" data-schedule="{{ $sch->id }}" data-user="{{ $mem->user_id }}">
+                                            @if($qty == 0)
+                                            <span class="badge bg-danger-subtle text-danger" style="font-size:10px;">Off</span>
+                                            @else
+                                            <span class="badge bg-success-subtle text-success" style="font-size:10px;">
+                                                {{ $fullQty > 0 ? $fullQty.'F' : '' }}{{ $fullQty > 0 && $halfQty > 0 ? '+' : '' }}{{ $halfQty > 0 ? $halfQty.'H' : '' }}
+                                                = {{ $qty % 1 == 0 ? (int)$qty : $qty }}
+                                            </span>
+                                            @endif
+                                        </div>
                                     </div>
                                     @else
                                     <span class="text-muted small">—</span>
@@ -225,10 +262,6 @@
                                 </td>
                                 @endforeach
 
-                                {{-- Row total --}}
-                                <td class="text-center align-middle fw-bold" id="row-total-{{ $mem->user_id }}">
-                                    <span class="badge rounded-pill bg-{{ $totalQty > 0 ? 'success' : 'danger' }}" style="font-size:13px;">{{ $totalQty }}</span>
-                                </td>
                             </tr>
                             @endforeach
                         </tbody>
@@ -247,7 +280,6 @@
                                     <span class="badge bg-primary rounded-pill">{{ $sumQ }}</span>
                                 </td>
                                 @endforeach
-                                <td></td>
                             </tr>
                         </tfoot>
                     </table>
@@ -575,31 +607,36 @@
                             <h6 class="mb-0 text-warning"><i class="ti ti-hash me-2"></i>Step 4 — Set Quantity</h6>
                         </div>
                         <div class="card-body">
-                            <div class="d-flex flex-wrap gap-2 mb-2" id="bulkQtyBtns">
-                                @foreach(['0' => 'Off', '0.5' => '½', '1' => '1', '1.5' => '1½', '2' => '2', '2.5' => '2½', '3' => '3'] as $val => $label)
-                                <button type="button"
-                                    class="btn btn-sm {{ $val === '1' ? 'btn-primary' : 'btn-outline-secondary' }} bulk-qty-btn"
-                                    data-val="{{ $val }}"
-                                    onclick="setBulkQty('{{ $val }}', this)">
-                                    {{ $label }}
+                            <div class="mb-3">
+                                <button type="button" class="btn btn-danger btn-sm px-3" id="bulkOffBtn" onclick="setBulkOff()">
+                                    ✕ Off (mark as not eating)
                                 </button>
-                                @endforeach
-                                <button type="button" class="btn btn-sm btn-outline-info bulk-qty-btn" id="bulkCustomQtyBtn" onclick="toggleBulkCustomQty()">
-                                    Custom
-                                </button>
+                                <span class="text-muted small ms-2">or set quantities below</span>
                             </div>
-                            <div id="bulkCustomQtyWrap" class="d-none mb-2" style="max-width:200px;">
-                                <div class="input-group input-group-sm">
-                                    <span class="input-group-text"><i class="ti ti-hash"></i></span>
-                                    <input type="number" id="bulkCustomQtyField" class="form-control" min="0" max="99" step="0.5" placeholder="e.g. 1.5">
-                                    <button type="button" class="btn btn-info" onclick="applyBulkCustomQty()">Set</button>
+                            <div class="row g-3 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label small fw-semibold">Full meals</label>
+                                    <div class="input-group input-group-sm">
+                                        <button type="button" class="btn btn-outline-secondary px-2" onclick="adjustBulk('full',-1)">−</button>
+                                        <input type="number" name="full_qty" id="bulkFullQty" class="form-control text-center fw-bold" min="0" max="20" value="1">
+                                        <button type="button" class="btn btn-outline-secondary px-2" onclick="adjustBulk('full',1)">+</button>
+                                    </div>
+                                    <div class="form-text">1 = one full meal</div>
                                 </div>
-                                <div class="form-text">Enter any value in steps of 0.5</div>
+                                <div class="col-6">
+                                    <label class="form-label small fw-semibold">Half meals (½)</label>
+                                    <div class="input-group input-group-sm">
+                                        <button type="button" class="btn btn-outline-secondary px-2" onclick="adjustBulk('half',-1)">−</button>
+                                        <input type="number" name="half_qty" id="bulkHalfQty" class="form-control text-center fw-bold" min="0" max="20" value="0">
+                                        <button type="button" class="btn btn-outline-secondary px-2" onclick="adjustBulk('half',1)">+</button>
+                                    </div>
+                                    <div class="form-text">e.g. 2 = two half portions</div>
+                                </div>
                             </div>
-                            <input type="hidden" name="quantity" id="bulkQtyInput" value="1">
-                            <div class="alert alert-info py-2 mb-0 small">
+                            <div id="bulkQtySummary" class="alert alert-info py-2 mb-0 small">
                                 <i class="ti ti-info-circle me-1"></i>
-                                <strong>Off (0)</strong> marks absence. Other values set the meal quantity for each selected member × date × meal type.
+                                Equivalent: <strong id="bulkQtyEquiv">1.0</strong> meal per member per date.
+                                <span class="text-muted">(Full + Half × 0.5)</span>
                             </div>
                         </div>
                     </div>
@@ -700,136 +737,105 @@ flatpickr('#mealDatePicker', {
 });
 
 // ── Meal quantity change ─────────────────────────────────────
-function changeMealQty(select) {
-    // "Custom…" chosen — show the number input instead of sending
-    if (select.value === 'custom') {
-        var wrap  = select.closest('.d-flex.flex-column');
-        var input = wrap ? wrap.querySelector('.meal-custom-input') : null;
-        if (input) {
-            input.classList.remove('d-none');
-            input.value = '';
-            input.focus();
-        }
-        return;
-    }
+// +/- buttons
+document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.qty-btn');
+    if (!btn) return;
+    var scheduleId = btn.getAttribute('data-schedule');
+    var userId     = btn.getAttribute('data-user');
+    var target     = btn.getAttribute('data-target'); // 'full' or 'half'
+    var dir        = parseInt(btn.getAttribute('data-dir'));
+    var cell       = document.querySelector('.meal-cell[data-schedule="' + scheduleId + '"][data-user="' + userId + '"]');
+    if (!cell) return;
+    var inp = cell.querySelector('.' + target + '-qty-input');
+    if (!inp || inp.disabled) return;
+    var newVal = Math.max(0, (parseInt(inp.value) || 0) + dir);
+    inp.value = newVal;
+    submitMealQty(scheduleId, userId);
+});
 
-    var scheduleId = select.getAttribute('data-schedule');
-    var userId     = select.getAttribute('data-user');
-    var quantity   = parseFloat(select.value);
+// debounce timers per cell
+var _mealTimers = {};
 
-    sendMealQty(select, null, scheduleId, userId, quantity);
+function submitMealQty(scheduleId, userId) {
+    var key = scheduleId + '_' + userId;
+    clearTimeout(_mealTimers[key]);
+    _mealTimers[key] = setTimeout(function() { _doSubmitMealQty(scheduleId, userId); }, 300);
 }
 
-// Custom input: submitted on Enter or blur
-function submitCustomQty(input) {
-    // Ignore blur if input is empty / not shown
-    if (input.classList.contains('d-none') || input.value === '') return;
+function _doSubmitMealQty(scheduleId, userId) {
+    var cell    = document.querySelector('.meal-cell[data-schedule="' + scheduleId + '"][data-user="' + userId + '"]');
+    if (!cell) return;
+    var fullInp = cell.querySelector('.full-qty-input');
+    var halfInp = cell.querySelector('.half-qty-input');
+    var fullQty = parseInt(fullInp ? fullInp.value : 0) || 0;
+    var halfQty = parseInt(halfInp ? halfInp.value : 0) || 0;
 
-    var quantity = parseFloat(input.value);
-    if (isNaN(quantity) || quantity < 0) {
-        showToast('Please enter a valid quantity (e.g. 4 or 4.5).', 'danger');
-        return;
-    }
-    // Must be a multiple of 0.5
-    if (Math.round(quantity * 10) % 5 !== 0) {
-        showToast('Quantity must be in steps of 0.5 (e.g. 4, 4.5, 5).', 'warning');
-        input.focus();
-        return;
-    }
-
-    var scheduleId = input.getAttribute('data-schedule');
-    var userId     = input.getAttribute('data-user');
-
-    // Find the sibling select to sync its visual state
-    var wrap   = input.closest('.d-flex.flex-column');
-    var select = wrap ? wrap.querySelector('.meal-qty-select') : null;
-
-    sendMealQty(select, input, scheduleId, userId, quantity);
-}
-
-function sendMealQty(select, customInput, scheduleId, userId, quantity) {
-    // Lock both controls while sending
-    if (select)      select.disabled = true;
-    if (customInput) customInput.disabled = true;
+    // Lock
+    cell.querySelectorAll('input, button').forEach(function(el) { el.disabled = true; });
 
     fetch(attendanceUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
-        body: JSON.stringify({ schedule_id: scheduleId, user_id: userId, quantity: quantity })
+        body: JSON.stringify({ schedule_id: scheduleId, user_id: userId, full_qty: fullQty, half_qty: halfQty })
     })
-    .then(function (response) {
-        return response.text().then(function (text) {
-            return { ok: response.ok, status: response.status, text: text };
-        });
-    })
-    .then(function (result) {
-        if (select)      select.disabled = false;
-        if (customInput) customInput.disabled = false;
+    .then(function(r) { return r.text().then(function(t) { return { ok: r.ok, status: r.status, text: t }; }); })
+    .then(function(result) {
+        cell.querySelectorAll('input, button').forEach(function(el) { el.disabled = false; });
 
         var data = {};
-        try { data = JSON.parse(result.text); } catch (e) {}
+        try { data = JSON.parse(result.text); } catch(e) {}
 
         if (!result.ok) {
             showToast(data.error || data.message || 'Server error ' + result.status, 'danger');
-            if (data.limit_reached) { disableMySelects(); }
+            if (data.limit_reached) { disableMyInputs(); }
             return;
         }
 
-        // If custom value, keep the input visible and update select to show "Custom…"
-        if (customInput) {
-            customInput.classList.remove('d-none');
-            if (select) {
-                select.value = 'custom';
-                applySelectStyle(select, quantity);
+        // Update summary badge
+        var badge = cell.querySelector('.meal-summary-badge');
+        var qty   = fullQty + halfQty * 0.5;
+        if (badge) {
+            if (qty === 0) {
+                badge.innerHTML = '<span class="badge bg-danger-subtle text-danger" style="font-size:10px;">Off</span>';
+            } else {
+                var label = (fullQty > 0 ? fullQty + 'F' : '') + (fullQty > 0 && halfQty > 0 ? '+' : '') + (halfQty > 0 ? halfQty + 'H' : '');
+                var equiv = qty % 1 === 0 ? qty : qty.toFixed(1);
+                badge.innerHTML = '<span class="badge bg-success-subtle text-success" style="font-size:10px;">' + label + ' = ' + equiv + '</span>';
             }
-        } else if (select) {
-            applySelectStyle(select, quantity);
-            // Hide custom input if it was previously visible
-            var wrap  = select.closest('.d-flex.flex-column');
-            var ci    = wrap ? wrap.querySelector('.meal-custom-input') : null;
-            if (ci) ci.classList.add('d-none');
+            // Cell bg
+            var bg = qty === 0 ? '#fff5f5' : (fullQty > 0 && halfQty > 0 ? '#f5f0ff' : (halfQty > 0 ? '#fff8e1' : '#f0fff4'));
+            cell.querySelectorAll('input[type=number]').forEach(function(i) { i.style.background = bg; });
         }
+        // Off button style
+        cell.querySelectorAll('.off-btn').forEach(function(b) {
+            if (qty === 0) {
+                b.classList.remove('btn-outline-danger'); b.classList.add('btn-danger');
+            } else {
+                b.classList.remove('btn-danger'); b.classList.add('btn-outline-danger');
+            }
+        });
 
-        // Live totals
         updateHeaderQty(scheduleId, data.totalQty);
         updateFooterQty(scheduleId, data.totalQty);
-        updateRowTotalById(userId);
 
-        // Toast
-        if (quantity === 0) {
+        var qty = fullQty + halfQty * 0.5;
+        if (qty === 0) {
             showToast('Meal turned OFF', 'warning');
         } else {
-            showToast('Set to ' + quantity + ' meal' + (quantity !== 1 ? 's' : ''), 'success');
+            var lbl = (fullQty > 0 ? fullQty + ' full' : '') + (fullQty > 0 && halfQty > 0 ? ' + ' : '') + (halfQty > 0 ? halfQty + ' half' : '');
+            showToast('Set to ' + lbl, 'success');
         }
 
-        // Remaining badge
         if (!isManager && data.remaining !== null && data.remaining !== undefined) {
             updateRemainingBadge(data.remaining);
-            if (data.remaining === 0) { disableMySelects(); }
+            if (data.remaining === 0) { disableMyInputs(); }
         }
     })
-    .catch(function () {
-        if (select)      select.disabled = false;
-        if (customInput) customInput.disabled = false;
+    .catch(function() {
+        cell.querySelectorAll('input, button').forEach(function(el) { el.disabled = false; });
         showToast('Request failed. Check your connection.', 'danger');
     });
-}
-
-function applySelectStyle(select, qty) {
-    qty = parseFloat(qty);
-    if (qty === 0) {
-        select.style.background   = '#fff5f5';
-        select.style.color        = '#dc3545';
-        select.style.borderColor  = '#dc3545';
-    } else if (qty > 1) {
-        select.style.background   = '#f0f8ff';
-        select.style.color        = '#0d6efd';
-        select.style.borderColor  = '#0d6efd';
-    } else {
-        select.style.background   = '#f0fff4';
-        select.style.color        = '#198754';
-        select.style.borderColor  = '#198754';
-    }
 }
 
 function updateHeaderQty(scheduleId, totalQty) {
@@ -848,24 +854,21 @@ function updateFooterQty(scheduleId, totalQty) {
     if (badge) badge.textContent = totalQty;
 }
 
-function updateRowTotalById(userId) {
-    var cell = document.getElementById('row-total-' + userId);
+function updateRowTotalById(userId) {}
+
+function setMealOff(scheduleId, userId, btn) {
+    var cell    = document.querySelector('.meal-cell[data-schedule="' + scheduleId + '"][data-user="' + userId + '"]');
     if (!cell) return;
-    var row = cell.closest('tr');
-    var total = 0;
-    // Sum preset selects (skip "custom" entries — use the input value instead)
-    row.querySelectorAll('.meal-qty-select').forEach(function(s) {
-        if (s.value !== 'custom') { total += parseFloat(s.value) || 0; }
+    var fullInp = cell.querySelector('.full-qty-input');
+    var halfInp = cell.querySelector('.half-qty-input');
+    if (fullInp) fullInp.value = 0;
+    if (halfInp) halfInp.value = 0;
+    // Style off button as active
+    cell.querySelectorAll('.off-btn').forEach(function(b) {
+        b.classList.remove('btn-outline-danger');
+        b.classList.add('btn-danger');
     });
-    row.querySelectorAll('.meal-custom-input:not(.d-none)').forEach(function(i) {
-        total += parseFloat(i.value) || 0;
-    });
-    var badge = cell.querySelector('span');
-    if (badge) {
-        badge.textContent    = total;
-        badge.className      = 'badge rounded-pill bg-' + (total > 0 ? 'success' : 'danger');
-        badge.style.fontSize = '13px';
-    }
+    submitMealQty(scheduleId, userId);
 }
 
 function updateRemainingBadge(remaining) {
@@ -883,14 +886,16 @@ function updateRemainingBadge(remaining) {
     }
 }
 
-function disableMySelects() {
+function disableMyInputs() {
     var myUserId = '{{ Auth::id() }}';
-    document.querySelectorAll('.meal-qty-select[data-user="' + myUserId + '"]').forEach(function(s) {
-        s.disabled = true;
-        s.title    = 'You have used all 3 changes for today. Contact your manager.';
+    var msg = 'You have used all 3 changes for today. Contact your manager.';
+    document.querySelectorAll('.full-qty-input[data-user="' + myUserId + '"], .half-qty-input[data-user="' + myUserId + '"], .qty-btn[data-user="' + myUserId + '"]').forEach(function(el) {
+        el.disabled = true;
+        el.title = msg;
     });
-    showToast('You have used all 3 changes for today. Contact your manager.', 'danger');
+    showToast(msg, 'danger');
 }
+function disableMySelects() { disableMyInputs(); }
 
 function openToggleMealType(id, name, action) {
     var isDisable = action === 'disable';
@@ -969,25 +974,64 @@ function openEditMealType(id, name, closeTime, daysBefore, isActive) {
 }
 
 function closeMeal(scheduleId, mealName) {
-    var cost = prompt('Close "' + mealName + '"?\n\nEnter total meal cost in ৳ (leave blank for 0):');
-    if (cost === null) return;
-
-    showToast('Closing ' + mealName + '…', 'info');
-
-    fetch(mealCloseBase + '/' + scheduleId + '/close', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
-        body: JSON.stringify({ meal_cost: parseFloat(cost) || 0 })
-    })
-    .then(function (r) { return r.json(); })
-    .then(function () {
-        showToast(mealName + ' closed successfully.', 'success');
-        setTimeout(function () { location.reload(); }, 1500);
-    })
-    .catch(function () {
-        showToast('Failed to close meal.', 'danger');
-    });
+    document.getElementById('closeMealName').textContent = mealName;
+    document.getElementById('closeMealScheduleId').value = scheduleId;
+    document.getElementById('closeMealMealName').value   = mealName;
+    new bootstrap.Modal(document.getElementById('closeMealModal')).show();
 }
+
+function reopenMeal(scheduleId, mealName) {
+    document.getElementById('reopenMealName').textContent = mealName;
+    document.getElementById('reopenMealScheduleId').value = scheduleId;
+    document.getElementById('reopenMealMealName').value   = mealName;
+    new bootstrap.Modal(document.getElementById('reopenMealModal')).show();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Close meal confirm
+    var closeBtn = document.getElementById('closeMealConfirmBtn');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function() {
+            var scheduleId = document.getElementById('closeMealScheduleId').value;
+            var mealName   = document.getElementById('closeMealMealName').value;
+            bootstrap.Modal.getInstance(document.getElementById('closeMealModal')).hide();
+            showToast('Closing ' + mealName + '…', 'info');
+            fetch(mealCloseBase + '/' + scheduleId + '/close', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+                body: JSON.stringify({ meal_cost: 0 })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function() {
+                showToast(mealName + ' closed successfully.', 'success');
+                setTimeout(function() { location.reload(); }, 1500);
+            })
+            .catch(function() { showToast('Failed to close meal.', 'danger'); });
+        });
+    }
+
+    // Reopen meal confirm
+    var reopenBtn = document.getElementById('reopenMealConfirmBtn');
+    if (reopenBtn) {
+        reopenBtn.addEventListener('click', function() {
+            var scheduleId = document.getElementById('reopenMealScheduleId').value;
+            var mealName   = document.getElementById('reopenMealMealName').value;
+            bootstrap.Modal.getInstance(document.getElementById('reopenMealModal')).hide();
+            showToast('Reopening ' + mealName + '…', 'info');
+            fetch(mealCloseBase + '/' + scheduleId + '/reopen', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+                body: JSON.stringify({})
+            })
+            .then(function(r) { return r.json(); })
+            .then(function() {
+                showToast(mealName + ' reopened successfully.', 'success');
+                setTimeout(function() { location.reload(); }, 1500);
+            })
+            .catch(function() { showToast('Failed to reopen meal.', 'danger'); });
+        });
+    }
+});
 
 // ===================== BULK ATTENDANCE JS =====================
 (function () {
@@ -1104,52 +1148,48 @@ function closeMeal(scheduleId, mealName) {
         renderCal();
     };
 
-    // ── quantity buttons ──────────────────────────────────────────────────────
-    window.setBulkQty = function (val, btn) {
-        document.getElementById('bulkQtyInput').value = val;
-        document.querySelectorAll('.bulk-qty-btn').forEach(function (b) {
-            b.classList.remove('btn-primary', 'btn-info');
-            b.classList.add('btn-outline-secondary');
-        });
-        btn.classList.remove('btn-outline-secondary');
-        btn.classList.add('btn-primary');
-        document.getElementById('bulkCustomQtyWrap').classList.add('d-none');
+    // ── bulk qty spinners ─────────────────────────────────────────────────────
+    window.setBulkOff = function() {
+        document.getElementById('bulkFullQty').value = 0;
+        document.getElementById('bulkHalfQty').value = 0;
+        var btn = document.getElementById('bulkOffBtn');
+        if (btn) { btn.classList.remove('btn-outline-danger'); btn.classList.add('btn-danger'); }
+        updateBulkQtyEquiv();
         updateBulkSummary();
     };
 
-    window.toggleBulkCustomQty = function () {
-        var wrap = document.getElementById('bulkCustomQtyWrap');
-        var btn  = document.getElementById('bulkCustomQtyBtn');
-        wrap.classList.toggle('d-none');
-        if (!wrap.classList.contains('d-none')) {
-            document.querySelectorAll('.bulk-qty-btn').forEach(function (b) {
-                b.classList.remove('btn-primary', 'btn-info');
-                b.classList.add('btn-outline-secondary');
-            });
-            btn.classList.remove('btn-outline-secondary');
-            btn.classList.add('btn-info');
-            document.getElementById('bulkCustomQtyField').focus();
+    window.adjustBulk = function(type, dir) {
+        var id  = type === 'full' ? 'bulkFullQty' : 'bulkHalfQty';
+        var inp = document.getElementById(id);
+        if (!inp) return;
+        inp.value = Math.max(0, (parseInt(inp.value) || 0) + dir);
+        resetBulkOffBtn();
+        updateBulkQtyEquiv();
+        updateBulkSummary();
+    };
+
+    function resetBulkOffBtn() {
+        var full = parseInt(document.getElementById('bulkFullQty').value) || 0;
+        var half = parseInt(document.getElementById('bulkHalfQty').value) || 0;
+        var btn  = document.getElementById('bulkOffBtn');
+        if (!btn) return;
+        if (full === 0 && half === 0) {
+            btn.classList.remove('btn-outline-danger'); btn.classList.add('btn-danger');
+        } else {
+            btn.classList.remove('btn-danger'); btn.classList.add('btn-outline-danger');
         }
-    };
+    }
 
-    window.applyBulkCustomQty = function () {
-        var field = document.getElementById('bulkCustomQtyField');
-        var val   = parseFloat(field.value);
-        if (isNaN(val) || val < 0 || val > 99) { field.classList.add('is-invalid'); return; }
-        if ((val * 10) % 5 !== 0) { field.classList.add('is-invalid'); return; }
-        field.classList.remove('is-invalid');
-        document.getElementById('bulkQtyInput').value = val;
-        document.getElementById('bulkCustomQtyWrap').classList.add('d-none');
-        document.querySelectorAll('.bulk-qty-btn').forEach(function (b) {
-            b.classList.remove('btn-primary', 'btn-info');
-            b.classList.add('btn-outline-secondary');
-        });
-        var btn = document.getElementById('bulkCustomQtyBtn');
-        btn.classList.remove('btn-outline-secondary');
-        btn.classList.add('btn-info');
-        btn.textContent = 'Custom (' + val + ')';
-        updateBulkSummary();
-    };
+    function updateBulkQtyEquiv() {
+        var full  = parseInt(document.getElementById('bulkFullQty').value) || 0;
+        var half  = parseInt(document.getElementById('bulkHalfQty').value) || 0;
+        var equiv = full + half * 0.5;
+        var el    = document.getElementById('bulkQtyEquiv');
+        if (el) el.textContent = equiv % 1 === 0 ? equiv.toFixed(1) : equiv;
+    }
+
+    document.getElementById('bulkFullQty').addEventListener('input', function() { resetBulkOffBtn(); updateBulkQtyEquiv(); updateBulkSummary(); });
+    document.getElementById('bulkHalfQty').addEventListener('input', function() { resetBulkOffBtn(); updateBulkQtyEquiv(); updateBulkSummary(); });
 
     // ── member / meal-type toggles ────────────────────────────────────────────
     window.bulkSelectAll  = function () { document.querySelectorAll('.bulk-member-cb').forEach(function(c){ c.checked = true; }); updateBulkSummary(); };
@@ -1162,12 +1202,15 @@ function closeMeal(scheduleId, mealName) {
         var members   = document.querySelectorAll('.bulk-member-cb:checked').length;
         var mealTypes = document.querySelectorAll('.bulk-mt-cb:checked').length;
         var dates     = bulkDates.length;
-        var qty       = document.getElementById('bulkQtyInput') ? document.getElementById('bulkQtyInput').value : 1;
+        var full      = parseInt(document.getElementById('bulkFullQty').value) || 0;
+        var half      = parseInt(document.getElementById('bulkHalfQty').value) || 0;
+        var equiv     = full + half * 0.5;
         var total     = members * mealTypes * dates;
         var text      = document.getElementById('bulkSummaryText');
         if (!text) return;
+        var qtyLabel  = equiv === 0 ? 'Off' : (full + 'F + ' + half + 'H (' + equiv + ')');
         text.innerHTML = total > 0
-            ? '<strong>' + total + '</strong> record(s) → <strong>' + (qty == 0 ? 'Off' : qty) + '</strong>'
+            ? '<strong>' + total + '</strong> record(s) → <strong>' + qtyLabel + '</strong>'
             : 'Select members, dates and meal types.';
     }
     window.updateBulkSummary = updateBulkSummary;
@@ -1484,4 +1527,53 @@ function closeMeal(scheduleId, mealName) {
 })();
 </script>
 </script>
+{{-- Reopen Meal Confirmation Modal --}}
+<div class="modal fade" id="reopenMealModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-body text-center p-4">
+                <div class="mb-3">
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width:60px;height:60px;background:#d1fae5;">
+                        <i class="ti ti-lock-open" style="font-size:1.8rem;color:#059669;"></i>
+                    </span>
+                </div>
+                <h6 class="fw-bold mb-1">Reopen <span id="reopenMealName"></span>?</h6>
+                <p class="text-muted small mb-4">Members will be able to change their attendance again after reopening.</p>
+                <input type="hidden" id="reopenMealScheduleId">
+                <input type="hidden" id="reopenMealMealName">
+                <div class="d-flex justify-content-center gap-2">
+                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success px-4" id="reopenMealConfirmBtn">
+                        <i class="ti ti-lock-open me-1"></i>Yes, Reopen
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Close Meal Confirmation Modal --}}
+<div class="modal fade" id="closeMealModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-body text-center p-4">
+                <div class="mb-3">
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width:60px;height:60px;background:#fef3c7;">
+                        <i class="ti ti-lock" style="font-size:1.8rem;color:#d97706;"></i>
+                    </span>
+                </div>
+                <h6 class="fw-bold mb-1">Close <span id="closeMealName"></span>?</h6>
+                <p class="text-muted small mb-4">No further attendance changes will be allowed after closing.</p>
+                <input type="hidden" id="closeMealScheduleId">
+                <input type="hidden" id="closeMealMealName">
+                <div class="d-flex justify-content-center gap-2">
+                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-warning px-4" id="closeMealConfirmBtn">
+                        <i class="ti ti-lock me-1"></i>Yes, Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection

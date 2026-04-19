@@ -100,9 +100,10 @@ Route::middleware(['auth'])->group(function () {
 
     // Meals & Attendance
     Route::get('/mess/{mess}/meals',                      [MealController::class, 'index'])->name('mess.meals');
-    Route::post('/mess/{mess}/meals/attendance',          [MealController::class, 'markAttendance'])->name('mess.meals.attendance');
-    Route::post('/mess/{mess}/meals/bulk-attendance',     [MealController::class, 'bulkAttendance'])->name('mess.meals.bulk');
+    Route::post('/mess/{mess}/meals/attendance',          [MealController::class, 'markAttendance'])->name('mess.meals.attendance')->middleware('mess.active');
+    Route::post('/mess/{mess}/meals/bulk-attendance',     [MealController::class, 'bulkAttendance'])->name('mess.meals.bulk')->middleware('mess.active');
     Route::post('/mess/{mess}/meals/{schedule}/close',    [MealController::class, 'closeMeal'])->name('mess.meals.close');
+    Route::post('/mess/{mess}/meals/{schedule}/reopen',   [MealController::class, 'reopenMeal'])->name('mess.meals.reopen');
     Route::post('/mess/{mess}/meal-types',                [MealController::class, 'storeMealType'])->name('mess.meal-types.store');
     Route::put('/mess/{mess}/meal-types/{mealType}',      [MealController::class, 'updateMealType'])->name('mess.meal-types.update');
     Route::delete('/mess/{mess}/meal-types/{mealType}',   [MealController::class, 'destroyMealType'])->name('mess.meal-types.destroy');
@@ -131,16 +132,17 @@ Route::middleware(['auth'])->group(function () {
 
     // Expenses
     Route::get('/mess/{mess}/expenses',           [ExpenseController::class, 'index'])->name('mess.expenses');
-    Route::post('/mess/{mess}/expenses',          [ExpenseController::class, 'store'])->name('mess.expenses.store');
-    Route::put('/mess/{mess}/expenses/{expense}', [ExpenseController::class, 'update'])->name('mess.expenses.update');
-    Route::delete('/mess/{mess}/expenses/{expense}', [ExpenseController::class, 'destroy'])->name('mess.expenses.destroy');
+    Route::post('/mess/{mess}/expenses',          [ExpenseController::class, 'store'])->name('mess.expenses.store')->middleware('mess.active');
+    Route::put('/mess/{mess}/expenses/{expense}', [ExpenseController::class, 'update'])->name('mess.expenses.update')->middleware('mess.active');
+    Route::delete('/mess/{mess}/expenses/{expense}', [ExpenseController::class, 'destroy'])->name('mess.expenses.destroy')->middleware('mess.active');
     Route::post('/mess/{mess}/expense-categories',              [ExpenseController::class, 'storeCategory'])->name('mess.expense-categories.store');
+    Route::put('/mess/{mess}/expense-categories/{category}',    [ExpenseController::class, 'updateCategory'])->name('mess.expense-categories.update');
     Route::delete('/mess/{mess}/expense-categories/{category}', [ExpenseController::class, 'destroyCategory'])->name('mess.expense-categories.destroy');
 
     // Deposits
     Route::get('/mess/{mess}/deposits',              [DepositController::class, 'index'])->name('mess.deposits');
-    Route::post('/mess/{mess}/deposits',             [DepositController::class, 'store'])->name('mess.deposits.store');
-    Route::delete('/mess/{mess}/deposits/{deposit}', [DepositController::class, 'destroy'])->name('mess.deposits.destroy');
+    Route::post('/mess/{mess}/deposits',             [DepositController::class, 'store'])->name('mess.deposits.store')->middleware('mess.active');
+    Route::delete('/mess/{mess}/deposits/{deposit}', [DepositController::class, 'destroy'])->name('mess.deposits.destroy')->middleware('mess.active');
 
     // Manager Rotation & Voting
     Route::get('/mess/{mess}/manager',                    [ManagerController::class, 'index'])->name('mess.manager');
@@ -148,8 +150,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/mess/{mess}/manager/{rotation}/vote',   [ManagerController::class, 'vote'])->name('mess.manager.vote');
 
     // Reports
-    Route::get('/mess/{mess}/report/monthly',             [ReportController::class, 'monthly'])->name('mess.report.monthly');
-    Route::post('/mess/{mess}/report/generate',           [ReportController::class, 'generate'])->name('mess.report.generate');
+    Route::get('/mess/{mess}/report/monthly',             [ReportController::class, 'monthly'])->name('mess.report.monthly')->middleware('mess.active');
+    Route::post('/mess/{mess}/report/generate',           [ReportController::class, 'generate'])->name('mess.report.generate')->middleware('mess.active');
     Route::post('/mess/{mess}/report/toggle-shared',     [ReportController::class, 'toggleSharedExpense'])->name('mess.report.toggle-shared');
     Route::post('/mess/{mess}/report/toggle-category',   [ReportController::class, 'toggleCategoryExpense'])->name('mess.report.toggle-category');
     Route::post('/mess/{mess}/report/pay-extra',         [ReportController::class, 'payExtra'])->name('mess.report.pay-extra');
@@ -211,6 +213,7 @@ Route::middleware(['auth', 'super_admin'])->prefix('admin')->name('admin.')->gro
     Route::post('/messes',                                                [SuperAdminController::class, 'storeMess'])->name('mess.store');
     Route::get('/messes/{mess}',                                          [SuperAdminController::class, 'showMess'])->name('mess.show');
     Route::delete('/messes/{mess}',                                       [SuperAdminController::class, 'destroyMess'])->name('mess.destroy');
+    Route::post('/messes/{mess}/toggle-status',                           [SuperAdminController::class, 'toggleMessStatus'])->name('mess.toggle-status');
 
     // Mess Members (admin)
     Route::post('/messes/{mess}/members',                                 [SuperAdminController::class, 'addMemberToMess'])->name('mess.member.add');

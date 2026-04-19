@@ -37,7 +37,7 @@ class MessContactController extends Controller
     public function update(Request $request, Mess $mess, MessContact $contact)
     {
         $this->authorizeManager($mess);
-        if ($contact->mess_id !== $mess->id) abort(403);
+        if ((int) $contact->mess_id !== (int) $mess->id) abort(403);
 
         $request->validate([
             'name'  => 'required|string|max:100',
@@ -53,7 +53,7 @@ class MessContactController extends Controller
     public function destroy(Mess $mess, MessContact $contact)
     {
         $this->authorizeManager($mess);
-        if ($contact->mess_id !== $mess->id) abort(403);
+        if ((int) $contact->mess_id !== (int) $mess->id) abort(403);
 
         $contact->delete();
         return back()->with('contact_success', 'Contact deleted.');

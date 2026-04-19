@@ -9,13 +9,14 @@ class Expense extends Model
 {
     protected $fillable = [
         'mess_id', 'category_id', 'title', 'amount', 'expense_date',
-        'description', 'added_by', 'member_id', 'is_market_expense', 'routine_id',
+        'description', 'added_by', 'member_id', 'is_market_expense', 'routine_id', 'is_recurring_entry',
     ];
 
     protected $casts = [
-        'amount' => 'decimal:2',
-        'expense_date' => 'date',
-        'is_market_expense' => 'boolean',
+        'amount'             => 'decimal:2',
+        'expense_date'       => 'date',
+        'is_market_expense'  => 'boolean',
+        'is_recurring_entry' => 'boolean',
     ];
 
     public function mess(): BelongsTo

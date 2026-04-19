@@ -258,6 +258,14 @@ class SuperAdminController extends Controller
         ));
     }
 
+    public function toggleMessStatus(Mess $mess)
+    {
+        $mess->status = $mess->status === 'active' ? 'inactive' : 'active';
+        $mess->save();
+        $label = $mess->status === 'active' ? 'activated' : 'deactivated';
+        return back()->with('success', "\"{$mess->name}\" has been {$label}.");
+    }
+
     public function addMemberToMess(Request $request, Mess $mess)
     {
         $data = $request->validate([

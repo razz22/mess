@@ -29,7 +29,7 @@ class MemberController extends Controller
         $authUser = Auth::user();
         $isOwner  = $mess->owner_id === $authUser->id;
         if (! $isOwner && ! $authUser->getMembershipIn($mess->id) && ! $authUser->is_super_admin) abort(403);
-        if ($member->mess_id !== $mess->id) abort(403);
+        if ((int) $member->mess_id !== (int) $mess->id) abort(403);
 
         $isManager    = $authUser->isManagerOf($mess->id);
         $isOwner      = $mess->owner_id === $authUser->id;

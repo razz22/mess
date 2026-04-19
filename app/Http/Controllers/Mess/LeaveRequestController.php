@@ -100,7 +100,7 @@ class LeaveRequestController extends Controller
     public function approve(Request $request, Mess $mess, MessLeaveRequest $leave)
     {
         abort_unless(Auth::user()->isManagerOf($mess->id), 403);
-        abort_if($leave->mess_id !== $mess->id, 403);
+        abort_if((int) $leave->mess_id !== (int) $mess->id, 403);
         abort_if($leave->status !== 'pending', 422);
 
         $request->validate(['review_note' => 'nullable|string|max:500']);
@@ -121,7 +121,7 @@ class LeaveRequestController extends Controller
     public function reject(Request $request, Mess $mess, MessLeaveRequest $leave)
     {
         abort_unless(Auth::user()->isManagerOf($mess->id), 403);
-        abort_if($leave->mess_id !== $mess->id, 403);
+        abort_if((int) $leave->mess_id !== (int) $mess->id, 403);
         abort_if($leave->status !== 'pending', 422);
 
         $request->validate(['review_note' => 'nullable|string|max:500']);
@@ -140,7 +140,7 @@ class LeaveRequestController extends Controller
     public function refundAdvance(Request $request, Mess $mess, MessLeaveRequest $leave)
     {
         abort_unless(Auth::user()->isManagerOf($mess->id), 403);
-        abort_if($leave->mess_id !== $mess->id, 403);
+        abort_if((int) $leave->mess_id !== (int) $mess->id, 403);
         abort_if($leave->status !== 'approved', 422);
 
         $request->validate([

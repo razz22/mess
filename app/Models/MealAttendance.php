@@ -8,12 +8,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class MealAttendance extends Model
 {
     protected $fillable = [
-        'meal_schedule_id', 'mess_id', 'user_id', 'status', 'quantity', 'marked_at',
+        'meal_schedule_id', 'mess_id', 'user_id', 'status', 'quantity', 'full_qty', 'half_qty', 'marked_at',
     ];
 
     protected $casts = [
         'marked_at' => 'datetime',
         'quantity'  => 'float',
+        'full_qty'  => 'integer',
+        'half_qty'  => 'integer',
     ];
 
     public function schedule(): BelongsTo

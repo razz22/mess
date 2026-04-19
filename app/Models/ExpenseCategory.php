@@ -9,12 +9,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class ExpenseCategory extends Model
 {
     protected $fillable = [
-        'mess_id', 'name', 'icon', 'color', 'is_default', 'is_active',
+        'mess_id', 'name', 'icon', 'color', 'is_default', 'is_active', 'is_recurring', 'recurring_amount',
     ];
 
     protected $casts = [
-        'is_default' => 'boolean',
-        'is_active' => 'boolean',
+        'is_default'       => 'boolean',
+        'is_active'        => 'boolean',
+        'is_recurring'     => 'boolean',
+        'recurring_amount' => 'decimal:2',
     ];
 
     public function mess(): BelongsTo

@@ -54,7 +54,9 @@ class MealController extends Controller
             ->get()
             ->groupBy(fn($a) => $a->meal_schedule_id . '_' . $a->user_id);
 
-        $member = Auth::user()->getMembershipIn($mess->id);
+        $member       = Auth::user()->getMembershipIn($mess->id);
+        $isOwner      = $member && $member->role === 'owner';
+        $isSuperAdmin = Auth::user()->is_super_admin;
 
         // Get today's change count for the current user
         $myChangesToday = 0;
@@ -100,7 +102,7 @@ class MealController extends Controller
         return view('mess.meal-attendance', compact(
             'mess', 'mealTypes', 'allMealTypes', 'schedules', 'members',
             'allAttendances', 'date', 'today', 'isPast',
-            'isManager', 'isBasic', 'member', 'myChangesToday',
+            'isManager', 'isBasic', 'isOwner', 'isSuperAdmin', 'member', 'myChangesToday',
             'mealTotals', 'contacts', 'routineItems'
         ));
     }
@@ -112,19 +114,18 @@ class MealController extends Controller
         $request->validate([
             'schedule_id' => 'required|exists:meal_schedules,id',
             'user_id'     => 'nullable|exists:users,id',
-            'quantity'    => ['required', 'numeric', 'min:0', 'max:99', function ($attr, $value, $fail) {
-                if (fmod(round($value * 10), 5) !== 0.0) {
-                    $fail('Quantity must be in steps of 0.5.');
-                }
-            }],
+            'full_qty'    => 'required|integer|min:0|max:20',
+            'half_qty'    => 'required|integer|min:0|max:20',
         ]);
 
         $schedule     = MealSchedule::findOrFail($request->schedule_id);
-        if ($schedule->mess_id !== $mess->id) abort(403);
+        if ((int) $schedule->mess_id !== (int) $mess->id) abort(403);
 
         $isManager    = Auth::user()->isManagerOf($mess->id);
         $targetUserId = $request->user_id ?? Auth::id();
-        $quantity     = (float) $request->quantity;
+        $fullQty      = (int) $request->full_qty;
+        $halfQty      = (int) $request->half_qty;
+        $quantity     = $fullQty + $halfQty * 0.5;
         $status       = $quantity > 0 ? 'on' : 'off';
 
         if (!$isManager && $targetUserId != Auth::id()) {
@@ -165,7 +166,8 @@ class MealController extends Controller
 
         MealAttendance::updateOrCreate(
             ['meal_schedule_id' => $schedule->id, 'user_id' => $targetUserId],
-            ['mess_id' => $mess->id, 'status' => $status, 'quantity' => $quantity, 'marked_at' => now()]
+            ['mess_id' => $mess->id, 'status' => $status, 'quantity' => $quantity,
+             'full_qty' => $fullQty, 'half_qty' => $halfQty, 'marked_at' => now()]
         );
 
         $totalQty = MealAttendance::where('meal_schedule_id', $schedule->id)->sum('quantity');
@@ -181,6 +183,8 @@ class MealController extends Controller
 
         return response()->json([
             'success'   => true,
+            'full_qty'  => $fullQty,
+            'half_qty'  => $halfQty,
             'quantity'  => $quantity,
             'status'    => $status,
             'totalQty'  => $totalQty,
@@ -192,7 +196,7 @@ class MealController extends Controller
     // Manager: add a custom meal type
     public function storeMealType(Request $request, Mess $mess)
     {
-        if (!Auth::user()->isManagerOf($mess->id)) abort(403);
+        $this->requireManagerOrSuper($mess);
 
         $request->validate([
             'name'             => 'required|string|max:50',
@@ -234,29 +238,26 @@ class MealController extends Controller
         if (!$user->getMembershipIn($mess->id)) abort(403);
 
         $request->validate([
-            'user_ids'   => 'required|array|min:1',
-            'user_ids.*' => 'exists:users,id',
-            'dates'      => 'required|array|min:1',
-            'dates.*'    => 'date',
-            'meal_types' => 'required|array|min:1',
+            'user_ids'    => 'required|array|min:1',
+            'user_ids.*'  => 'exists:users,id',
+            'dates'       => 'required|array|min:1',
+            'dates.*'     => 'date',
+            'meal_types'  => 'required|array|min:1',
             'meal_types.*'=> 'string|max:50',
-            'quantity'   => ['required', 'numeric', 'min:0', 'max:99', function ($attr, $value, $fail) {
-                if (fmod(round($value * 10), 5) !== 0.0) {
-                    $fail('Quantity must be in steps of 0.5.');
-                }
-            }],
+            'full_qty'    => 'required|integer|min:0|max:20',
+            'half_qty'    => 'required|integer|min:0|max:20',
         ]);
 
         // Non-managers can only submit for themselves regardless of form data
-        $userIds = $isManager ? $request->user_ids : [$user->id];
-
-        $quantity  = (float) $request->quantity;
-        $status    = $quantity > 0 ? 'on' : 'off';
+        $userIds  = $isManager ? $request->user_ids : [$user->id];
+        $fullQty  = (int) $request->full_qty;
+        $halfQty  = (int) $request->half_qty;
+        $quantity = $fullQty + $halfQty * 0.5;
+        $status   = $quantity > 0 ? 'on' : 'off';
         $mealTypes = $mess->mealTypes()->pluck('name')->toArray();
         $count     = 0;
 
         foreach ($request->dates as $date) {
-            // Ensure schedules exist for this date
             foreach ($request->meal_types as $typeName) {
                 if (!in_array($typeName, $mealTypes)) continue;
 
@@ -268,22 +269,23 @@ class MealController extends Controller
                 foreach ($userIds as $userId) {
                     MealAttendance::updateOrCreate(
                         ['meal_schedule_id' => $schedule->id, 'user_id' => $userId],
-                        ['mess_id' => $mess->id, 'status' => $status, 'quantity' => $quantity, 'marked_at' => now()]
+                        ['mess_id' => $mess->id, 'status' => $status, 'quantity' => $quantity,
+                         'full_qty' => $fullQty, 'half_qty' => $halfQty, 'marked_at' => now()]
                     );
                     $count++;
                 }
             }
         }
 
-        $label = $quantity > 0 ? "set to {$quantity}" : 'marked as Off';
-        return back()->with('success', "{$count} attendance record(s) {$label} successfully.");
+        $label = $quantity > 0 ? "{$fullQty}F+{$halfQty}H" : 'Off';
+        return back()->with('success', "{$count} attendance record(s) set to {$label} successfully.");
     }
 
     // Manager: update meal type (name, rate, close_time, active)
     public function updateMealType(Request $request, Mess $mess, MessMealType $mealType)
     {
-        if (!Auth::user()->isManagerOf($mess->id)) abort(403);
-        if ($mealType->mess_id !== $mess->id) abort(403);
+        $this->requireManagerOrSuper($mess);
+        if ((int) $mealType->mess_id !== (int) $mess->id) abort(403);
 
         $request->validate([
             'name'              => 'required|string|max:50',
@@ -307,8 +309,8 @@ class MealController extends Controller
     // Manager: toggle active / deactivate meal type
     public function destroyMealType(Mess $mess, MessMealType $mealType)
     {
-        if (!Auth::user()->isManagerOf($mess->id)) abort(403);
-        if ($mealType->mess_id !== $mess->id) abort(403);
+        $this->requireManagerOrSuper($mess);
+        if ((int) $mealType->mess_id !== (int) $mess->id) abort(403);
 
         $mealType->update(['is_active' => false]);
         return back()->with('success', '"' . $mealType->name . '" disabled.');
@@ -316,14 +318,35 @@ class MealController extends Controller
 
     public function closeMeal(Request $request, Mess $mess, MealSchedule $schedule)
     {
-        if (!Auth::user()->isManagerOf($mess->id)) abort(403);
-        if ($schedule->mess_id !== $mess->id) abort(403);
+        $this->requireManagerOrSuper($mess);
+        if ((int) $schedule->mess_id !== (int) $mess->id) abort(403);
 
         $schedule->update([
             'status'    => 'closed',
             'closed_by' => Auth::id(),
             'closed_at' => now(),
             'meal_cost' => $request->meal_cost ?? 0,
+        ]);
+
+        return response()->json(['success' => true]);
+    }
+
+    public function reopenMeal(Request $request, Mess $mess, MealSchedule $schedule)
+    {
+        $user = Auth::user();
+        if ((int) $schedule->mess_id !== (int) $mess->id) abort(403);
+
+        // Only owner or super admin can reopen
+        $member = $user->getMembershipIn($mess->id);
+        $isOwner = $member && $member->role === 'owner';
+        if (!$user->is_super_admin && !$isOwner) {
+            abort(403, 'Only the owner or super admin can reopen a closed meal.');
+        }
+
+        $schedule->update([
+            'status'    => 'open',
+            'closed_by' => null,
+            'closed_at' => null,
         ]);
 
         return response()->json(['success' => true]);
@@ -381,14 +404,24 @@ class MealController extends Controller
     public function destroyMealItem(Mess $mess, \App\Models\MealItem $item)
     {
         $this->authorizeMember($mess);
-        if ($item->created_by !== Auth::id() && !Auth::user()->isManagerOf($mess->id)) abort(403);
+        $u = Auth::user();
+        if ($item->created_by !== Auth::id() && !$u->is_super_admin && !$u->isManagerOf($mess->id)) abort(403);
         $item->delete();
         return response()->json(['success' => true]);
     }
 
     private function authorizeMember(Mess $mess): void
     {
-        if (!Auth::user()->getMembershipIn($mess->id)) abort(403);
+        $user = Auth::user();
+        if ($user->is_super_admin) return;
+        if (!$user->getMembershipIn($mess->id)) abort(403);
+    }
+
+    private function requireManagerOrSuper(Mess $mess): void
+    {
+        $user = Auth::user();
+        if ($user->is_super_admin) return;
+        if (!$user->isManagerOf($mess->id)) abort(403);
     }
 
     private function ensureDefaultMealTypes(Mess $mess): void

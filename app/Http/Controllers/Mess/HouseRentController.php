@@ -197,7 +197,7 @@ class HouseRentController extends Controller
     public function updatePayment(Request $request, Mess $mess, RentPayment $payment)
     {
         $this->assertOwner($mess);
-        abort_if($payment->mess_id !== $mess->id, 403);
+        abort_if((int) $payment->mess_id !== (int) $mess->id, 403);
 
         $data = $request->validate([
             'amount'         => 'required|numeric|min:0.01',
@@ -215,7 +215,7 @@ class HouseRentController extends Controller
     public function destroyPayment(Mess $mess, RentPayment $payment)
     {
         $this->assertOwner($mess);
-        abort_if($payment->mess_id !== $mess->id, 403);
+        abort_if((int) $payment->mess_id !== (int) $mess->id, 403);
 
         $payment->delete();
 
@@ -253,7 +253,7 @@ class HouseRentController extends Controller
     public function updateAdvance(Request $request, Mess $mess, AdvancePayment $advance)
     {
         $this->assertOwner($mess);
-        abort_if($advance->mess_id !== $mess->id, 403);
+        abort_if((int) $advance->mess_id !== (int) $mess->id, 403);
 
         $data = $request->validate([
             'transaction_type' => 'required|in:received,refunded,adjusted',
@@ -270,7 +270,7 @@ class HouseRentController extends Controller
     public function destroyAdvance(Mess $mess, AdvancePayment $advance)
     {
         $this->assertOwner($mess);
-        abort_if($advance->mess_id !== $mess->id, 403);
+        abort_if((int) $advance->mess_id !== (int) $mess->id, 403);
 
         $advance->delete();
 
@@ -284,7 +284,7 @@ class HouseRentController extends Controller
     public function showInvoice(Mess $mess, MessRentInvoice $invoice)
     {
         $this->assertOwner($mess);
-        abort_if($invoice->mess_id !== $mess->id, 403);
+        abort_if((int) $invoice->mess_id !== (int) $mess->id, 403);
 
         $invoice->load(['issuedBy', 'paidBy']);
 
@@ -322,7 +322,7 @@ class HouseRentController extends Controller
     public function invoiceExpense(Request $request, Mess $mess, MessRentInvoice $invoice)
     {
         $this->assertOwner($mess);
-        abort_if($invoice->mess_id !== $mess->id, 403);
+        abort_if((int) $invoice->mess_id !== (int) $mess->id, 403);
 
         $data = $request->validate([
             'description'  => 'required|string|max:500',
@@ -345,7 +345,7 @@ class HouseRentController extends Controller
     public function destroyInvoiceExpense(Mess $mess, MessRentInvoiceExpense $expense)
     {
         $this->assertOwner($mess);
-        abort_if($expense->mess_id !== $mess->id, 403);
+        abort_if((int) $expense->mess_id !== (int) $mess->id, 403);
         $expense->delete();
         return back()->with('success', 'Expense deleted.');
     }
@@ -379,7 +379,7 @@ class HouseRentController extends Controller
     public function markInvoicePaid(Mess $mess, MessRentInvoice $invoice)
     {
         $this->assertOwner($mess);
-        abort_if($invoice->mess_id !== $mess->id, 403);
+        abort_if((int) $invoice->mess_id !== (int) $mess->id, 403);
 
         $invoice->update([
             'status'  => 'paid',
@@ -458,7 +458,7 @@ class HouseRentController extends Controller
     public function destroyFundTransaction(Mess $mess, MessRentFundTransaction $transaction)
     {
         $this->assertOwner($mess);
-        abort_if($transaction->mess_id !== $mess->id, 403);
+        abort_if((int) $transaction->mess_id !== (int) $mess->id, 403);
         $transaction->delete();
         return back()->with('success', 'Transaction deleted.');
     }
@@ -466,7 +466,7 @@ class HouseRentController extends Controller
     public function cancelInvoice(Mess $mess, MessRentInvoice $invoice)
     {
         $this->assertOwner($mess);
-        abort_if($invoice->mess_id !== $mess->id, 403);
+        abort_if((int) $invoice->mess_id !== (int) $mess->id, 403);
 
         $invoice->update(['status' => 'cancelled']);
         return back()->with('success', 'Invoice cancelled.');
@@ -475,7 +475,7 @@ class HouseRentController extends Controller
     public function destroyInvoice(Mess $mess, MessRentInvoice $invoice)
     {
         $this->assertOwner($mess);
-        abort_if($invoice->mess_id !== $mess->id, 403);
+        abort_if((int) $invoice->mess_id !== (int) $mess->id, 403);
 
         $invoice->delete();
         return back()->with('success', 'Invoice deleted.');
@@ -501,7 +501,7 @@ class HouseRentController extends Controller
     public function fundTransaction(Request $request, Mess $mess, MessFund $fund)
     {
         $this->assertOwner($mess);
-        abort_if($fund->mess_id !== $mess->id, 403);
+        abort_if((int) $fund->mess_id !== (int) $mess->id, 403);
 
         $data = $request->validate([
             'type'             => 'required|in:credit,debit',
@@ -524,7 +524,7 @@ class HouseRentController extends Controller
     public function destroyFund(Mess $mess, MessFund $fund)
     {
         $this->assertOwner($mess);
-        abort_if($fund->mess_id !== $mess->id, 403);
+        abort_if((int) $fund->mess_id !== (int) $mess->id, 403);
 
         $fund->delete(); // cascades transactions
         return back()->with('success', 'Fund deleted.');

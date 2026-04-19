@@ -71,7 +71,7 @@ class DepositController extends Controller
     public function destroy(Mess $mess, MemberDeposit $deposit)
     {
         if (!Auth::user()->isManagerOf($mess->id)) abort(403);
-        if ($deposit->mess_id !== $mess->id) abort(403);
+        if ((int) $deposit->mess_id !== (int) $mess->id) abort(403);
         $deposit->delete();
         return back()->with('success', 'Deposit deleted.');
     }

@@ -14,7 +14,21 @@
                 </h4>
                 <h6 class="text-muted">Owner: {{ $mess->owner->name }} &middot; Code: <code>{{ $mess->invite_code }}</code></h6>
             </div>
-            <div class="page-btn d-flex gap-2">
+            <div class="page-btn d-flex gap-2 align-items-center">
+                @if($mess->status === 'active')
+                <span class="badge d-inline-flex align-items-center gap-1 px-3 py-2" style="background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;font-size:.8rem;">
+                    <span class="rounded-circle d-inline-block" style="width:7px;height:7px;background:#10b981;"></span> Active
+                </span>
+                @else
+                <span class="badge d-inline-flex align-items-center gap-1 px-3 py-2" style="background:#f3f4f6;color:#374151;border:1px solid #d1d5db;font-size:.8rem;">
+                    <span class="rounded-circle d-inline-block" style="width:7px;height:7px;background:#9ca3af;"></span> Inactive
+                </span>
+                @endif
+                <button type="button" class="btn {{ $mess->status === 'active' ? 'btn-outline-warning' : 'btn-outline-success' }} btn-sm"
+                    data-bs-toggle="modal" data-bs-target="#toggleStatusModal">
+                    <i class="ti ti-{{ $mess->status === 'active' ? 'ban' : 'shield-check' }} me-1"></i>
+                    {{ $mess->status === 'active' ? 'Deactivate' : 'Activate' }}
+                </button>
                 <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addMemberModal">
                     <i class="ti ti-user-plus me-1"></i>Add Member
                 </button>
@@ -258,6 +272,47 @@
                     <button type="submit" class="btn btn-primary btn-sm">Update Role</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+{{-- Toggle Status Modal --}}
+<div class="modal fade" id="toggleStatusModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-body text-center p-4">
+                @if($mess->status === 'active')
+                <div class="mb-3">
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width:64px;height:64px;background:#fef3c7;">
+                        <i class="ti ti-ban" style="font-size:2rem;color:#d97706;"></i>
+                    </span>
+                </div>
+                <h5 class="fw-bold mb-1">Deactivate Mess?</h5>
+                <p class="text-muted mb-4">Members will no longer be able to add meal attendance, deposits, expenses, or generate reports until this mess is reactivated.</p>
+                <form action="{{ route('admin.mess.toggle-status', $mess->id) }}" method="POST">
+                    @csrf
+                    <div class="d-flex justify-content-center gap-2">
+                        <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-warning px-4"><i class="ti ti-ban me-1"></i>Yes, Deactivate</button>
+                    </div>
+                </form>
+                @else
+                <div class="mb-3">
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width:64px;height:64px;background:#d1fae5;">
+                        <i class="ti ti-shield-check" style="font-size:2rem;color:#059669;"></i>
+                    </span>
+                </div>
+                <h5 class="fw-bold mb-1">Activate Mess?</h5>
+                <p class="text-muted mb-4">Members will regain full access to add meal attendance, deposits, expenses, and generate reports.</p>
+                <form action="{{ route('admin.mess.toggle-status', $mess->id) }}" method="POST">
+                    @csrf
+                    <div class="d-flex justify-content-center gap-2">
+                        <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success px-4"><i class="ti ti-shield-check me-1"></i>Yes, Activate</button>
+                    </div>
+                </form>
+                @endif
+            </div>
         </div>
     </div>
 </div>

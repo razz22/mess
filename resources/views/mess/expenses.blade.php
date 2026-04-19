@@ -93,6 +93,9 @@
                                         @if($expense->is_market_expense)
                                         <span class="badge bg-success-subtle text-success ms-1" style="font-size:10px">Market</span>
                                         @endif
+                                        @if($expense->is_recurring_entry)
+                                        <span class="badge bg-info-subtle text-info ms-1" style="font-size:10px"><i class="ti ti-refresh me-1"></i>Auto</span>
+                                        @endif
                                     </td>
                                     <td>
                                         @if($expense->category)
@@ -171,23 +174,33 @@
                     <div class="card-body p-0">
                         @forelse($categories as $cat)
                         <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
-                            <div class="d-flex align-items-center gap-2">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
                                 <span class="badge bg-{{ $cat->color }}-subtle text-{{ $cat->color }} p-2">
                                     <i class="{{ $cat->icon }}"></i>
                                 </span>
-                                <span class="small fw-semibold">{{ $cat->name }}</span>
-                                @if($cat->expenses()->count() > 0)
-                                <span class="text-muted" style="font-size:10px">{{ $cat->expenses()->count() }} uses</span>
-                                @endif
+                                <div>
+                                    <span class="small fw-semibold d-block">{{ $cat->name }}</span>
+                                    @if($cat->is_recurring && $cat->recurring_amount)
+                                    <span class="d-inline-flex align-items-center gap-1" style="font-size:.7rem;color:#0891b2;">
+                                        <i class="ti ti-refresh"></i> Recurring · ৳{{ number_format($cat->recurring_amount, 2) }}/mo
+                                    </span>
+                                    @endif
+                                </div>
                             </div>
                             @if($member->canManage())
-                            <form action="{{ route('mess.expense-categories.destroy', [$mess->id, $cat->id]) }}" method="POST"
-                                onsubmit="return confirm('Delete category \'{{ addslashes($cat->name) }}\'? Existing expenses will become uncategorized.')">
-                                @csrf @method('DELETE')
-                                <button type="submit" class="btn btn-xs btn-outline-danger py-0 px-1" title="Delete">
-                                    <i class="ti ti-trash" style="font-size:11px"></i>
+                            <div class="d-flex gap-1">
+                                <button class="btn btn-xs btn-outline-secondary py-0 px-1" title="Edit"
+                                    onclick="openEditCategoryModal({{ $cat->id }}, '{{ addslashes($cat->name) }}', '{{ $cat->icon }}', '{{ $cat->color }}', {{ $cat->is_recurring ? 'true' : 'false' }}, '{{ $cat->recurring_amount ?? '' }}')">
+                                    <i class="ti ti-pencil" style="font-size:11px"></i>
                                 </button>
-                            </form>
+                                <form action="{{ route('mess.expense-categories.destroy', [$mess->id, $cat->id]) }}" method="POST"
+                                    onsubmit="return confirm('Delete category \'{{ addslashes($cat->name) }}\'? Existing expenses will become uncategorized.')">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="btn btn-xs btn-outline-danger py-0 px-1" title="Delete">
+                                        <i class="ti ti-trash" style="font-size:11px"></i>
+                                    </button>
+                                </form>
+                            </div>
                             @endif
                         </div>
                         @empty
@@ -334,6 +347,20 @@ function openEditModal(id, title, amount, date, categoryId) {
                             </select>
                         </div>
                     </div>
+                    <div class="mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="is_recurring" id="addIsRecurring" value="1"
+                                onchange="document.getElementById('addRecurringAmountRow').style.display = this.checked ? '' : 'none'">
+                            <label class="form-check-label fw-semibold" for="addIsRecurring">
+                                <i class="ti ti-refresh me-1 text-info"></i>Recurring monthly
+                            </label>
+                        </div>
+                        <small class="text-muted ms-4">If checked, this amount will be auto-added at the start of each month.</small>
+                    </div>
+                    <div id="addRecurringAmountRow" class="mt-2 ms-4" style="display:none;">
+                        <label class="form-label">Monthly Amount (৳) <span class="text-danger">*</span></label>
+                        <input type="number" name="recurring_amount" class="form-control" step="0.01" min="0.01" placeholder="e.g. 1500">
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -343,4 +370,78 @@ function openEditModal(id, title, amount, date, categoryId) {
         </div>
     </div>
 </div>
+
+<!-- Edit Category Modal -->
+<div class="modal fade" id="editCategoryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Category</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editCategoryForm" method="POST">
+                @csrf @method('PUT')
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Category Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" id="ecName" class="form-control" required>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label">Icon (Tabler)</label>
+                            <input type="text" name="icon" id="ecIcon" class="form-control">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Color</label>
+                            <select name="color" id="ecColor" class="form-select">
+                                <option value="primary">Blue</option>
+                                <option value="success">Green</option>
+                                <option value="warning">Yellow</option>
+                                <option value="danger">Red</option>
+                                <option value="info">Cyan</option>
+                                <option value="secondary">Grey</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="is_recurring" id="ecIsRecurring" value="1"
+                                onchange="document.getElementById('ecRecurringAmountRow').style.display = this.checked ? '' : 'none'">
+                            <label class="form-check-label fw-semibold" for="ecIsRecurring">
+                                <i class="ti ti-refresh me-1 text-info"></i>Recurring monthly
+                            </label>
+                        </div>
+                        <small class="text-muted ms-4">If checked, this amount will be auto-added at the start of each month.</small>
+                    </div>
+                    <div id="ecRecurringAmountRow" class="mt-2 ms-4" style="display:none;">
+                        <label class="form-label">Monthly Amount (৳) <span class="text-danger">*</span></label>
+                        <input type="number" name="recurring_amount" id="ecRecurringAmount" class="form-control" step="0.01" min="0.01">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function openEditCategoryModal(id, name, icon, color, isRecurring, recurringAmount) {
+    var base = '{{ route("mess.expense-categories.update", [$mess->id, "__ID__"]) }}';
+    document.getElementById('editCategoryForm').action = base.replace('__ID__', id);
+    document.getElementById('ecName').value  = name;
+    document.getElementById('ecIcon').value  = icon;
+    document.getElementById('ecColor').value = color;
+
+    var chk = document.getElementById('ecIsRecurring');
+    chk.checked = isRecurring;
+    var row = document.getElementById('ecRecurringAmountRow');
+    row.style.display = isRecurring ? '' : 'none';
+    document.getElementById('ecRecurringAmount').value = recurringAmount || '';
+
+    new bootstrap.Modal(document.getElementById('editCategoryModal')).show();
+}
+</script>
 @endsection

@@ -607,11 +607,23 @@ document.addEventListener('keydown', function(e){
             <div class="dropdown-menu menu-drop-user">
                 <div class="profilename">
                     <div class="profileset">
-                        <span class="user-img"><img src="{{URL::asset('build/img/profiles/avator1.jpg')}}" alt="Img">
-                            <span class="status online"></span></span>
+                        @php
+                            $_u    = Auth::user();
+                            $_mem  = $_u ? $_u->messMembers()->where('is_active', true)->orderByDesc('id')->first() : null;
+                            $_role = $_u?->is_super_admin ? 'Super Admin'
+                                   : ($_mem ? ucfirst($_mem->role) : 'Member');
+                        @endphp
+                        <span class="user-img">
+                            @if($_u?->avatar)
+                                <img src="{{ asset('storage/'.$_u->avatar) }}" alt="{{ $_u->name }}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">
+                            @else
+                                <img src="{{URL::asset('build/img/profiles/avator1.jpg')}}" alt="Img">
+                            @endif
+                            <span class="status online"></span>
+                        </span>
                         <div class="profilesets">
-                            <h6>John Smilga</h6>
-                            <h5>Super Admin</h5>
+                            <h6>{{ $_u?->name ?? 'User' }}</h6>
+                            <h5>{{ $_role }}</h5>
                         </div>
                     </div>
                     <hr class="m-0">

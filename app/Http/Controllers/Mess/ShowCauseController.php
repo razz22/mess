@@ -40,7 +40,7 @@ class ShowCauseController extends Controller
         ]);
 
         $member = MessMember::findOrFail($request->member_id);
-        if ($member->mess_id !== $mess->id) abort(403);
+        if ((int) $member->mess_id !== (int) $mess->id) abort(403);
         if ($member->role === 'owner') {
             return back()->with('error', 'Cannot issue a show cause to the owner.');
         }
@@ -61,7 +61,7 @@ class ShowCauseController extends Controller
     /** View a single show cause (manager or the concerned member) */
     public function show(Mess $mess, MessShowCause $cause)
     {
-        if ($cause->mess_id !== $mess->id) abort(403);
+        if ((int) $cause->mess_id !== (int) $mess->id) abort(403);
 
         $authUser = Auth::user();
         $isManager = $authUser->isManagerOf($mess->id);
@@ -75,7 +75,7 @@ class ShowCauseController extends Controller
     /** Member: submit their reply */
     public function memberReply(Request $request, Mess $mess, MessShowCause $cause)
     {
-        if ($cause->mess_id !== $mess->id) abort(403);
+        if ((int) $cause->mess_id !== (int) $mess->id) abort(403);
         if ($cause->member->user_id !== Auth::id()) abort(403);
         if ($cause->status !== 'pending') {
             return back()->with('error', 'You have already replied or this letter is closed.');
@@ -95,7 +95,7 @@ class ShowCauseController extends Controller
     /** Manager/Owner: submit final reply and close */
     public function finalReply(Request $request, Mess $mess, MessShowCause $cause)
     {
-        if ($cause->mess_id !== $mess->id) abort(403);
+        if ((int) $cause->mess_id !== (int) $mess->id) abort(403);
         if (!Auth::user()->isManagerOf($mess->id)) abort(403);
         if ($cause->status !== 'replied') {
             return back()->with('error', 'Member has not replied yet, or letter is already closed.');
@@ -115,7 +115,7 @@ class ShowCauseController extends Controller
     /** Manager: delete a show cause */
     public function destroy(Mess $mess, MessShowCause $cause)
     {
-        if ($cause->mess_id !== $mess->id) abort(403);
+        if ((int) $cause->mess_id !== (int) $mess->id) abort(403);
         if (!Auth::user()->isManagerOf($mess->id)) abort(403);
 
         $cause->delete();

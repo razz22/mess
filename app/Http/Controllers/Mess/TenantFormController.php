@@ -132,7 +132,7 @@ class TenantFormController extends Controller
     /** Manager: view a single form (printable) */
     public function view(Mess $mess, TenantRegistrationForm $form)
     {
-        if ($form->mess_id !== $mess->id) abort(403);
+        if ((int) $form->mess_id !== (int) $mess->id) abort(403);
 
         $canView = Auth::user()->isManagerOf($mess->id)
             || Auth::user()->getMembershipIn($mess->id)?->id === $form->member_id;
@@ -144,7 +144,7 @@ class TenantFormController extends Controller
     /** Download form as PDF */
     public function download(Mess $mess, TenantRegistrationForm $form)
     {
-        if ($form->mess_id !== $mess->id) abort(403);
+        if ((int) $form->mess_id !== (int) $mess->id) abort(403);
 
         $canView = Auth::user()->isManagerOf($mess->id)
             || Auth::user()->getMembershipIn($mess->id)?->id === $form->member_id;

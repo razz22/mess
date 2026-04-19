@@ -52,39 +52,65 @@
         {{-- Super Admin: flat list of ALL messes --}}
         @if(Auth::user()->is_super_admin)
         @if(isset($allMesses) && $allMesses->isNotEmpty())
-        <div class="row">
+        <div class="row g-3">
             @foreach($allMesses as $mess)
+            @php $isActive = $mess->status === 'active'; @endphp
             <div class="col-md-6 col-xl-4">
-                <div class="card h-100 border-danger border-opacity-25">
+                <div class="card h-100 border-0 shadow-sm overflow-hidden">
+                    {{-- Status bar on top --}}
+                    <div style="height:4px;background:{{ $isActive ? '#10b981' : '#9ca3af' }};"></div>
                     <div class="card-body">
+                        {{-- Status badge row --}}
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            @if($isActive)
+                            <span class="d-inline-flex align-items-center gap-1 px-2 py-1 rounded-pill" style="background:#d1fae5;color:#065f46;font-size:.75rem;font-weight:600;">
+                                <span class="rounded-circle" style="width:6px;height:6px;background:#10b981;display:inline-block;"></span> Active
+                            </span>
+                            @else
+                            <span class="d-inline-flex align-items-center gap-1 px-2 py-1 rounded-pill" style="background:#f3f4f6;color:#6b7280;font-size:.75rem;font-weight:600;">
+                                <span class="rounded-circle" style="width:6px;height:6px;background:#9ca3af;display:inline-block;"></span> Inactive
+                            </span>
+                            @endif
+                            <button type="button"
+                                class="btn btn-sm {{ $isActive ? 'btn-outline-warning' : 'btn-outline-success' }} py-0 px-2"
+                                style="font-size:.75rem;"
+                                onclick="openToggleModal({{ $mess->id }}, '{{ addslashes($mess->name) }}', '{{ $mess->status }}')">
+                                <i class="ti ti-{{ $isActive ? 'ban' : 'shield-check' }} me-1"></i>{{ $isActive ? 'Deactivate' : 'Activate' }}
+                            </button>
+                        </div>
+
                         <div class="d-flex align-items-center mb-3">
-                            <div class="avatar avatar-lg me-3">
+                            <div class="me-3 flex-shrink-0" style="width:52px;height:52px;border-radius:50%;overflow:hidden;background:#e9ecef;display:flex;align-items:center;justify-content:center">
                                 @if($mess->avatar)
-                                    <img src="{{ asset('storage/'.$mess->avatar) }}" class="img-fluid rounded-circle" alt="">
+                                    <img src="{{ asset('storage/'.$mess->avatar) }}" alt="{{ $mess->name }}" style="width:100%;height:100%;object-fit:cover">
                                 @else
-                                    <span class="avatar-title rounded-circle bg-success text-white fs-4">
+                                    <span style="font-size:22px;font-weight:700;color:#fff;background:#198754;width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:50%">
                                         {{ strtoupper(substr($mess->name, 0, 1)) }}
                                     </span>
                                 @endif
                             </div>
                             <div>
                                 <h6 class="fw-bold mb-0">{{ $mess->name }}</h6>
-                                <span class="badge bg-danger fs-10"><i class="ti ti-shield-check me-1"></i>Super Admin</span>
+                                <div class="d-flex align-items-center gap-1 mt-1">
+                                    @if($mess->owner->avatar)
+                                    <img src="{{ asset('storage/'.$mess->owner->avatar) }}" class="rounded-circle" style="width:16px;height:16px;object-fit:cover">
+                                    @else
+                                    <span class="rounded-circle bg-secondary d-inline-flex align-items-center justify-content-center text-white" style="width:16px;height:16px;font-size:8px;flex-shrink:0">{{ strtoupper(substr($mess->owner->name,0,1)) }}</span>
+                                    @endif
+                                    <span class="small text-muted">{{ $mess->owner->name }}</span>
+                                    <span class="badge bg-secondary" style="font-size:.65rem;">Owner</span>
+                                </div>
                             </div>
-                        </div>
-
-                        <div class="small text-muted mb-2">
-                            <i class="ti ti-user me-1"></i>Owner: <strong>{{ $mess->owner->name }}</strong>
                         </div>
 
                         <div class="d-flex gap-3 mb-3">
                             <div class="text-center">
                                 <div class="fw-bold text-primary">{{ $mess->active_members_count }}</div>
-                                <div class="fs-10 text-muted">Members</div>
+                                <div class="text-muted" style="font-size:.7rem;">Members</div>
                             </div>
                             <div class="text-center">
                                 <div class="fw-bold text-muted">{{ $mess->max_members }}</div>
-                                <div class="fs-10 text-muted">Capacity</div>
+                                <div class="text-muted" style="font-size:.7rem;">Capacity</div>
                             </div>
                         </div>
 
@@ -96,9 +122,10 @@
                                 <i class="ti ti-settings"></i>
                             </a>
                         </div>
-
-                        <div class="mt-3 pt-2 border-top">
-                            <small class="text-muted"><i class="ti ti-key me-1"></i>Code: <code>{{ $mess->invite_code }}</code></small>
+                        <div class="mt-2 pt-2 border-top">
+                            <small class="text-muted"><i class="ti ti-calendar me-1"></i>Created {{ $mess->created_at->format('d M Y') }}</small>
+                            &nbsp;&middot;&nbsp;
+                            <small class="text-muted"><i class="ti ti-key me-1"></i><code>{{ $mess->invite_code }}</code></small>
                         </div>
                     </div>
                 </div>
@@ -124,49 +151,56 @@
             </div>
         </div>
         @else
-        <div class="row">
+        <div class="row g-3">
             @foreach($memberships as $membership)
+            @php $isActive = $membership->mess->status === 'active'; @endphp
             <div class="col-md-6 col-xl-4">
-                <div class="card h-100">
+                <div class="card h-100 border-0 shadow-sm overflow-hidden">
+                    {{-- Status bar on top --}}
+                    <div style="height:4px;background:{{ $isActive ? '#10b981' : '#9ca3af' }};"></div>
                     <div class="card-body">
+                        {{-- Status badge row --}}
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            @if($isActive)
+                            <span class="d-inline-flex align-items-center gap-1 px-2 py-1 rounded-pill" style="background:#d1fae5;color:#065f46;font-size:.75rem;font-weight:600;">
+                                <span class="rounded-circle" style="width:6px;height:6px;background:#10b981;display:inline-block;"></span> Active
+                            </span>
+                            @else
+                            <span class="d-inline-flex align-items-center gap-1 px-2 py-1 rounded-pill" style="background:#f3f4f6;color:#6b7280;font-size:.75rem;font-weight:600;">
+                                <span class="rounded-circle" style="width:6px;height:6px;background:#9ca3af;display:inline-block;"></span> Inactive
+                            </span>
+                            @endif
+                            <span class="badge bg-{{ $membership->role === 'owner' ? 'danger' : ($membership->role === 'manager' ? 'warning' : ($membership->role === 'author' ? 'info' : 'secondary')) }}">
+                                {{ ucfirst($membership->role) }}
+                            </span>
+                        </div>
+
                         <div class="d-flex align-items-center mb-3">
-                            <div class="avatar avatar-lg me-3">
+                            <div class="me-3 flex-shrink-0" style="width:52px;height:52px;border-radius:50%;overflow:hidden;background:#e9ecef;display:flex;align-items:center;justify-content:center">
                                 @if($membership->mess->avatar)
-                                    <img src="{{ asset('storage/'.$membership->mess->avatar) }}" class="img-fluid rounded-circle" alt="">
+                                    <img src="{{ asset('storage/'.$membership->mess->avatar) }}" alt="{{ $membership->mess->name }}" style="width:100%;height:100%;object-fit:cover">
                                 @else
-                                    <span class="avatar-title rounded-circle bg-primary text-white fs-4">
+                                    <span style="font-size:22px;font-weight:700;color:#fff;background:#0d6efd;width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:50%">
                                         {{ strtoupper(substr($membership->mess->name, 0, 1)) }}
                                     </span>
                                 @endif
                             </div>
                             <div>
                                 <h6 class="fw-bold mb-0">{{ $membership->mess->name }}</h6>
-                                <span class="badge bg-{{ $membership->role === 'owner' ? 'danger' : ($membership->role === 'manager' ? 'warning' : ($membership->role === 'author' ? 'info' : 'secondary')) }} fs-10">
-                                    {{ ucfirst($membership->role) }}
-                                </span>
+                                @if($membership->mess->description)
+                                <p class="text-muted mb-0" style="font-size:.75rem;">{{ Str::limit($membership->mess->description, 60) }}</p>
+                                @endif
                             </div>
                         </div>
-
-                        @if($membership->mess->description)
-                        <p class="text-muted small mb-3">{{ Str::limit($membership->mess->description, 80) }}</p>
-                        @endif
 
                         <div class="d-flex gap-3 mb-3">
                             <div class="text-center">
                                 <div class="fw-bold text-primary">{{ $membership->mess->getMemberCount() }}</div>
-                                <div class="fs-10 text-muted">Members</div>
+                                <div class="text-muted" style="font-size:.7rem;">Members</div>
                             </div>
                             <div class="text-center">
                                 <div class="fw-bold text-success">{{ $membership->mess->getEffectiveMaxMembers() }}</div>
-                                <div class="fs-10 text-muted">Capacity</div>
-                            </div>
-                            <div class="text-center">
-                                <div class="fw-bold">
-                                    <span class="badge bg-{{ $membership->mess->status === 'active' ? 'success' : 'danger' }}">
-                                        {{ ucfirst($membership->mess->status) }}
-                                    </span>
-                                </div>
-                                <div class="fs-10 text-muted">Status</div>
+                                <div class="text-muted" style="font-size:.7rem;">Capacity</div>
                             </div>
                         </div>
 
@@ -181,11 +215,10 @@
                             @endif
                         </div>
 
-                        <div class="mt-3 pt-2 border-top d-flex justify-content-between align-items-center">
-                            <small class="text-muted">
-                                <i class="ti ti-key me-1"></i>Code: <code>{{ $membership->mess->invite_code }}</code>
-                            </small>
-                            <small class="text-muted">Joined {{ $membership->joined_at ? $membership->joined_at->diffForHumans() : 'N/A' }}</small>
+                        <div class="mt-2 pt-2 border-top d-flex flex-wrap gap-2">
+                            <small class="text-muted"><i class="ti ti-key me-1"></i><code>{{ $membership->mess->invite_code }}</code></small>
+                            <small class="text-muted ms-auto">Joined {{ $membership->joined_at ? $membership->joined_at->diffForHumans() : 'N/A' }}</small>
+                            <small class="text-muted w-100"><i class="ti ti-calendar me-1"></i>Created {{ $membership->mess->created_at->format('d M Y') }}</small>
                         </div>
                     </div>
                 </div>
@@ -195,4 +228,65 @@
         @endif
     </div>
 </div>
+
+{{-- Toggle Status Modal (super admin only) --}}
+@if(Auth::user()->is_super_admin)
+<div class="modal fade" id="messToggleModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-body text-center p-4">
+                <div id="toggleModalIcon" class="mb-3">
+                    <span id="toggleIconCircle" class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width:64px;height:64px;">
+                        <i id="toggleIconEl" style="font-size:2rem;"></i>
+                    </span>
+                </div>
+                <h5 class="fw-bold mb-1" id="toggleModalTitle"></h5>
+                <p class="text-muted mb-4" id="toggleModalDesc"></p>
+                <form id="toggleStatusForm" method="POST">
+                    @csrf
+                    <div class="d-flex justify-content-center gap-2">
+                        <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn px-4" id="toggleModalBtn"></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openToggleModal(messId, messName, currentStatus) {
+    const isActive = currentStatus === 'active';
+    const baseUrl  = '{{ url("admin/messes") }}/' + messId + '/toggle-status';
+
+    document.getElementById('toggleStatusForm').action = baseUrl;
+    document.getElementById('toggleModalTitle').textContent = isActive
+        ? 'Deactivate ' + messName + '?'
+        : 'Activate ' + messName + '?';
+    document.getElementById('toggleModalDesc').textContent = isActive
+        ? 'Members will no longer be able to add meal attendance, deposits, expenses, or generate reports until this mess is reactivated.'
+        : 'Members will regain full access to add meal attendance, deposits, expenses, and generate reports.';
+
+    const circle = document.getElementById('toggleIconCircle');
+    const icon   = document.getElementById('toggleIconEl');
+    const btn    = document.getElementById('toggleModalBtn');
+
+    if (isActive) {
+        circle.style.background = '#fef3c7';
+        icon.className = 'ti ti-ban';
+        icon.style.color = '#d97706';
+        btn.className = 'btn btn-warning px-4';
+        btn.innerHTML = '<i class="ti ti-ban me-1"></i>Yes, Deactivate';
+    } else {
+        circle.style.background = '#d1fae5';
+        icon.className = 'ti ti-shield-check';
+        icon.style.color = '#059669';
+        btn.className = 'btn btn-success px-4';
+        btn.innerHTML = '<i class="ti ti-shield-check me-1"></i>Yes, Activate';
+    }
+
+    new bootstrap.Modal(document.getElementById('messToggleModal')).show();
+}
+</script>
+@endif
 @endsection

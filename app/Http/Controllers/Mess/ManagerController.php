@@ -90,7 +90,7 @@ class ManagerController extends Controller
     {
         $this->authorizeMember($mess);
 
-        if ($rotation->mess_id !== $mess->id) abort(403);
+        if ((int) $rotation->mess_id !== (int) $mess->id) abort(403);
 
         // Can't vote for yourself
         if ($rotation->user_id === Auth::id()) {

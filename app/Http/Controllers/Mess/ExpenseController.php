@@ -17,8 +17,36 @@ class ExpenseController extends Controller
     {
         if (!Auth::user()->isManagerOf($mess->id)) abort(403, 'Managers only.');
 
-        $month = request('month', now()->month);
-        $year  = request('year', now()->year);
+        $month = (int) request('month', now()->month);
+        $year  = (int) request('year', now()->year);
+
+        // Auto-seed recurring categories that have no expense entry for this month yet
+        $recurringCats = $mess->expenseCategories()
+            ->where('is_active', true)
+            ->where('is_recurring', true)
+            ->whereNotNull('recurring_amount')
+            ->get();
+
+        foreach ($recurringCats as $cat) {
+            $exists = Expense::where('mess_id', $mess->id)
+                ->where('category_id', $cat->id)
+                ->where('is_recurring_entry', true)
+                ->whereMonth('expense_date', $month)
+                ->whereYear('expense_date', $year)
+                ->exists();
+
+            if (!$exists) {
+                Expense::create([
+                    'mess_id'            => $mess->id,
+                    'category_id'        => $cat->id,
+                    'title'              => $cat->name . ' (Recurring)',
+                    'amount'             => $cat->recurring_amount,
+                    'expense_date'       => \Carbon\Carbon::createFromDate($year, $month, 1)->toDateString(),
+                    'added_by'           => Auth::id(),
+                    'is_recurring_entry' => true,
+                ]);
+            }
+        }
 
         $expenses = Expense::where('mess_id', $mess->id)
             ->whereMonth('expense_date', $month)
@@ -66,7 +94,7 @@ class ExpenseController extends Controller
     public function update(Request $request, Mess $mess, Expense $expense)
     {
         if (!Auth::user()->isManagerOf($mess->id)) abort(403);
-        if ($expense->mess_id !== $mess->id) abort(403);
+        if ((int) $expense->mess_id !== (int) $mess->id) abort(403);
 
         $request->validate([
             'title'        => 'required|string|max:255',
@@ -81,7 +109,7 @@ class ExpenseController extends Controller
     public function destroy(Mess $mess, Expense $expense)
     {
         if (!Auth::user()->isManagerOf($mess->id)) abort(403);
-        if ($expense->mess_id !== $mess->id) abort(403);
+        if ((int) $expense->mess_id !== (int) $mess->id) abort(403);
         $expense->delete();
         return back()->with('success', 'Expense deleted.');
     }
@@ -91,22 +119,50 @@ class ExpenseController extends Controller
     {
         if (!Auth::user()->isManagerOf($mess->id)) abort(403);
 
-        $request->validate(['name' => 'required|string|max:100']);
+        $request->validate([
+            'name'             => 'required|string|max:100',
+            'recurring_amount' => 'nullable|numeric|min:0.01',
+        ]);
 
         ExpenseCategory::create([
-            'mess_id' => $mess->id,
-            'name'    => $request->name,
-            'icon'    => $request->icon ?? 'ti-coins',
-            'color'   => $request->color ?? 'primary',
+            'mess_id'          => $mess->id,
+            'name'             => $request->name,
+            'icon'             => $request->icon ?? 'ti-coins',
+            'color'            => $request->color ?? 'primary',
+            'is_recurring'     => $request->boolean('is_recurring'),
+            'recurring_amount' => $request->boolean('is_recurring') ? $request->recurring_amount : null,
         ]);
 
         return back()->with('success', 'Category added.');
     }
 
+    public function updateCategory(Request $request, Mess $mess, ExpenseCategory $category)
+    {
+        if (!Auth::user()->isManagerOf($mess->id)) abort(403);
+        if ((int) $category->mess_id !== (int) $mess->id) abort(403);
+
+        $request->validate([
+            'name'             => 'required|string|max:100',
+            'recurring_amount' => 'nullable|numeric|min:0.01',
+        ]);
+
+        $isRecurring = $request->boolean('is_recurring');
+
+        $category->update([
+            'name'             => $request->name,
+            'icon'             => $request->icon ?? $category->icon,
+            'color'            => $request->color ?? $category->color,
+            'is_recurring'     => $isRecurring,
+            'recurring_amount' => $isRecurring ? $request->recurring_amount : null,
+        ]);
+
+        return back()->with('success', 'Category updated.');
+    }
+
     public function destroyCategory(Mess $mess, ExpenseCategory $category)
     {
         if (!Auth::user()->isManagerOf($mess->id)) abort(403);
-        if ($category->mess_id !== $mess->id) abort(403);
+        if ((int) $category->mess_id !== (int) $mess->id) abort(403);
 
         // If expenses use this category, just null them out rather than blocking
         $category->expenses()->update(['category_id' => null]);

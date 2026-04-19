@@ -35,6 +35,15 @@
             </div>
         </div>
 
+        @if($mess->status === 'inactive')
+        <div class="alert alert-warning d-flex align-items-center gap-2 mb-3" role="alert">
+            <i class="ti ti-alert-triangle fs-5"></i>
+            <div>
+                <strong>This mess is currently inactive.</strong> Adding meal attendance, deposits, expenses, and generating reports are disabled. Contact the super admin to reactivate.
+            </div>
+        </div>
+        @endif
+
         @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show">{{ session('success') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
         @endif

@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo(fn () => route('signin'));
         $middleware->alias([
             'super_admin' => \App\Http\Middleware\SuperAdminMiddleware::class,
+            'mess.active' => \App\Http\Middleware\MessActive::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
