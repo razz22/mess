@@ -86,9 +86,7 @@ class MealController extends Controller
             $mealTotals[$mt->name] = (float) $total;
         }
 
-        $contacts = $isManager
-            ? MessContact::where('mess_id', $mess->id)->orderBy('label')->orderBy('name')->get()
-            : collect();
+        $contacts = MessContact::where('mess_id', $mess->id)->orderBy('label')->orderBy('name')->get();
 
         // Meal routine items for the viewed date (keyed by meal_type)
         $viewDate   = \Carbon\Carbon::parse($date);
@@ -171,6 +169,8 @@ class MealController extends Controller
         );
 
         $totalQty = MealAttendance::where('meal_schedule_id', $schedule->id)->sum('quantity');
+        $sumFull  = MealAttendance::where('meal_schedule_id', $schedule->id)->sum('full_qty');
+        $sumHalf  = MealAttendance::where('meal_schedule_id', $schedule->id)->sum('half_qty');
         $onCount  = MealAttendance::where('meal_schedule_id', $schedule->id)->where('quantity', '>', 0)->count();
 
         $remaining = null;
@@ -188,6 +188,8 @@ class MealController extends Controller
             'quantity'  => $quantity,
             'status'    => $status,
             'totalQty'  => $totalQty,
+            'sumFull'   => $sumFull,
+            'sumHalf'   => $sumHalf,
             'onCount'   => $onCount,
             'remaining' => $remaining,
         ]);
@@ -203,7 +205,10 @@ class MealController extends Controller
             'close_time'       => 'nullable|date_format:H:i',
             'close_days_before'=> 'nullable|integer|min:0|max:30',
             'rate'             => 'nullable|numeric|min:0',
+            'sort_order'       => 'nullable|integer|min:1|max:99',
         ]);
+
+        $max = MessMealType::where('mess_id', $mess->id)->max('sort_order') ?? 0;
 
         // Re-activate if previously deactivated
         $existing = MessMealType::where('mess_id', $mess->id)->where('name', ucfirst($request->name))->first();
@@ -213,11 +218,10 @@ class MealController extends Controller
                 'close_time'        => $request->close_time ? $request->close_time . ':00' : $existing->close_time,
                 'close_days_before' => $request->close_days_before ?? $existing->close_days_before,
                 'rate'              => $request->rate ?? $existing->rate,
+                'sort_order'        => $request->sort_order ?? $existing->sort_order,
             ]);
             return back()->with('success', '"' . $existing->name . '" re-activated.');
         }
-
-        $max = MessMealType::where('mess_id', $mess->id)->max('sort_order') ?? 0;
 
         MessMealType::create([
             'mess_id'           => $mess->id,
@@ -225,7 +229,7 @@ class MealController extends Controller
             'close_time'        => $request->close_time ? $request->close_time . ':00' : null,
             'close_days_before' => $request->close_days_before ?? 0,
             'rate'              => $request->rate ?? 0,
-            'sort_order'        => $max + 1,
+            'sort_order'        => $request->sort_order ?? ($max + 1),
         ]);
 
         return back()->with('success', 'Meal type added.');
@@ -249,22 +253,37 @@ class MealController extends Controller
         ]);
 
         // Non-managers can only submit for themselves regardless of form data
-        $userIds  = $isManager ? $request->user_ids : [$user->id];
-        $fullQty  = (int) $request->full_qty;
-        $halfQty  = (int) $request->half_qty;
-        $quantity = $fullQty + $halfQty * 0.5;
-        $status   = $quantity > 0 ? 'on' : 'off';
-        $mealTypes = $mess->mealTypes()->pluck('name')->toArray();
+        $userIds   = $isManager ? $request->user_ids : [$user->id];
+        $fullQty   = (int) $request->full_qty;
+        $halfQty   = (int) $request->half_qty;
+        $quantity  = $fullQty + $halfQty * 0.5;
+        $status    = $quantity > 0 ? 'on' : 'off';
+        $today     = now()->toDateString();
+        $mealTypeModels = $mess->mealTypes()->get()->keyBy('name');
+        $mealTypeNames  = $mealTypeModels->keys()->toArray();
         $count     = 0;
+        $skipped   = 0;
 
         foreach ($request->dates as $date) {
+            // Non-managers cannot edit past dates
+            if (!$isManager && $date < $today) { $skipped++; continue; }
+
             foreach ($request->meal_types as $typeName) {
-                if (!in_array($typeName, $mealTypes)) continue;
+                if (!in_array($typeName, $mealTypeNames)) continue;
+
+                // Non-managers cannot edit expired meal types (for today)
+                if (!$isManager && $date === $today) {
+                    $mt = $mealTypeModels[$typeName] ?? null;
+                    if ($mt && $mt->isExpired()) { $skipped++; continue; }
+                }
 
                 $schedule = MealSchedule::firstOrCreate(
                     ['mess_id' => $mess->id, 'date' => $date, 'type' => $typeName],
                     ['status' => 'open']
                 );
+
+                // Skip closed schedules for non-managers
+                if (!$isManager && $schedule->status === 'closed') { $skipped++; continue; }
 
                 foreach ($userIds as $userId) {
                     MealAttendance::updateOrCreate(
@@ -278,7 +297,9 @@ class MealController extends Controller
         }
 
         $label = $quantity > 0 ? "{$fullQty}F+{$halfQty}H" : 'Off';
-        return back()->with('success', "{$count} attendance record(s) set to {$label} successfully.");
+        $msg   = "{$count} attendance record(s) set to {$label} successfully.";
+        if ($skipped > 0) $msg .= " ({$skipped} skipped — past dates, expired or closed meals.)";
+        return back()->with($count > 0 ? 'success' : 'error', $msg);
     }
 
     // Manager: update meal type (name, rate, close_time, active)
@@ -293,6 +314,7 @@ class MealController extends Controller
             'close_days_before' => 'nullable|integer|min:0|max:30',
             'rate'              => 'nullable|numeric|min:0',
             'is_active'         => 'nullable|boolean',
+            'sort_order'        => 'nullable|integer|min:1|max:99',
         ]);
 
         $mealType->update([
@@ -301,6 +323,7 @@ class MealController extends Controller
             'close_days_before' => $request->close_days_before ?? 0,
             'rate'              => $request->rate ?? $mealType->rate,
             'is_active'         => $request->has('is_active') ? (bool)$request->is_active : $mealType->is_active,
+            'sort_order'        => $request->sort_order ?? $mealType->sort_order,
         ]);
 
         return back()->with('success', $mealType->name . ' updated.');

@@ -186,22 +186,22 @@
                             <td>
                                 <div class="d-flex align-items-center gap-1 flex-wrap">
                                     <span class="fw-semibold">৳{{ number_format($summary->total_expenses, 2) }}</span>
-                                    @if($isManager)
-                                    {{-- Remove ALL expenses for this member --}}
+                                    @if($isManager && $m->user_id !== $mess->owner_id)
+                                    {{-- Remove ALL expenses for this member (not for owner) --}}
                                     <button class="btn btn-xs {{ $excluded ? 'btn-success' : 'btn-outline-warning' }} py-0 px-1"
                                         id="toggle-btn-{{ $m->user->id }}"
                                         onclick="toggleShared({{ $m->user->id }}, {{ $excluded ? 'true' : 'false' }})"
                                         title="{{ $excluded ? 'Include in all shared expenses' : 'Exclude from ALL shared expenses' }}">
                                         <i class="ti {{ $excluded ? 'ti-user-check' : 'ti-user-minus' }}" style="font-size:11px"></i>
                                     </button>
-                                    @if(!$excluded)
+                                    @endif
+                                    @if($isManager && !$excluded)
                                     {{-- Remove individual categories --}}
                                     <button class="btn btn-xs btn-outline-secondary py-0 px-1"
                                         onclick="openCategoryModal({{ $m->user->id }}, '{{ addslashes($m->user->name) }}')"
                                         title="Remove individual expense categories">
                                         <i class="ti ti-adjustments-horizontal" style="font-size:11px"></i>
                                     </button>
-                                    @endif
                                     @endif
                                     @if($excluded)
                                     <span class="badge bg-secondary" title="Excluded from all shared expenses">No expense</span>
@@ -546,6 +546,9 @@ function renderCategoryModal(userId) {
         html += '<div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">';
         html += '<div>';
         html += '<span class="fw-semibold">' + cat.name + '</span>';
+        if (cat.is_recurring) {
+            html += ' <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 ms-1" style="font-size:10px;">Recurring</span>';
+        }
         html += '<div class="text-muted" style="font-size:11px">';
         html += 'Total: ৳' + parseFloat(cat.total).toFixed(2);
         html += ' &nbsp;·&nbsp; Your share: <strong class="text-danger">৳' + parseFloat(cat.per_head).toFixed(2) + '</strong>';

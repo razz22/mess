@@ -24,7 +24,37 @@ class ReportController extends Controller
         $month = request('month', now()->month);
         $year  = request('year', now()->year);
 
-        $members = $mess->activeMembers()->with('user')->get();
+        $myId    = Auth::id();
+        $members = $mess->activeMembers()->with('user')->get()
+            ->sortBy(fn($m) => $m->user_id === $myId ? 0 : 1)->values();
+
+        // Auto-seed recurring category expenses for this month
+        $recurringCats = $mess->expenseCategories()
+            ->where('is_active', true)
+            ->where('is_recurring', true)
+            ->whereNotNull('recurring_amount')
+            ->get();
+
+        foreach ($recurringCats as $cat) {
+            $exists = \App\Models\Expense::where('mess_id', $mess->id)
+                ->where('category_id', $cat->id)
+                ->where('is_recurring_entry', true)
+                ->whereMonth('expense_date', $month)
+                ->whereYear('expense_date', $year)
+                ->exists();
+
+            if (!$exists) {
+                \App\Models\Expense::create([
+                    'mess_id'            => $mess->id,
+                    'category_id'        => $cat->id,
+                    'title'              => $cat->name . ' (Recurring)',
+                    'amount'             => $cat->recurring_amount,
+                    'expense_date'       => \Carbon\Carbon::createFromDate($year, $month, 1)->toDateString(),
+                    'added_by'           => Auth::id(),
+                    'is_recurring_entry' => true,
+                ]);
+            }
+        }
 
         // Auto-generate summaries on every page load (managers only)
         if (Auth::user()->isManagerOf($mess->id)) {
@@ -105,10 +135,11 @@ class ReportController extends Controller
         $categoriesForModal = $allCategories
             ->filter(fn($c) => isset($nonMarketByCategory[$c->id]) && $nonMarketByCategory[$c->id] > 0)
             ->map(fn($c) => [
-                'id'       => $c->id,
-                'name'     => $c->name,
-                'total'    => (float) $nonMarketByCategory[$c->id],
-                'per_head' => $totalMembers > 0 ? round($nonMarketByCategory[$c->id] / $totalMembers, 2) : 0,
+                'id'           => $c->id,
+                'name'         => $c->name,
+                'is_recurring' => (bool) $c->is_recurring,
+                'total'        => (float) $nonMarketByCategory[$c->id],
+                'per_head'     => $totalMembers > 0 ? round($nonMarketByCategory[$c->id] / $totalMembers, 2) : 0,
             ])->values();
 
         // Category exclusions per member: [userId => [categoryId, ...]]
@@ -154,6 +185,11 @@ class ReportController extends Controller
             'month'   => 'required|integer|min:1|max:12',
             'year'    => 'required|integer',
         ]);
+
+        // Owner cannot be excluded from shared expenses
+        if ((int) $request->user_id === (int) $mess->owner_id) {
+            return response()->json(['success' => false, 'message' => 'The owner cannot be excluded from shared expenses.'], 422);
+        }
 
         // Ensure a summary row exists before toggling
         $summary = MemberMonthlySummary::firstOrCreate(
@@ -389,7 +425,8 @@ class ReportController extends Controller
         }
 
         foreach ($memberIds as $userId) {
-            $excluded    = (bool)($exclusions[$userId] ?? false);
+            // Owner is never excluded from shared expenses
+            $excluded = $userId === $mess->owner_id ? false : (bool)($exclusions[$userId] ?? false);
             $memberMeals = (float)($mealByMember[$userId] ?? 0);
             $mealCost    = $costMode === 'daily'
                 ? (float)($memberMealCosts[$userId] ?? 0)

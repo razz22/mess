@@ -26,10 +26,10 @@
                 <button class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#bulkAttendanceModal">
                     <i class="ti ti-calendar-stats me-1"></i>Bulk Attendance
                 </button>
-                @if($isManager)
                 <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#whatsappModal">
                     <i class="ti ti-brand-whatsapp me-1"></i>Share Meal Count
                 </button>
+                @if($isManager)
                 <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addMealTypeModal">
                     <i class="ti ti-plus me-1"></i>Add Meal Type
                 </button>
@@ -125,26 +125,41 @@
                                 </th>
                                 @foreach($mealTypes as $mt)
                                 @php
-                                    $sch     = $schedules[$mt->name] ?? null;
-                                    $expired = !$isPast && $mt->isExpired($date);
-                                    $closed  = $sch && $sch->status === 'closed';
-                                    $totalQ  = $sch ? $allAttendances->filter(fn($g,$k) => str_starts_with($k, $sch->id.'_'))->flatten()->sum('quantity') : 0;
+                                    $sch        = $schedules[$mt->name] ?? null;
+                                    $expired    = !$isPast && $mt->isExpired($date);
+                                    $closed     = $sch && $sch->status === 'closed';
+                                    $schAtts    = $sch ? $allAttendances->filter(fn($g,$k) => str_starts_with($k, $sch->id.'_'))->flatten() : collect();
+                                    $sumFull    = $schAtts->sum('full_qty');
+                                    $sumHalf    = $schAtts->sum('half_qty');
+                                    $mtItems    = $routineItems[$mt->name] ?? null;
+                                    $itemList   = $mtItems ? array_filter(array_map('trim', explode(',', $mtItems))) : [];
                                 @endphp
-                                <th class="text-center {{ $closed ? 'bg-secondary bg-opacity-10' : 'bg-light' }}" style="min-width:140px;">
-                                    <div class="d-flex align-items-center justify-content-center gap-1">
+                                <th class="text-center {{ $closed ? 'bg-secondary bg-opacity-10' : 'bg-light' }}" style="min-width:160px;">
+                                    <div class="d-flex align-items-center justify-content-center gap-1 mb-1">
                                         <span class="fw-semibold">{{ $mt->name }}</span>
-                                        <button type="button" class="routine-view-btn btn btn-xs p-0 border-0 {{ isset($routineItems[$mt->name]) ? 'text-primary' : 'text-muted opacity-50' }}"
+                                        <button type="button" class="routine-view-btn btn btn-xs p-0 border-0 {{ !empty($itemList) ? 'text-primary' : 'text-muted' }}"
+                                            title="{{ !empty($itemList) ? 'View / edit menu' : 'Add menu items' }}"
                                             data-meal-type="{{ $mt->name }}"
                                             onclick="showRoutineItems(this.dataset.mealType)">
-                                            <i class="ti ti-list-details" style="font-size:16px;"></i>
+                                            <i class="ti {{ !empty($itemList) ? 'ti-list-details' : 'ti-circle-plus' }}" style="font-size:16px;"></i>
                                         </button>
                                     </div>
+                                    {{-- Meal items in bordered div (updated live via JS) --}}
+                                    <div class="hdr-items-{{ Str::slug($mt->name) }} text-muted mx-1 mb-1" style="font-size:10px;border:1px solid #dee2e6;border-radius:5px;padding:3px 6px;{{ empty($itemList) ? 'display:none;' : '' }}">{{ implode(', ', $itemList) }}</div>
+                                    {{-- Status / counts --}}
                                     @if($closed)
                                         <span class="badge bg-secondary" style="font-size:10px">Closed</span>
                                     @elseif($expired)
                                         <span class="badge bg-warning text-dark" style="font-size:10px">Expired</span>
                                     @elseif($sch)
-                                        <div class="text-success" style="font-size:10px" id="hdr-qty-{{ $sch->id }}">{{ $totalQ }} meals · {{ $members->count() }} members</div>
+                                        <div class="d-flex justify-content-center gap-2 mt-1" id="hdr-qty-{{ $sch->id }}" style="font-size:10px;">
+                                            <span class="badge rounded-pill bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2">
+                                                Full <strong>{{ $sumFull }}</strong>
+                                            </span>
+                                            <span class="badge rounded-pill bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-2" style="color:#9a6700 !important;">
+                                                ½ <strong>{{ $sumHalf }}</strong>
+                                            </span>
+                                        </div>
                                     @endif
                                 </th>
                                 @endforeach
@@ -267,17 +282,23 @@
                         </tbody>
                         <tfoot>
                             <tr class="bg-light fw-semibold">
-                                <td class="bg-light small" style="position:sticky;left:0;z-index:1;">Total meals</td>
+                                <td class="bg-light small" style="position:sticky;left:0;z-index:1;">Totals</td>
                                 @foreach($mealTypes as $mt)
                                 @php
-                                    $sch  = $schedules[$mt->name] ?? null;
-                                    $sumQ = 0;
-                                    if ($sch) {
-                                        $sumQ = $allAttendances->filter(fn($g, $k) => str_starts_with($k, $sch->id.'_'))->flatten()->sum('quantity');
-                                    }
+                                    $sch     = $schedules[$mt->name] ?? null;
+                                    $ftAtts  = $sch ? $allAttendances->filter(fn($g, $k) => str_starts_with($k, $sch->id.'_'))->flatten() : collect();
+                                    $ftFull  = $ftAtts->sum('full_qty');
+                                    $ftHalf  = $ftAtts->sum('half_qty');
                                 @endphp
                                 <td class="text-center" id="foot-{{ $sch?->id ?? 'none' }}">
-                                    <span class="badge bg-primary rounded-pill">{{ $sumQ }}</span>
+                                    <div class="d-flex justify-content-center gap-1">
+                                        <span class="badge rounded-pill bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2" style="font-size:11px;">
+                                            Full <strong>{{ $ftFull }}</strong>
+                                        </span>
+                                        <span class="badge rounded-pill bg-warning bg-opacity-10 border border-warning border-opacity-25 px-2" style="font-size:11px;color:#9a6700;">
+                                            ½ <strong>{{ $ftHalf }}</strong>
+                                        </span>
+                                    </div>
                                 </td>
                                 @endforeach
                             </tr>
@@ -299,6 +320,7 @@
                     <table class="table table-sm table-bordered mb-0">
                         <thead class="table-light">
                             <tr>
+                                <th style="width:50px" class="text-center">#</th>
                                 <th>Name</th>
                                 <th>Closes At</th>
                                 <th>Status</th>
@@ -308,6 +330,9 @@
                         <tbody>
                             @foreach($allMealTypes as $mt)
                             <tr class="{{ !$mt->is_active ? 'opacity-50' : '' }}">
+                                <td class="text-center align-middle">
+                                    <span class="badge bg-secondary rounded-pill">{{ $mt->sort_order ?? '—' }}</span>
+                                </td>
                                 <td class="fw-semibold align-middle">
                                     {{ $mt->name }}
                                     @if(!$mt->is_active)<span class="badge bg-secondary ms-1" style="font-size:10px">Disabled</span>@endif
@@ -327,7 +352,7 @@
                                 </td>
                                 <td class="text-center align-middle">
                                     <button class="btn btn-xs btn-outline-primary py-0"
-                                        onclick="openEditMealType({{ $mt->id }},'{{ addslashes($mt->name) }}','{{ $mt->close_time ? substr($mt->close_time,0,5) : '' }}',{{ $mt->close_days_before ?? 0 }},{{ $mt->is_active ? 'true' : 'false' }})"
+                                        onclick="openEditMealType({{ $mt->id }},'{{ addslashes($mt->name) }}','{{ $mt->close_time ? substr($mt->close_time,0,5) : '' }}',{{ $mt->close_days_before ?? 0 }},{{ $mt->is_active ? 'true' : 'false' }},{{ $mt->sort_order ?? 1 }})"
                                         title="Edit">
                                         <i class="ti ti-edit" style="font-size:11px"></i>
                                     </button>
@@ -376,7 +401,7 @@
                         <input type="time" name="close_time" class="form-control">
                         <div class="form-text">Leave blank for no cutoff.</div>
                     </div>
-                    <div class="mb-0">
+                    <div class="mb-3">
                         <label class="form-label fw-semibold">Closes How Many Days Before?</label>
                         <select name="close_days_before" class="form-select">
                             <option value="0">Same day (default)</option>
@@ -385,6 +410,11 @@
                             <option value="3">3 days before</option>
                         </select>
                         <div class="form-text">e.g. set to "1 day before" if members must book dinner by 10 PM the previous night.</div>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label fw-semibold">Priority <span class="text-danger">*</span></label>
+                        <input type="number" name="sort_order" class="form-control" min="1" max="99" value="{{ (\App\Models\MessMealType::where('mess_id', $mess->id)->max('sort_order') ?? 0) + 1 }}" required>
+                        <div class="form-text">Lower number = shown first in table. e.g. Breakfast=1, Lunch=2, Dinner=3.</div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -426,12 +456,17 @@
                         </select>
                         <div class="form-text">e.g. "1 day before" means members must book by the previous day at the set time.</div>
                     </div>
-                    <div class="mb-0">
+                    <div class="mb-3">
                         <label class="form-label fw-semibold">Status</label>
                         <select name="is_active" id="edit-mt-active" class="form-select">
                             <option value="1">Active</option>
                             <option value="0">Disabled</option>
                         </select>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label fw-semibold">Priority <span class="text-danger">*</span></label>
+                        <input type="number" name="sort_order" id="edit-mt-sort" class="form-control" min="1" max="99" required>
+                        <div class="form-text">Lower number = shown first in table. e.g. Breakfast=1, Lunch=2, Dinner=3.</div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -488,6 +523,13 @@
             <form action="{{ route('mess.meals.bulk', $mess->id) }}" method="POST">
                 @csrf
                 <div class="modal-body">
+
+                    @if(!$isManager)
+                    <div class="alert alert-warning py-2 small mb-3">
+                        <i class="ti ti-info-circle me-1"></i>
+                        <strong>Members:</strong> You can only set attendance for yourself. Past dates, expired meal types, and closed meals are not editable.
+                    </div>
+                    @endif
 
                     {{-- Step 1: Members --}}
                     @if($isManager)
@@ -816,8 +858,8 @@ function _doSubmitMealQty(scheduleId, userId) {
             }
         });
 
-        updateHeaderQty(scheduleId, data.totalQty);
-        updateFooterQty(scheduleId, data.totalQty);
+        updateHeaderQty(scheduleId, data.sumFull, data.sumHalf);
+        updateFooterQty(scheduleId, data.sumFull, data.sumHalf);
 
         var qty = fullQty + halfQty * 0.5;
         if (qty === 0) {
@@ -838,20 +880,24 @@ function _doSubmitMealQty(scheduleId, userId) {
     });
 }
 
-function updateHeaderQty(scheduleId, totalQty) {
+function updateHeaderQty(scheduleId, sumFull, sumHalf) {
     var el = document.getElementById('hdr-qty-' + scheduleId);
-    if (el) {
-        var members = el.textContent.match(/·\s*(\d+)\s*members/);
-        var mCount  = members ? members[1] : '';
-        el.textContent = totalQty + ' meals' + (mCount ? ' · ' + mCount + ' members' : '');
+    if (!el) return;
+    var badges = el.querySelectorAll('strong');
+    if (badges.length >= 2) {
+        badges[0].textContent = sumFull;
+        badges[1].textContent = sumHalf;
     }
 }
 
-function updateFooterQty(scheduleId, totalQty) {
+function updateFooterQty(scheduleId, sumFull, sumHalf) {
     var cell = document.getElementById('foot-' + scheduleId);
     if (!cell) return;
-    var badge = cell.querySelector('.badge');
-    if (badge) badge.textContent = totalQty;
+    var badges = cell.querySelectorAll('strong');
+    if (badges.length >= 2) {
+        badges[0].textContent = sumFull;
+        badges[1].textContent = sumHalf;
+    }
 }
 
 function updateRowTotalById(userId) {}
@@ -962,13 +1008,14 @@ function openToggleMealType(id, name, action) {
     new bootstrap.Modal(document.getElementById('toggleMealTypeModal')).show();
 }
 
-function openEditMealType(id, name, closeTime, daysBefore, isActive) {
+function openEditMealType(id, name, closeTime, daysBefore, isActive, sortOrder) {
     var base = mealTypeBase + '/' + id;
     document.getElementById('editMealTypeForm').action = base;
-    document.getElementById('edit-mt-name').value  = name;
-    document.getElementById('edit-mt-close').value = closeTime || '';
-    document.getElementById('edit-mt-days').value  = String(daysBefore || 0);
+    document.getElementById('edit-mt-name').value   = name;
+    document.getElementById('edit-mt-close').value  = closeTime || '';
+    document.getElementById('edit-mt-days').value   = String(daysBefore || 0);
     document.getElementById('edit-mt-active').value = isActive ? '1' : '0';
+    document.getElementById('edit-mt-sort').value   = sortOrder || 1;
     var modal = new bootstrap.Modal(document.getElementById('editMealTypeModal'));
     modal.show();
 }
@@ -1035,8 +1082,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ===================== BULK ATTENDANCE JS =====================
 (function () {
-    var bulkDates   = [];          // Set-like array of selected 'YYYY-MM-DD' strings
-    var calYear, calMonth;         // currently displayed calendar month
+    var bulkDates   = [];
+    var calYear, calMonth;
+    var today = new Date().toISOString().substring(0, 10);
 
     // ── helpers ──────────────────────────────────────────────────────────────
     function pad(n) { return String(n).padStart(2, '0'); }
@@ -1067,7 +1115,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         var firstDow = new Date(calYear, calMonth, 1).getDay();
         var daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
-        var today = new Date().toISOString().substring(0, 10);
 
         // Empty cells before first day
         for (var i = 0; i < firstDow; i++) {
@@ -1080,29 +1127,38 @@ document.addEventListener('DOMContentLoaded', function() {
             cell.type = 'button';
             cell.textContent = d;
             var dow = new Date(calYear, calMonth, d).getDay();
-            var isWeekend = (dow === 5 || dow === 6); // Fri=5, Sat=6
+            var isWeekend = (dow === 5 || dow === 6);
             var selected  = bulkDates.indexOf(ymd) !== -1;
             var isToday   = ymd === today;
+            var isPastDay = ymd < today;
+            var blocked   = !isManager && isPastDay;
 
-            cell.style.cssText = [
-                'width:100%;border-radius:6px;font-size:12px;padding:5px 2px;border:1px solid;',
-                'cursor:pointer;transition:all .12s;font-weight:' + (isWeekend ? '600' : '400') + ';',
-                selected
-                    ? 'background:#198754;color:#fff;border-color:#198754;'
-                    : isToday
-                        ? 'background:#e8f5e9;color:#198754;border-color:#a5d6a7;'
-                        : isWeekend
-                            ? 'background:#fff8e1;color:#795548;border-color:#ffe082;'
-                            : 'background:#f8f9fa;color:#333;border-color:#dee2e6;'
-            ].join('');
+            if (blocked) {
+                cell.disabled = true;
+                cell.style.cssText = 'width:100%;border-radius:6px;font-size:12px;padding:5px 2px;border:1px solid;' +
+                    'background:#f0f0f0;color:#bbb;border-color:#e0e0e0;cursor:not-allowed;text-decoration:line-through;';
+                cell.title = 'Cannot edit past dates';
+            } else {
+                cell.style.cssText = [
+                    'width:100%;border-radius:6px;font-size:12px;padding:5px 2px;border:1px solid;',
+                    'cursor:pointer;transition:all .12s;font-weight:' + (isWeekend ? '600' : '400') + ';',
+                    selected
+                        ? 'background:#198754;color:#fff;border-color:#198754;'
+                        : isToday
+                            ? 'background:#e8f5e9;color:#198754;border-color:#a5d6a7;'
+                            : isWeekend
+                                ? 'background:#fff8e1;color:#795548;border-color:#ffe082;'
+                                : 'background:#f8f9fa;color:#333;border-color:#dee2e6;'
+                ].join('');
 
-            cell.dataset.ymd = ymd;
-            cell.addEventListener('click', function () {
-                toggle(this.dataset.ymd);
-                renderCal();
-                syncHidden();
-                updateBulkSummary();
-            });
+                cell.dataset.ymd = ymd;
+                cell.addEventListener('click', function () {
+                    toggle(this.dataset.ymd);
+                    renderCal();
+                    syncHidden();
+                    updateBulkSummary();
+                });
+            }
             grid.appendChild(cell);
         }
 
@@ -1122,19 +1178,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ── quick-select ──────────────────────────────────────────────────────────
     window.bulkQuick = function (type) {
-        // Build list of all days in calendar month
         var daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
-        for (var d = 1; d <= daysInMonth; d++) {
-            var ymd = toYMD(calYear, calMonth, d);
-            var dow = new Date(calYear, calMonth, d).getDay(); // 0=Sun … 6=Sat, 5=Fri, 6=Sat
-            var already = bulkDates.indexOf(ymd) !== -1;
-            if (type === 'clear')   { bulkDates = []; }
-            else if (type === 'all')     { if (!already) bulkDates.push(ymd); }
-            else if (type === 'fri')     { if (dow === 5 && !already) bulkDates.push(ymd); }
-            else if (type === 'sat')     { if (dow === 6 && !already) bulkDates.push(ymd); }
-            else if (type === 'weekend') { if ((dow === 5 || dow === 6) && !already) bulkDates.push(ymd); }
+        if (type === 'clear') { bulkDates = []; }
+        else {
+            for (var d = 1; d <= daysInMonth; d++) {
+                var ymd     = toYMD(calYear, calMonth, d);
+                var dow     = new Date(calYear, calMonth, d).getDay();
+                var already = bulkDates.indexOf(ymd) !== -1;
+                // Non-managers cannot select past dates
+                if (!isManager && ymd < today) continue;
+                if (type === 'all')     { if (!already) bulkDates.push(ymd); }
+                else if (type === 'fri')     { if (dow === 5 && !already) bulkDates.push(ymd); }
+                else if (type === 'sat')     { if (dow === 6 && !already) bulkDates.push(ymd); }
+                else if (type === 'weekend') { if ((dow === 5 || dow === 6) && !already) bulkDates.push(ymd); }
+            }
         }
-        if (type === 'clear') bulkDates = [];
         renderCal(); syncHidden(); updateBulkSummary();
     };
 
@@ -1347,12 +1405,16 @@ document.addEventListener('DOMContentLoaded', function() {
             const n = c.dataset.name;
             const schedId = c.dataset.schedule;
             let t = parseFloat(c.dataset.total);
-            // Read live total from footer badge if available
+            // Read live totals from footer Full/Half badges
             if (schedId) {
                 const footCell = document.getElementById('foot-' + schedId);
                 if (footCell) {
-                    const badge = footCell.querySelector('.badge');
-                    if (badge) t = parseFloat(badge.textContent) || 0;
+                    const strongs = footCell.querySelectorAll('strong');
+                    if (strongs.length >= 2) {
+                        const f = parseInt(strongs[0].textContent) || 0;
+                        const h = parseInt(strongs[1].textContent) || 0;
+                        t = f + h * 0.5;
+                    }
                 }
             }
             lines.push(n + ': ' + t + ' meal' + (t !== 1 ? 's' : ''));
@@ -1431,21 +1493,38 @@ document.addEventListener('DOMContentLoaded', function() {
 {{-- Routine Items Viewer Modal --}}
 <div class="modal fade" id="routineItemsModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
+        <div class="modal-content border-0 shadow">
             <div class="modal-header bg-primary text-white py-2">
-                <h6 class="modal-title mb-0"><i class="ti ti-list-details me-2"></i><span id="routineModalTitle"></span></h6>
+                <div>
+                    <h6 class="modal-title mb-0"><i class="ti ti-tools-kitchen-2 me-2"></i><span id="routineModalTitle"></span></h6>
+                    <div class="text-white text-opacity-75" style="font-size:11px;" id="routineModalDate"></div>
+                </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div class="text-muted small mb-2" id="routineModalDate"></div>
-                <div style="white-space:pre-wrap;font-size:14px;" id="routineModalItems"></div>
-                <div id="routineModalForm" class="mt-3 d-none">
-                    <label class="form-label small fw-semibold">Add menu items:</label>
+                {{-- Items display --}}
+                <div id="routineModalPills" class="mb-3"></div>
+                {{-- Empty state --}}
+                <div id="routineModalEmpty" class="text-center py-3 d-none">
+                    <i class="ti ti-salad text-muted" style="font-size:36px;"></i>
+                    <div class="text-muted small mt-1">No menu set for this day.</div>
+                </div>
+                {{-- Edit / Add form --}}
+                <div id="routineModalForm" class="d-none">
+                    <label class="form-label small fw-semibold">Menu items <span class="text-muted fw-normal">(comma or line separated)</span></label>
                     <textarea id="routineModalTextarea" class="form-control" rows="4"
-                        placeholder="e.g. Plain Rice, Chicken Curry&#10;Vegetables, Dal, Salad"></textarea>
-                    <div class="form-text">Each item on a new line or separated by commas.</div>
-                    <button type="button" class="btn btn-primary btn-sm mt-2 w-100" id="routineModalSaveBtn">
-                        <i class="ti ti-check me-1"></i>Save Menu
+                        placeholder="e.g. Plain Rice, Chicken Curry, Dal, Salad"></textarea>
+                    <div class="d-flex gap-2 mt-2">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="routineModalCancelBtn">Cancel</button>
+                        <button type="button" class="btn btn-primary btn-sm flex-fill" id="routineModalSaveBtn">
+                            <i class="ti ti-check me-1"></i>Save Menu
+                        </button>
+                    </div>
+                </div>
+                {{-- Edit trigger (shown when items exist and form is hidden) --}}
+                <div id="routineModalEditRow" class="d-none text-end">
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="routineModalEditBtn">
+                        <i class="ti ti-pencil me-1"></i>Edit Menu
                     </button>
                 </div>
             </div>
@@ -1463,29 +1542,76 @@ document.addEventListener('DOMContentLoaded', function() {
     // JS map of mealType -> items (initialized from server data, updated after save)
     var routineMap = @json($routineItems->toArray());
 
+    function slugMealType(name) {
+        return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    }
+
+    function renderModalPills(items) {
+        var pillsEl  = document.getElementById('routineModalPills');
+        var emptyEl  = document.getElementById('routineModalEmpty');
+        var editRow  = document.getElementById('routineModalEditRow');
+        pillsEl.innerHTML = '';
+        if (!items) {
+            emptyEl.classList.remove('d-none');
+            editRow.classList.add('d-none');
+            return;
+        }
+        emptyEl.classList.add('d-none');
+        var list = items.split(/[\n,]/).map(function(s){ return s.trim(); }).filter(Boolean);
+        pillsEl.style.cssText = 'font-size:14px;color:#333;border:1px solid #e3e3e3;border-radius:6px;padding:10px;';
+        pillsEl.textContent = list.join(', ');
+        editRow.classList.remove('d-none');
+    }
+
+    function updateHeaderPills(mealType, items) {
+        var slug = slugMealType(mealType);
+        var container = document.querySelector('.hdr-items-' + slug);
+        if (!container) return;
+        container.innerHTML = '';
+        if (!items) { container.style.display = 'none'; return; }
+        var list = items.split(/[\n,]/).map(function(s){ return s.trim(); }).filter(Boolean);
+        container.textContent = list.join(', ');
+        container.style.display = '';
+        // Update icon button style
+        document.querySelectorAll('.routine-view-btn').forEach(function(b) {
+            if (b.dataset.mealType === mealType) {
+                b.classList.remove('text-muted');
+                b.classList.add('text-primary');
+                b.querySelector('i').className = 'ti ti-list-details';
+            }
+        });
+    }
+
     window.showRoutineItems = function(mealType) {
-        _mealType    = mealType;
-        var items    = routineMap[mealType] || null;
-        document.getElementById('routineModalTitle').textContent = mealType + ' Menu';
+        _mealType = mealType;
+        var items = routineMap[mealType] || null;
+        document.getElementById('routineModalTitle').textContent = mealType;
         document.getElementById('routineModalDate').textContent  = '{{ \Carbon\Carbon::parse($date)->format("l, d M Y") }}';
-        var el       = document.getElementById('routineModalItems');
-        var form     = document.getElementById('routineModalForm');
-        var textarea = document.getElementById('routineModalTextarea');
-        if (items) {
-            el.textContent = items;
-            el.classList.remove('text-muted', 'fst-italic');
-            form.classList.add('d-none');
-        } else {
-            el.textContent = 'No menu set for today.';
-            el.classList.add('text-muted', 'fst-italic');
-            textarea.value = '';
-            textarea.classList.remove('is-invalid');
-            form.classList.remove('d-none');
+        document.getElementById('routineModalForm').classList.add('d-none');
+        document.getElementById('routineModalTextarea').value = '';
+        document.getElementById('routineModalTextarea').classList.remove('is-invalid');
+        renderModalPills(items);
+        if (!items) {
+            document.getElementById('routineModalForm').classList.remove('d-none');
+            document.getElementById('routineModalEditRow').classList.add('d-none');
         }
         new bootstrap.Modal(document.getElementById('routineItemsModal')).show();
     };
 
     document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('routineModalEditBtn').addEventListener('click', function() {
+            var items = routineMap[_mealType] || '';
+            document.getElementById('routineModalTextarea').value = items;
+            document.getElementById('routineModalForm').classList.remove('d-none');
+            document.getElementById('routineModalEditRow').classList.add('d-none');
+        });
+
+        document.getElementById('routineModalCancelBtn').addEventListener('click', function() {
+            document.getElementById('routineModalForm').classList.add('d-none');
+            var items = routineMap[_mealType] || null;
+            if (items) document.getElementById('routineModalEditRow').classList.remove('d-none');
+        });
+
         document.getElementById('routineModalSaveBtn').addEventListener('click', function() {
             var textarea = document.getElementById('routineModalTextarea');
             var items    = textarea.value.trim();
@@ -1502,17 +1628,9 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(function(r){ return r.json(); })
             .then(function(d){
                 if (d.success) {
-                    // Update the in-memory map so next click shows fresh data
                     routineMap[_mealType] = items;
-                    // Update the icon button styling
-                    document.querySelectorAll('.routine-view-btn').forEach(function(b) {
-                        if (b.dataset.mealType === _mealType) {
-                            b.classList.remove('text-muted', 'opacity-50');
-                            b.classList.add('text-primary');
-                        }
-                    });
-                    document.getElementById('routineModalItems').textContent = items;
-                    document.getElementById('routineModalItems').classList.remove('text-muted','fst-italic');
+                    renderModalPills(items);
+                    updateHeaderPills(_mealType, items);
                     document.getElementById('routineModalForm').classList.add('d-none');
                 }
                 btn.disabled = false;

@@ -88,10 +88,17 @@ class MarketController extends Controller
         $assignedTo = $isManager ? $request->assigned_to : $user->id;
 
         $isOwner = $mess->owner_id === $user->id || $user->is_super_admin;
+        $today   = now()->toDateString();
         $created = 0;
         $skipped = 0;
 
         foreach ($request->dates as $date) {
+            // Non-managers cannot assign past dates
+            if (!$isManager && $date < $today) {
+                $skipped++;
+                continue;
+            }
+
             if (!$isOwner) {
                 $overlap = MarketRoutine::where('mess_id', $mess->id)
                     ->where('start_date', '<=', $date)

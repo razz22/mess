@@ -637,7 +637,8 @@ const members = @json($members->map(fn($m) => ['id' => $m->user->id, 'name' => $
 const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
 
 // ---- Multi-select assign calendar ----
-const takenDates = new Set(@json(array_keys($dateRoutineMap)));
+const takenDates  = new Set(@json(array_keys($dateRoutineMap)));
+const acIsManager = {{ $isManager ? 'true' : 'false' }};
 let acYear  = {{ $year }};
 let acMonth = {{ $month }}; // 1-based
 let acSelected = new Set();
@@ -664,8 +665,16 @@ function acRender() {
         const isSelected = acSelected.has(dt);
         const isToday    = dt === today;
         const isWeekend  = dow === 0 || dow === 6;
+        const isPast     = dt < today;
+        const isBlocked  = !acIsManager && isPast;
+
+        if (isBlocked) {
+            html += `<div class="assign-cal-day ac-past-blocked" title="Cannot assign past dates" style="background:#f0f0f0;color:#ccc;cursor:not-allowed;text-decoration:line-through;font-size:11px;">${d}</div>`;
+            continue;
+        }
+
         let cls = 'assign-cal-day';
-        if (isTaken)    cls += ' ac-taken';
+        if (isTaken)         cls += ' ac-taken';
         else if (isSelected) cls += ' ac-selected' + (isWeekend ? ' ac-weekend' : '');
         else { if (isToday) cls += ' ac-today'; if (isWeekend) cls += ' ac-weekend'; }
         const label = isTaken ? `${d}<br><span style="font-size:9px">taken</span>` : d;
@@ -677,6 +686,8 @@ function acRender() {
 
 function acToggle(dt, isTaken) {
     if (isTaken) return;
+    const today = new Date().toISOString().slice(0,10);
+    if (!acIsManager && dt < today) return;
     acSelected.has(dt) ? acSelected.delete(dt) : acSelected.add(dt);
     acRender();
 }
