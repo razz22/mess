@@ -155,7 +155,6 @@ class MarketController extends Controller
             'items.*.item_name'      => 'required|string|max:255',
             'items.*.quantity'       => 'nullable|string|max:50',
             'items.*.unit'           => 'nullable|string|max:20',
-            'items.*.estimated_cost' => 'nullable|numeric|min:0',
             'items.*.actual_cost'    => 'nullable|numeric|min:0',
             'items.*.assigned_to'    => 'nullable|exists:users,id',
             'items.*.expense_date'   => 'nullable|date',
@@ -168,19 +167,26 @@ class MarketController extends Controller
                 'item_name'      => $item['item_name'],
                 'quantity'       => $item['quantity'] ?? null,
                 'unit'           => $item['unit'] ?? null,
-                'estimated_cost' => $item['estimated_cost'] ?? 0,
                 'actual_cost'    => $item['actual_cost'] ?? 0,
                 'assigned_to'    => $item['assigned_to'] ?? null,
-                'expense_date'   => $item['expense_date'] ?? null,
+                'expense_date'   => $routine->start_date,
+                'is_approved'    => false,
                 'added_by'       => Auth::id(),
             ]);
         }
 
         $total = $routine->listItems()->sum('actual_cost');
-        $routine->update(['total_spent' => $total]);
+
+        // If already approved and new items added, flag for re-approval
+        $newStatus = in_array($routine->status, ['approved', 'completed'])
+            ? 'pending_reapproval'
+            : $routine->status;
+
+        $routine->update(['total_spent' => $total, 'status' => $newStatus]);
 
         $count = count($request->items);
-        return back()->with('success', $count . ' item' . ($count > 1 ? 's' : '') . ' added successfully.');
+        $suffix = $newStatus === 'pending_reapproval' ? ' The list now requires re-approval.' : '';
+        return back()->with('success', $count . ' item' . ($count > 1 ? 's' : '') . ' added successfully.' . $suffix);
     }
 
     public function unassign(Request $request, Mess $mess, MarketRoutine $routine)
@@ -232,10 +238,11 @@ class MarketController extends Controller
         $data = [];
         if ($request->has('actual_cost')) $data['actual_cost'] = $request->actual_cost;
         if ($request->has('purchased'))   $data['purchased']   = $request->boolean('purchased');
-        if ($request->has('assigned_to')) $data['assigned_to'] = $request->assigned_to ?: null;
+        // assigned_to is always the routine's assigned member — not user-editable
         if ($request->has('item_name'))   $data['item_name']   = $request->item_name;
-        if ($request->has('estimated_cost')) $data['estimated_cost'] = $request->estimated_cost;
-        if ($request->has('expense_date'))   $data['expense_date'] = $request->expense_date ?: null;
+        if ($request->has('quantity'))    $data['quantity']    = $request->quantity ?: null;
+        if ($request->has('unit'))        $data['unit']        = $request->unit ?: null;
+        // expense_date is always the routine's start_date — not user-editable
 
         $item->update($data);
 
@@ -245,15 +252,45 @@ class MarketController extends Controller
         return response()->json(['success' => true, 'total' => $total]);
     }
 
+    public function deleteListItem(Request $request, Mess $mess, MarketListItem $item)
+    {
+        if ((int) $item->mess_id !== (int) $mess->id) abort(403);
+
+        $isManager    = Auth::user()->isManagerOf($mess->id);
+        $isSuperAdmin = Auth::user()->is_super_admin;
+        $isAssigned   = (int) $item->routine->assigned_to === (int) Auth::id();
+
+        // Members can only delete unapproved items they added
+        if (!$isManager && !$isSuperAdmin) {
+            if ($item->is_approved) {
+                return response()->json(['error' => 'Approved items cannot be deleted.'], 403);
+            }
+            if (!$isAssigned && (int) $item->added_by !== (int) Auth::id()) {
+                return response()->json(['error' => 'You can only delete items you added.'], 403);
+            }
+        }
+
+        $routine = $item->routine;
+        $item->delete();
+
+        $total = $routine->listItems()->sum('actual_cost');
+        $routine->update(['total_spent' => $total]);
+
+        return response()->json(['success' => true, 'total' => $total]);
+    }
+
     public function completeRoutine(Mess $mess, MarketRoutine $routine)
     {
         if ((int) $routine->mess_id !== (int) $mess->id) abort(403);
 
-        $canComplete = Auth::id() === $routine->assigned_to || Auth::user()->isManagerOf($mess->id);
-        if (!$canComplete) abort(403);
+        $canComplete = Auth::user()->isManagerOf($mess->id) || Auth::user()->is_super_admin;
+        if (!$canComplete) abort(403, 'Only a manager or owner can approve this list.');
 
         $total = $routine->listItems()->sum('actual_cost');
-        $routine->update(['status' => 'completed', 'total_spent' => $total]);
+        $routine->update(['status' => 'approved', 'total_spent' => $total]);
+
+        // Mark all current items as approved
+        $routine->listItems()->update(['is_approved' => true]);
 
         // Create one expense per distinct expense_date in list items, else one for start_date
         $itemsByDate = $routine->listItems()->where('actual_cost', '>', 0)->get()
@@ -288,7 +325,7 @@ class MarketController extends Controller
             }
         }
 
-        return back()->with('success', 'Routine completed and expense recorded.');
+        return back()->with('success', 'Shopping list approved and expense recorded.');
     }
 
     public function addQuickExpense(Request $request, Mess $mess)

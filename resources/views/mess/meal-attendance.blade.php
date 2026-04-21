@@ -218,7 +218,7 @@
                                                 <button type="button" class="btn btn-outline-secondary px-1 py-0 qty-btn" style="font-size:12px;"
                                                     data-target="full" data-dir="-1" data-schedule="{{ $sch->id }}" data-user="{{ $mem->user_id }}"
                                                     {{ !$canChange ? 'disabled' : '' }} title="{{ $lockTitle }}">−</button>
-                                                <input type="number" min="0" max="20" value="{{ $fullQty }}"
+                                                <input type="number" min="0" max="20" step="1" value="{{ $fullQty }}"
                                                     class="form-control text-center fw-bold px-0 full-qty-input"
                                                     style="font-size:13px;background:{{ $cellBg }};"
                                                     data-schedule="{{ $sch->id }}" data-user="{{ $mem->user_id }}"
@@ -237,7 +237,7 @@
                                                 <button type="button" class="btn btn-outline-secondary px-1 py-0 qty-btn" style="font-size:12px;"
                                                     data-target="half" data-dir="-1" data-schedule="{{ $sch->id }}" data-user="{{ $mem->user_id }}"
                                                     {{ !$canChange ? 'disabled' : '' }} title="{{ $lockTitle }}">−</button>
-                                                <input type="number" min="0" max="20" value="{{ $halfQty }}"
+                                                <input type="number" min="0" max="20" step="1" value="{{ $halfQty }}"
                                                     class="form-control text-center fw-bold px-0 half-qty-input"
                                                     style="font-size:13px;background:{{ $cellBg }};"
                                                     data-schedule="{{ $sch->id }}" data-user="{{ $mem->user_id }}"
@@ -266,7 +266,6 @@
                                             @else
                                             <span class="badge bg-success-subtle text-success" style="font-size:10px;">
                                                 {{ $fullQty > 0 ? $fullQty.'F' : '' }}{{ $fullQty > 0 && $halfQty > 0 ? '+' : '' }}{{ $halfQty > 0 ? $halfQty.'H' : '' }}
-                                                = {{ $qty % 1 == 0 ? (int)$qty : $qty }}
                                             </span>
                                             @endif
                                         </div>
@@ -660,7 +659,7 @@
                                     <label class="form-label small fw-semibold">Full meals</label>
                                     <div class="input-group input-group-sm">
                                         <button type="button" class="btn btn-outline-secondary px-2" onclick="adjustBulk('full',-1)">−</button>
-                                        <input type="number" name="full_qty" id="bulkFullQty" class="form-control text-center fw-bold" min="0" max="20" value="1">
+                                        <input type="number" name="full_qty" id="bulkFullQty" class="form-control text-center fw-bold" min="0" max="20" step="1" value="1">
                                         <button type="button" class="btn btn-outline-secondary px-2" onclick="adjustBulk('full',1)">+</button>
                                     </div>
                                     <div class="form-text">1 = one full meal</div>
@@ -669,7 +668,7 @@
                                     <label class="form-label small fw-semibold">Half meals (½)</label>
                                     <div class="input-group input-group-sm">
                                         <button type="button" class="btn btn-outline-secondary px-2" onclick="adjustBulk('half',-1)">−</button>
-                                        <input type="number" name="half_qty" id="bulkHalfQty" class="form-control text-center fw-bold" min="0" max="20" value="0">
+                                        <input type="number" name="half_qty" id="bulkHalfQty" class="form-control text-center fw-bold" min="0" max="20" step="1" value="0">
                                         <button type="button" class="btn btn-outline-secondary px-2" onclick="adjustBulk('half',1)">+</button>
                                     </div>
                                     <div class="form-text">e.g. 2 = two half portions</div>
@@ -677,8 +676,7 @@
                             </div>
                             <div id="bulkQtySummary" class="alert alert-info py-2 mb-0 small">
                                 <i class="ti ti-info-circle me-1"></i>
-                                Equivalent: <strong id="bulkQtyEquiv">1.0</strong> meal per member per date.
-                                <span class="text-muted">(Full + Half × 0.5)</span>
+                                <span id="bulkQtyEquiv">1</span> Full + 0 Half per member per date.
                             </div>
                         </div>
                     </div>
@@ -763,6 +761,16 @@ if (!isManager && myChanges >= 3) {
     window.addEventListener('DOMContentLoaded', function () { disableMySelects(); });
 }
 
+// Force integer-only on all qty inputs (block decimal entry)
+document.addEventListener('input', function(e) {
+    if (e.target.matches('.full-qty-input, .half-qty-input, #bulkFullQty, #bulkHalfQty')) {
+        var v = e.target.value;
+        if (v !== '' && v !== '-') {
+            e.target.value = Math.max(0, Math.floor(parseFloat(v) || 0));
+        }
+    }
+});
+
 // ── Flatpickr date picker ────────────────────────────────────
 @php $dateParts = explode('-', $date); @endphp
 flatpickr('#mealDatePicker', {
@@ -842,8 +850,7 @@ function _doSubmitMealQty(scheduleId, userId) {
                 badge.innerHTML = '<span class="badge bg-danger-subtle text-danger" style="font-size:10px;">Off</span>';
             } else {
                 var label = (fullQty > 0 ? fullQty + 'F' : '') + (fullQty > 0 && halfQty > 0 ? '+' : '') + (halfQty > 0 ? halfQty + 'H' : '');
-                var equiv = qty % 1 === 0 ? qty : qty.toFixed(1);
-                badge.innerHTML = '<span class="badge bg-success-subtle text-success" style="font-size:10px;">' + label + ' = ' + equiv + '</span>';
+                badge.innerHTML = '<span class="badge bg-success-subtle text-success" style="font-size:10px;">' + label + '</span>';
             }
             // Cell bg
             var bg = qty === 0 ? '#fff5f5' : (fullQty > 0 && halfQty > 0 ? '#f5f0ff' : (halfQty > 0 ? '#fff8e1' : '#f0fff4'));
@@ -1239,11 +1246,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function updateBulkQtyEquiv() {
-        var full  = parseInt(document.getElementById('bulkFullQty').value) || 0;
-        var half  = parseInt(document.getElementById('bulkHalfQty').value) || 0;
-        var equiv = full + half * 0.5;
-        var el    = document.getElementById('bulkQtyEquiv');
-        if (el) el.textContent = equiv % 1 === 0 ? equiv.toFixed(1) : equiv;
+        var full = parseInt(document.getElementById('bulkFullQty').value) || 0;
+        var half = parseInt(document.getElementById('bulkHalfQty').value) || 0;
+        var el   = document.getElementById('bulkQtyEquiv');
+        if (el) el.parentElement.innerHTML = '<i class="ti ti-info-circle me-1"></i><strong>' + full + '</strong> Full + <strong>' + half + '</strong> Half per member per date.';
     }
 
     document.getElementById('bulkFullQty').addEventListener('input', function() { resetBulkOffBtn(); updateBulkQtyEquiv(); updateBulkSummary(); });
@@ -1340,26 +1346,33 @@ document.addEventListener('DOMContentLoaded', function() {
                     <label class="form-label fw-semibold">Include Meals</label>
                     <div class="row g-2">
                         @foreach($mealTypes as $mt)
-                        @php $tot = $mealTotals[$mt->name] ?? 0; @endphp
+                        @php
+                            $tot     = $mealTotals[$mt->name] ?? ['full' => 0, 'half' => 0];
+                            $hasData = ($tot['full'] + $tot['half']) > 0;
+                        @endphp
                         <div class="col-auto">
                             <div class="form-check form-check-inline border rounded px-3 py-2">
                                 <input class="form-check-input wa-meal-check" type="checkbox"
                                     id="waMeal_{{ $loop->index }}"
                                     data-name="{{ $mt->name }}"
                                     data-schedule="{{ ($schedules[$mt->name] ?? null)?->id ?? '' }}"
-                                    data-total="{{ $tot }}"
-                                    {{ $tot > 0 ? 'checked' : '' }}
+                                    data-full="{{ $tot['full'] }}"
+                                    data-half="{{ $tot['half'] }}"
+                                    {{ $hasData ? 'checked' : '' }}
                                     onchange="buildWaMessage()">
                                 <label class="form-check-label" for="waMeal_{{ $loop->index }}">
                                     <span class="fw-semibold">{{ $mt->name }}</span>
-                                    <span class="badge bg-{{ $tot > 0 ? 'primary' : 'secondary' }} ms-1">{{ $tot }}</span>
+                                    <span class="ms-1" style="font-size:11px;">
+                                        <span class="badge bg-success bg-opacity-75">{{ $tot['full'] }}F</span>
+                                        <span class="badge bg-warning text-dark bg-opacity-75">{{ $tot['half'] }}H</span>
+                                    </span>
                                 </label>
                             </div>
                         </div>
                         @endforeach
                     </div>
                     <div class="mt-2 small text-muted">
-                        Total selected: <strong id="waTotalSel">0</strong> meals
+                        Total selected: <strong id="waTotalSel">0F + 0H</strong>
                     </div>
                 </div>
 
@@ -1400,27 +1413,34 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function buildWaMessage() {
         const checks = document.querySelectorAll('.wa-meal-check:checked');
-        let lines = [], grand = 0;
+        let lines = [], grandFull = 0, grandHalf = 0;
         checks.forEach(c => {
-            const n = c.dataset.name;
+            const n      = c.dataset.name;
             const schedId = c.dataset.schedule;
-            let t = parseFloat(c.dataset.total);
-            // Read live totals from footer Full/Half badges
+            let f = parseInt(c.dataset.full) || 0;
+            let h = parseInt(c.dataset.half) || 0;
+            // Read live totals from footer Full/Half badges if available
             if (schedId) {
                 const footCell = document.getElementById('foot-' + schedId);
                 if (footCell) {
                     const strongs = footCell.querySelectorAll('strong');
                     if (strongs.length >= 2) {
-                        const f = parseInt(strongs[0].textContent) || 0;
-                        const h = parseInt(strongs[1].textContent) || 0;
-                        t = f + h * 0.5;
+                        f = parseInt(strongs[0].textContent) || 0;
+                        h = parseInt(strongs[1].textContent) || 0;
                     }
                 }
             }
-            lines.push(n + ': ' + t + ' meal' + (t !== 1 ? 's' : ''));
-            grand += t;
+            // Also update data attributes for future reads
+            c.dataset.full = f;
+            c.dataset.half = h;
+            const parts = [];
+            if (f > 0) parts.push(f + ' Full');
+            if (h > 0) parts.push(h + ' Half');
+            lines.push(n + ': ' + (parts.length ? parts.join(' + ') : '0'));
+            grandFull += f;
+            grandHalf += h;
         });
-        document.getElementById('waTotalSel').textContent = grand;
+        document.getElementById('waTotalSel').textContent = grandFull + 'F + ' + grandHalf + 'H';
 
         let msg = '🍽️ *' + messName + '* — Meal Count\n';
         msg += '📅 ' + dateLabel + '\n\n';
@@ -1428,7 +1448,10 @@ document.addEventListener('DOMContentLoaded', function() {
             msg += '(No meals selected)';
         } else {
             lines.forEach(l => { msg += '• ' + l + '\n'; });
-            msg += '\n*Total: ' + grand + ' meal' + (grand !== 1 ? 's' : '') + '*';
+            const totalParts = [];
+            if (grandFull > 0) totalParts.push(grandFull + ' Full');
+            if (grandHalf > 0) totalParts.push(grandHalf + ' Half');
+            msg += '\n*Total: ' + (totalParts.length ? totalParts.join(' + ') : '0') + '*';
         }
         const note = document.getElementById('waNote').value.trim();
         if (note) msg += '\n\n📝 ' + note;

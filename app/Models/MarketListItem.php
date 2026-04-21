@@ -9,13 +9,14 @@ class MarketListItem extends Model
 {
     protected $fillable = [
         'routine_id', 'mess_id', 'item_name', 'quantity', 'unit',
-        'estimated_cost', 'actual_cost', 'purchased', 'added_by', 'assigned_to', 'expense_date',
+        'estimated_cost', 'actual_cost', 'purchased', 'is_approved', 'added_by', 'assigned_to', 'expense_date',
     ];
 
     protected $casts = [
         'estimated_cost' => 'decimal:2',
         'actual_cost'    => 'decimal:2',
         'purchased'      => 'boolean',
+        'is_approved'    => 'boolean',
         'expense_date'   => 'date',
     ];
 

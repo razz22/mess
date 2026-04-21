@@ -322,6 +322,31 @@
                 </div>
             </div>
 
+            <!-- Monthly Charts -->
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="card-title mb-0"><i class="ti ti-chart-bar me-2 text-primary"></i>This Month Overview ({{ now()->format('F Y') }})</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-5">
+                                <div class="fw-semibold small text-muted mb-2 text-center">Meal Days per Member</div>
+                                <canvas id="dashMealChart" height="160"></canvas>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fw-semibold small text-muted mb-2 text-center">Total Payable per Member</div>
+                                <canvas id="dashPayableChart" height="160"></canvas>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="fw-semibold small text-muted mb-2 text-center">Expense Categories</div>
+                                <canvas id="dashCatChart" height="160"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Quick Links -->
             <div class="col-lg-6">
                 <div class="card h-100">
@@ -498,6 +523,37 @@
 .r-items { font-size:10px; color:#333; white-space:pre-wrap; line-height:1.3; margin-top:2px; }
 .r-empty { font-size:10px; color:#ccc; }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+    var palette = ['#206bc4','#2fb344','#f76707','#ae3ec9','#d63939','#0ca678','#f59f00','#4299e1','#a9e34b','#ff6b6b'];
+    var memberNames  = @json($dashChartMemberNames);
+    var mealDays     = @json($dashChartMealDays);
+    var payables     = @json($dashChartPayables);
+    var catNames     = @json($dashChartCatNames);
+    var catTotals    = @json($dashChartCatTotals);
+
+    new Chart(document.getElementById('dashMealChart'), {
+        type: 'bar',
+        data: { labels: memberNames, datasets: [{ label: 'Meal Days', data: mealDays, backgroundColor: palette[0]+'cc', borderRadius: 4 }] },
+        options: { plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true } } }
+    });
+
+    new Chart(document.getElementById('dashPayableChart'), {
+        type: 'bar',
+        data: { labels: memberNames, datasets: [{ label: 'Payable (৳)', data: payables, backgroundColor: palette[1]+'cc', borderRadius: 4 }] },
+        options: { plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true } } }
+    });
+
+    if (catNames.length) {
+        new Chart(document.getElementById('dashCatChart'), {
+            type: 'doughnut',
+            data: { labels: catNames, datasets: [{ data: catTotals, backgroundColor: palette.slice(0, catNames.length), borderWidth: 2 }] },
+            options: { plugins:{ legend:{ position:'bottom', labels:{ font:{ size:10 }, boxWidth:12 } } }, cutout:'55%' }
+        });
+    }
+})();
+</script>
 <script>
 function switchRoutineTab(type, btn) {
     document.querySelectorAll('.routine-type-pane').forEach(p => p.classList.add('d-none'));

@@ -76,14 +76,17 @@ class MealController extends Controller
             ->orderBy('sort_order')
             ->get();
 
-        // Meal totals for WhatsApp sending (manager only)
+        // Meal totals for WhatsApp sending
         $mealTotals = [];
         foreach ($mealTypes as $mt) {
-            $sch = $schedules[$mt->name] ?? null;
-            $total = $sch
-                ? $allAttendances->filter(fn($g, $k) => str_starts_with($k, $sch->id . '_'))->flatten()->sum('quantity')
-                : 0;
-            $mealTotals[$mt->name] = (float) $total;
+            $sch  = $schedules[$mt->name] ?? null;
+            $atts = $sch
+                ? $allAttendances->filter(fn($g, $k) => str_starts_with($k, $sch->id . '_'))->flatten()
+                : collect();
+            $mealTotals[$mt->name] = [
+                'full' => (int) $atts->sum('full_qty'),
+                'half' => (int) $atts->sum('half_qty'),
+            ];
         }
 
         $contacts = MessContact::where('mess_id', $mess->id)->orderBy('label')->orderBy('name')->get();
@@ -319,8 +322,8 @@ class MealController extends Controller
 
         $mealType->update([
             'name'              => ucfirst($request->name),
-            'close_time'        => $request->close_time ? $request->close_time . ':00' : null,
-            'close_days_before' => $request->close_days_before ?? 0,
+            'close_time'        => $request->has('close_time') ? ($request->close_time ? $request->close_time . ':00' : null) : $mealType->close_time,
+            'close_days_before' => $request->has('close_days_before') ? ($request->close_days_before ?? 0) : $mealType->close_days_before,
             'rate'              => $request->rate ?? $mealType->rate,
             'is_active'         => $request->has('is_active') ? (bool)$request->is_active : $mealType->is_active,
             'sort_order'        => $request->sort_order ?? $mealType->sort_order,

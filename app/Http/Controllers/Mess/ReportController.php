@@ -486,6 +486,144 @@ class ReportController extends Controller
         }
     }
 
+    public function memberDetail(Mess $mess)
+    {
+        $this->authorizeMember($mess);
+
+        $month  = (int) request('month', now()->month);
+        $year   = (int) request('year', now()->year);
+        $userId = (int) request('user_id', Auth::id());
+
+        // Only manager/owner/super-admin can view other members' details
+        $viewer = Auth::user();
+        if ($userId !== $viewer->id && !$viewer->isManagerOf($mess->id) && !$viewer->is_super_admin) {
+            abort(403);
+        }
+
+        $targetMember = $mess->activeMembers()->with('user')->where('user_id', $userId)->firstOrFail();
+        $summary      = MemberMonthlySummary::where(['mess_id' => $mess->id, 'user_id' => $userId, 'month' => $month, 'year' => $year])->first();
+
+        // Meal attendance day-by-day
+        $attendances = MealAttendance::whereHas('schedule', fn($q) =>
+                $q->where('mess_id', $mess->id)->whereMonth('date', $month)->whereYear('date', $year)
+            )
+            ->where('user_id', $userId)
+            ->with(['schedule'])
+            ->orderBy('created_at')
+            ->get();
+
+        // Group by date → meal type (schedule->type is the meal type name string)
+        $attendanceByDate = [];
+        foreach ($attendances as $att) {
+            $dateKey  = $att->schedule->date->format('Y-m-d');
+            $typeName = $att->schedule->type ?? '—';
+            $attendanceByDate[$dateKey][$typeName] = $att;
+        }
+        ksort($attendanceByDate);
+
+        // Meal types active this month
+        $mealTypes = \App\Models\MessMealType::where('mess_id', $mess->id)
+            ->where('is_active', true)->orderBy('sort_order')->get();
+
+        // All non-market expenses this month grouped by category
+        $costMode = $mess->settings?->meal_cost_mode ?? 'monthly';
+        $allExpenses = \App\Models\Expense::where('mess_id', $mess->id)
+            ->whereMonth('expense_date', $month)
+            ->whereYear('expense_date', $year)
+            ->where('is_market_expense', false)
+            ->with('category')
+            ->orderBy('expense_date')
+            ->get();
+
+        $totalMembers = $mess->activeMembers()->count();
+
+        // Category exclusions for this member
+        $catExclIds = MemberCategoryExclusion::where(['mess_id' => $mess->id, 'user_id' => $userId, 'month' => $month, 'year' => $year])
+            ->pluck('category_id')->toArray();
+
+        // Build expense lines with per-head share
+        $nonMarketByCategory = $allExpenses->groupBy('category_id')
+            ->map(fn($g) => $g->sum('amount'));
+
+        // Count paying members per category (those not excluded from that category or globally)
+        $globalExclusions = MemberMonthlySummary::where(['mess_id' => $mess->id, 'month' => $month, 'year' => $year])
+            ->where('exclude_from_shared', true)->pluck('user_id')->toArray();
+        $allCatExclusions = MemberCategoryExclusion::where(['mess_id' => $mess->id, 'month' => $month, 'year' => $year])
+            ->get()->groupBy('user_id')->map(fn($g) => $g->pluck('category_id')->toArray());
+        $allMemberIds = $mess->activeMembers()->pluck('user_id');
+
+        $expenseLines = [];
+        foreach ($allExpenses->groupBy('category_id') as $catId => $catExpenses) {
+            if (in_array($catId, $catExclIds)) continue; // member excluded from this category
+            if ((bool)($globalExclusions[$userId] ?? false)) continue;
+
+            $catTotal    = $catExpenses->sum('amount');
+            $payingCount = $allMemberIds->filter(function ($id) use ($globalExclusions, $allCatExclusions, $catId) {
+                if (in_array($id, $globalExclusions)) return false;
+                return !in_array($catId, $allCatExclusions[$id] ?? []);
+            })->count();
+            $perHead     = $payingCount > 0 ? $catTotal / $payingCount : 0;
+            $catName     = $catExpenses->first()->category?->name ?? 'Uncategorized';
+
+            $expenseLines[] = [
+                'category'  => $catName,
+                'total'     => $catTotal,
+                'per_head'  => $perHead,
+                'items'     => $catExpenses->map(fn($e) => [
+                    'title'  => $e->title,
+                    'amount' => $e->amount,
+                    'date'   => $e->expense_date->format('d M'),
+                ])->toArray(),
+            ];
+        }
+
+        // Market (meal cost) expenses
+        $marketExpenses = \App\Models\Expense::where('mess_id', $mess->id)
+            ->whereMonth('expense_date', $month)->whereYear('expense_date', $year)
+            ->where('is_market_expense', true)
+            ->with('member')
+            ->orderBy('expense_date')->get();
+
+        // Deposits this month
+        $deposits = MemberDeposit::where(['mess_id' => $mess->id, 'user_id' => $userId, 'month' => $month, 'year' => $year])
+            ->orderBy('created_at')->get();
+
+        $monthLabel = \Carbon\Carbon::createFromDate($year, $month, 1)->format('F Y');
+
+        return view('mess.member-detail-report', compact(
+            'mess', 'targetMember', 'summary', 'month', 'year', 'monthLabel',
+            'attendanceByDate', 'mealTypes', 'expenseLines', 'marketExpenses',
+            'deposits', 'costMode', 'totalMembers'
+        ));
+    }
+
+    public function allMembersDetail(Mess $mess)
+    {
+        $this->authorizeMember($mess);
+
+        $month = (int) request('month', now()->month);
+        $year  = (int) request('year', now()->year);
+
+        $myId    = Auth::id();
+        $members = $mess->activeMembers()->with('user')->get()
+            ->sortBy(fn($m) => $m->user_id === $myId ? 0 : 1)->values();
+
+        $summaries = MemberMonthlySummary::where('mess_id', $mess->id)
+            ->where('month', $month)->where('year', $year)
+            ->get()->keyBy('user_id');
+
+        $marketExpenses = \App\Models\Expense::where('mess_id', $mess->id)
+            ->whereMonth('expense_date', $month)->whereYear('expense_date', $year)
+            ->where('is_market_expense', true)
+            ->with('member')->orderBy('expense_date')->get();
+
+        $monthLabel = \Carbon\Carbon::createFromDate($year, $month, 1)->format('F Y');
+
+        return view('mess.all-members-report', compact(
+            'mess', 'members', 'summaries', 'month', 'year', 'monthLabel', 'marketExpenses'
+        ));
+    }
+
     public function memberReports(Mess $mess)
     {
         $this->authorizeMember($mess);

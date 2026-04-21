@@ -226,6 +226,23 @@ class MessController extends Controller
         $cur = $routineCalStart->copy();
         while ($cur <= $routineCalEnd) { $routineCalDays[] = $cur->copy(); $cur->addDay(); }
 
+        // Chart data for dashboard: current month summaries + expense categories
+        $dashMembers = $mess->activeMembers()->with('user')->get();
+        $dashSummaries = \App\Models\MemberMonthlySummary::where([
+            'mess_id' => $mess->id, 'month' => $currentMonth, 'year' => $currentYear,
+        ])->get()->keyBy('user_id');
+        $dashChartMemberNames = $dashMembers->map(fn($m) => \Str::limit($m->user->name, 10))->values();
+        $dashChartMealDays    = $dashMembers->map(fn($m) => $dashSummaries[$m->user_id]?->total_meal_days ?? 0)->values();
+        $dashChartPayables    = $dashMembers->map(fn($m) => $dashSummaries[$m->user_id]?->total_payable ?? 0)->values();
+        $dashExpenseCats = \App\Models\Expense::where('mess_id', $mess->id)
+            ->whereMonth('expense_date', $currentMonth)->whereYear('expense_date', $currentYear)
+            ->where('is_market_expense', false)->with('category')->get()
+            ->groupBy('category_id')
+            ->map(fn($g) => ['name' => $g->first()->category?->name ?? 'Uncategorized', 'total' => $g->sum('amount')])
+            ->values();
+        $dashChartCatNames  = $dashExpenseCats->pluck('name');
+        $dashChartCatTotals = $dashExpenseCats->pluck('total');
+
         // Pending show causes for the authenticated member (awaiting their reply)
         $myMessMember = $member; // already loaded
         $pendingShowCauses = $myMessMember && $myMessMember->id
@@ -254,7 +271,9 @@ class MessController extends Controller
             'pendingShowCauses', 'repliedShowCauses',
             'todayMealRoutines', 'routineGrid', 'routineMealTypes', 'messMealTypes',
             'todayWeekNo', 'todayDayOfWeek',
-            'routineMonthStart', 'routineCalDays'
+            'routineMonthStart', 'routineCalDays',
+            'dashChartMemberNames', 'dashChartMealDays', 'dashChartPayables',
+            'dashChartCatNames', 'dashChartCatTotals'
         ));
     }
 

@@ -91,17 +91,26 @@
                             $hasItems      = $routine ? $routine->listItems->count() > 0 : false;
                             $displayStatus = $routine ? ($routine->status === 'pending' && !$hasItems ? 'assigned' : $routine->status) : null;
                             $statusColor   = match($displayStatus) {
-                                'completed' => 'success',
-                                'pending'   => 'warning',
-                                'exchanged' => 'info',
-                                'assigned'  => 'secondary',
-                                default     => null,
+                                'approved','completed' => 'success',
+                                'pending_reapproval'   => 'danger',
+                                'pending'              => 'warning',
+                                'exchanged'            => 'info',
+                                'assigned'             => 'secondary',
+                                default                => null,
+                            };
+                            $statusLabel = match($displayStatus) {
+                                'approved','completed' => 'Approved',
+                                'pending_reapproval'   => 'Re-approval',
+                                'pending'              => 'Pending',
+                                'assigned'             => 'Assigned',
+                                'exchanged'            => 'Exchanged',
+                                default                => ucfirst($displayStatus ?? ''),
                             };
                             $firstName    = $routine ? explode(' ', $routine->assignedTo->name)[0] : null;
                             $isAssignedToMe = $routine && $routine->assigned_to === Auth::id();
-                            $canAddItem   = $routine && $routine->status !== 'completed' && ($isManager || $isAssignedToMe);
+                            $canAddItem   = $routine && !in_array($routine->status, ['approved','completed']) && ($isManager || $isAssignedToMe);
                             $calCanSuperRemove  = Auth::user()->is_super_admin || $isOwner;
-                            $calIsCompleted     = $routine && $routine->status === 'completed';
+                            $calIsCompleted     = $routine && in_array($routine->status, ['approved','completed']);
                             $calHasItems        = $routine && $routine->listItems->isNotEmpty();
                             $calIsAssignedToMe2 = $routine && $routine->assigned_to === Auth::id();
                             $calCanRemove       = $routine && ($calCanSuperRemove
@@ -134,8 +143,8 @@
                             @if($routine)
                             <div class="cal-routine-block rounded p-1 bg-{{ $statusColor }}-subtle flex-grow-1 d-flex flex-column">
                                 <div class="cal-name fw-semibold text-truncate">{{ $routine->assignedTo->name }}</div>
-                                <span class="cal-status-badge badge bg-{{ $statusColor }} mt-auto">{{ ucfirst($displayStatus) }}</span>
-                                @if($routine->status === 'completed' && $routine->total_spent > 0)
+                                <span class="cal-status-badge badge bg-{{ $statusColor }} mt-auto">{{ $statusLabel }}</span>
+                                @if(in_array($routine->status, ['approved','completed']) && $routine->total_spent > 0)
                                 <div class="cal-cost mt-1 rounded text-center">
                                     <span class="cal-cost-label d-none d-sm-inline text-muted">Cost: </span>
                                     <span class="fw-bold text-success">৳{{ number_format($routine->total_spent, 0) }}</span>
@@ -208,7 +217,20 @@
                         @php
                             $hasItems = $routine->listItems->count() > 0;
                             $displayStatus = $routine->status === 'pending' && !$hasItems ? 'assigned' : $routine->status;
-                            $statusColor = match($displayStatus) { 'completed'=>'success','pending'=>'warning','exchanged'=>'info',default=>'secondary' };
+                            $statusColor = match($displayStatus) {
+                                'approved','completed' => 'success',
+                                'pending_reapproval'   => 'danger',
+                                'pending'              => 'warning',
+                                'exchanged'            => 'info',
+                                default                => 'secondary',
+                            };
+                            $statusLabel = match($displayStatus) {
+                                'approved','completed' => 'Approved',
+                                'pending_reapproval'   => 'Re-approval Needed',
+                                'pending'              => 'Pending',
+                                'assigned'             => 'Assigned',
+                                default                => ucfirst($displayStatus),
+                            };
                         @endphp
                         <tr>
                             <td>
@@ -232,7 +254,7 @@
                                     {{ $routine->assignedTo->name }}
                                 </div>
                             </td>
-                            <td><span class="badge bg-{{ $statusColor }}">{{ ucfirst($displayStatus) }}</span></td>
+                            <td><span class="badge bg-{{ $statusColor }}">{{ $statusLabel }}</span></td>
                             <td class="text-end fw-semibold">{{ $routine->total_spent > 0 ? '৳'.number_format($routine->total_spent,2) : '—' }}</td>
                             <td>
                                 <div class="d-flex gap-1 flex-wrap">
@@ -471,11 +493,13 @@
     ]);
     // Use first routine just for member list / defaults; action URL set by JS per cell
 @endphp
+@if($calRoutine->id)
 @include('mess.partials.add-items-modal', [
-    'addRoute' => route('mess.market.list.add', [$mess->id, $calRoutine->id ?? 0]),
+    'addRoute' => route('mess.market.list.add', [$mess->id, $calRoutine->id]),
     'members'  => $members,
     'routine'  => $calRoutine,
 ])
+@endif
 
 <!-- Quick Market Expense Modal (standalone, no routine) -->
 <div class="modal fade" id="quickExpenseModal" tabindex="-1">
@@ -631,7 +655,8 @@ foreach($routines as $r) {
 </style>
 
 <script>
-const messId = {{ $mess->id }};
+const messId  = {{ $mess->id }};
+const baseUrl = '{{ rtrim(url('/'), '/') }}';
 const routineByDate = @json($routineJs);
 const members = @json($members->map(fn($m) => ['id' => $m->user->id, 'name' => $m->user->name])->values());
 const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -729,7 +754,7 @@ function prefillAssign(dateStr) {
 
 function openExchangeModal(routineId, isAssigned) {
     const form = document.getElementById('exchangeForm');
-    form.action = `/mess/${messId}/market/${routineId}/exchange`;
+    form.action = baseUrl + '/mess/' + messId + '/market/' + routineId + '/exchange';
 
     const title = document.getElementById('exchangeModalTitle');
     const toDiv = document.getElementById('exchangeToDiv');
@@ -762,12 +787,7 @@ function openReassignModal(routineId) {
 function openQuickAdd(dateStr) {
     const routineId = routineByDate[dateStr];
     if (!routineId) return;
-    // Point the shared modal form to the correct routine
-    document.getElementById('addItemsForm').action = `/mess/${messId}/market/${routineId}/list`;
-    // Set the date input default
-    const dateInput = document.getElementById('ai_date');
-    if (dateInput) { dateInput.value = dateStr; dateInput.min = dateStr; dateInput.max = dateStr; }
-    new bootstrap.Modal(document.getElementById('addItemModal')).show();
+    window.location.href = baseUrl + '/mess/' + messId + '/market/' + routineId + '/list';
 }
 
 function openUnassignModal(action, name, period, hasItems, isCompleted) {
@@ -780,7 +800,7 @@ function openUnassignModal(action, name, period, hasItems, isCompleted) {
 
     if (isCompleted) {
         warn.classList.remove('d-none');
-        warnTxt.textContent = 'This routine is completed. Removing it will also delete the associated expense records.';
+        warnTxt.textContent = 'This routine is approved. Removing it will also delete the associated expense records.';
     } else if (hasItems) {
         warn.classList.remove('d-none');
         warnTxt.textContent = 'This routine has list items. All items and their expense records will also be deleted.';

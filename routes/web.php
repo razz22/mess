@@ -124,6 +124,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/mess/{mess}/market/{routine}/list',           [MarketController::class, 'listItems'])->name('mess.market.list');
     Route::post('/mess/{mess}/market/{routine}/list',          [MarketController::class, 'addListItem'])->name('mess.market.list.add');
     Route::put('/mess/{mess}/market/list/{item}',              [MarketController::class, 'updateListItem'])->name('mess.market.list.update');
+    Route::delete('/mess/{mess}/market/list/{item}',           [MarketController::class, 'deleteListItem'])->name('mess.market.list.delete');
     Route::post('/mess/{mess}/market/{routine}/complete',      [MarketController::class, 'completeRoutine'])->name('mess.market.complete');
     Route::post('/mess/{mess}/market/{routine}/exchange',      [MarketController::class, 'requestExchange'])->name('mess.market.exchange');
     Route::post('/mess/{mess}/market/exchange/{exchange}/respond', [MarketController::class, 'respondExchange'])->name('mess.market.exchange.respond');
@@ -156,6 +157,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/mess/{mess}/report/toggle-category',   [ReportController::class, 'toggleCategoryExpense'])->name('mess.report.toggle-category');
     Route::post('/mess/{mess}/report/pay-extra',         [ReportController::class, 'payExtra'])->name('mess.report.pay-extra');
     Route::post('/mess/{mess}/report/carry-extra',       [ReportController::class, 'carryExtraAsDeposit'])->name('mess.report.carry-extra');
+    Route::get('/mess/{mess}/report/member-detail',       [ReportController::class, 'memberDetail'])->name('mess.report.member-detail');
+    Route::get('/mess/{mess}/report/all-members',         [ReportController::class, 'allMembersDetail'])->name('mess.report.all-members');
     Route::get('/mess/{mess}/report/members',             [ReportController::class, 'memberReports'])->name('mess.report.members');
     Route::post('/mess/{mess}/report/members',            [ReportController::class, 'storeReport'])->name('mess.report.members.store');
     Route::post('/mess/{mess}/report/members/{report}/review', [ReportController::class, 'reviewReport'])->name('mess.report.members.review');

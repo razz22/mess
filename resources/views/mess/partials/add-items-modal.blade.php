@@ -25,28 +25,20 @@
                                 <input type="text" id="ai_unit" class="form-control form-control-sm" placeholder="kg/pcs">
                             </div>
                             <div class="col-6 col-sm-3 col-md-2">
-                                <label class="form-label small">Est. ৳</label>
-                                <input type="number" id="ai_est" class="form-control form-control-sm" step="0.01" min="0" placeholder="0">
-                            </div>
-                            <div class="col-6 col-sm-3 col-md-2">
-                                <label class="form-label small">Actual ৳</label>
+                                <label class="form-label small">Cost (৳)</label>
                                 <input type="number" id="ai_actual" class="form-control form-control-sm" step="0.01" min="0" placeholder="0">
                             </div>
                             <div class="col-12 col-sm-6 col-md-4">
                                 <label class="form-label small">Bought By</label>
-                                <select id="ai_buyer" class="form-select form-select-sm">
-                                    <option value="">— {{ $routine->assignedTo->name ?? 'Default' }} (default) —</option>
-                                    @foreach($members as $m)
-                                    <option value="{{ $m->user->id }}">{{ $m->user->name }}</option>
-                                    @endforeach
-                                </select>
+                                <input type="text" class="form-control form-control-sm bg-light"
+                                    value="{{ $routine->assignedTo->name ?? '—' }}" readonly>
+                                <input type="hidden" id="ai_buyer" value="{{ $routine->assigned_to }}">
                             </div>
                             <div class="col-12 col-sm-6 col-md-4">
                                 <label class="form-label small">Purchase Date</label>
-                                <input type="date" id="ai_date" class="form-control form-control-sm"
-                                    value="{{ $routine->start_date?->format('Y-m-d') ?? now()->format('Y-m-d') }}"
-                                    min="{{ $routine->start_date?->format('Y-m-d') ?? '' }}"
-                                    max="{{ $routine->end_date?->format('Y-m-d') ?? '' }}">
+                                <input type="text" class="form-control form-control-sm bg-light"
+                                    value="{{ $routine->start_date?->format('d M Y') ?? now()->format('d M Y') }}" readonly>
+                                <input type="hidden" id="ai_date" value="{{ $routine->start_date?->format('Y-m-d') ?? now()->format('Y-m-d') }}">
                             </div>
                             <div class="col-12 col-md-4 d-flex align-items-end">
                                 <button type="button" class="btn btn-success w-100 btn-sm" onclick="addItemRow()">
@@ -68,8 +60,7 @@
                                     <tr>
                                         <th>Item</th>
                                         <th class="text-center">Qty</th>
-                                        <th class="text-end">Est.</th>
-                                        <th class="text-end">Actual</th>
+                                        <th class="text-end">Cost (৳)</th>
                                         <th class="text-center">Buyer</th>
                                         <th class="text-center">Date</th>
                                         <th></th>
@@ -122,7 +113,6 @@
             item_name:      name,
             quantity:       document.getElementById('ai_qty').value.trim(),
             unit:           document.getElementById('ai_unit').value.trim(),
-            estimated_cost: parseFloat(document.getElementById('ai_est').value) || 0,
             actual_cost:    parseFloat(document.getElementById('ai_actual').value) || 0,
             assigned_to:    document.getElementById('ai_buyer').value,
             expense_date:   document.getElementById('ai_date').value,
@@ -133,7 +123,7 @@
         document.getElementById('ai_name').value   = '';
         document.getElementById('ai_qty').value    = '';
         document.getElementById('ai_unit').value   = '';
-        document.getElementById('ai_est').value    = '';
+
         document.getElementById('ai_actual').value = '';
         document.getElementById('ai_name').focus();
 
@@ -163,7 +153,6 @@
             tr.innerHTML =
                 '<td class="fw-semibold">' + escHtml(item.item_name) + '</td>' +
                 '<td class="text-center text-muted small">' + (item.quantity ? escHtml(item.quantity) + (item.unit ? ' ' + escHtml(item.unit) : '') : '—') + '</td>' +
-                '<td class="text-end small">' + (item.estimated_cost > 0 ? '৳' + item.estimated_cost.toFixed(0) : '—') + '</td>' +
                 '<td class="text-end small fw-semibold text-success">' + (item.actual_cost > 0 ? '৳' + item.actual_cost.toFixed(0) : '—') + '</td>' +
                 '<td class="text-center small">' + escHtml(memberNames[item.assigned_to] || memberNames['']) + '</td>' +
                 '<td class="text-center small">' + (item.expense_date || '—') + '</td>' +
@@ -175,7 +164,7 @@
             body.appendChild(tr);
 
             // Hidden inputs
-            var fields = ['item_name','quantity','unit','estimated_cost','actual_cost','assigned_to','expense_date'];
+            var fields = ['item_name','quantity','unit','actual_cost','assigned_to','expense_date'];
             fields.forEach(function(f) {
                 var inp = document.createElement('input');
                 inp.type  = 'hidden';
@@ -206,7 +195,7 @@
         document.getElementById('ai_name').value   = '';
         document.getElementById('ai_qty').value    = '';
         document.getElementById('ai_unit').value   = '';
-        document.getElementById('ai_est').value    = '';
+
         document.getElementById('ai_actual').value = '';
     });
 

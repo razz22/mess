@@ -124,7 +124,13 @@
         <!-- Member Wise Report -->
         @php $isManager = $member && in_array($member->role, ['owner', 'manager']); @endphp
         <div class="card mb-4">
-            <div class="card-header"><h6 class="mb-0">Member-Wise Summary</h6></div>
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h6 class="mb-0">Member-Wise Summary</h6>
+                <a href="{{ route('mess.report.all-members', ['mess' => $mess->id, 'month' => $month, 'year' => $year]) }}"
+                    class="btn btn-sm btn-outline-primary" title="View full report for all members" target="_blank">
+                    <i class="ti ti-files me-1"></i>Full Report
+                </a>
+            </div>
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead class="table-light">
@@ -141,6 +147,7 @@
                             <th class="text-end">Deposited</th>
                             <th class="text-end">Due / Extra</th>
                             <th>Status</th>
+                            <th></th>
                             @if($isManager) <th></th> @endif
                         </tr>
                     </thead>
@@ -228,6 +235,12 @@
                                 <span class="badge bg-warning text-dark">Extra</span>
                                 @endif
                             </td>
+                            <td class="text-center">
+                                <a href="{{ route('mess.report.member-detail', ['mess' => $mess->id, 'user_id' => $m->user_id, 'month' => $month, 'year' => $year]) }}"
+                                    class="btn btn-xs btn-outline-primary py-0 px-2" title="View detailed report" target="_blank">
+                                    <i class="ti ti-file-description" style="font-size:13px;"></i>
+                                </a>
+                            </td>
                             @if($isManager)
                             <td>
                                 <div class="d-flex gap-1 flex-wrap">
@@ -248,6 +261,12 @@
                             @endif
                             @else
                             <td colspan="8" class="text-muted text-center fst-italic">No data — report not generated yet</td>
+                            <td class="text-center">
+                                <a href="{{ route('mess.report.member-detail', ['mess' => $mess->id, 'user_id' => $m->user_id, 'month' => $month, 'year' => $year]) }}"
+                                    class="btn btn-xs btn-outline-primary py-0 px-2" title="View detailed report" target="_blank">
+                                    <i class="ti ti-file-description" style="font-size:13px;"></i>
+                                </a>
+                            </td>
                             @if($isManager)
                             <td>
                                 <button class="btn btn-xs btn-outline-success py-0 px-2"
