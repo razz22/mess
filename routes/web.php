@@ -19,12 +19,16 @@ use App\Http\Controllers\Mess\MessContactController;
 use App\Http\Controllers\Mess\LeaveRequestController;
 use App\Http\Controllers\Mess\MealRoutineController;
 use App\Http\Controllers\Admin\SuperAdminController;
+use App\Http\Controllers\LanguageController;
 
 /*
 |--------------------------------------------------------------------------
 | Web Routes
 |--------------------------------------------------------------------------
 */
+
+// Language Switch (prefix avoids conflict with the lang/ directory on disk)
+Route::get('/locale/{locale}', [LanguageController::class, 'switch'])->name('lang.switch');
 
 // Landing Page
 Route::get('/', function () {
@@ -129,7 +133,25 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/mess/{mess}/market/{routine}/exchange',      [MarketController::class, 'requestExchange'])->name('mess.market.exchange');
     Route::post('/mess/{mess}/market/exchange/{exchange}/respond', [MarketController::class, 'respondExchange'])->name('mess.market.exchange.respond');
     Route::post('/mess/{mess}/market/quick-expense',           [MarketController::class, 'addQuickExpense'])->name('mess.market.quick-expense');
+    Route::post('/mess/{mess}/market/quick-add-items',         [MarketController::class, 'quickAddItems'])->name('mess.market.quick-add-items');
     Route::delete('/mess/{mess}/market/{routine}/unassign',    [MarketController::class, 'unassign'])->name('mess.market.unassign');
+
+    // Mess Rules
+    Route::get('/mess/{mess}/rules',                    [\App\Http\Controllers\Mess\MessRuleController::class, 'index'])->name('mess.rules');
+    Route::post('/mess/{mess}/rules',                   [\App\Http\Controllers\Mess\MessRuleController::class, 'store'])->name('mess.rules.store');
+    Route::put('/mess/{mess}/rules/{rule}',             [\App\Http\Controllers\Mess\MessRuleController::class, 'update'])->name('mess.rules.update');
+    Route::delete('/mess/{mess}/rules/{rule}',          [\App\Http\Controllers\Mess\MessRuleController::class, 'destroy'])->name('mess.rules.destroy');
+    Route::post('/mess/{mess}/rules/reorder',           [\App\Http\Controllers\Mess\MessRuleController::class, 'reorder'])->name('mess.rules.reorder');
+
+    // Notices
+    Route::get   ('/mess/{mess}/notices',                          [\App\Http\Controllers\Mess\NoticeController::class, 'index'])->name('mess.notices.index');
+    Route::post  ('/mess/{mess}/notices',                          [\App\Http\Controllers\Mess\NoticeController::class, 'store'])->name('mess.notices.store');
+    Route::get   ('/mess/{mess}/notices/{notice}',                 [\App\Http\Controllers\Mess\NoticeController::class, 'show'])->name('mess.notices.show');
+    Route::put   ('/mess/{mess}/notices/{notice}',                 [\App\Http\Controllers\Mess\NoticeController::class, 'update'])->name('mess.notices.update');
+    Route::delete('/mess/{mess}/notices/{notice}',                 [\App\Http\Controllers\Mess\NoticeController::class, 'destroy'])->name('mess.notices.destroy');
+    Route::get   ('/mess/{mess}/notices-latest',                   [\App\Http\Controllers\Mess\NoticeController::class, 'latest'])->name('mess.notices.latest');
+    Route::post  ('/mess/{mess}/notices/{notice}/mark-read',       [\App\Http\Controllers\Mess\NoticeController::class, 'markRead'])->name('mess.notices.markread');
+    Route::post  ('/mess/{mess}/notices/mark-all-read',            [\App\Http\Controllers\Mess\NoticeController::class, 'markAllRead'])->name('mess.notices.markallread');
 
     // Expenses
     Route::get('/mess/{mess}/expenses',           [ExpenseController::class, 'index'])->name('mess.expenses');
@@ -195,6 +217,12 @@ Route::middleware(['auth'])->group(function () {
     Route::post  ('/mess/{mess}/rent/fund/expense',                    [HouseRentController::class, 'storeFundExpense'])->name('mess.rent.fund.expense');
     Route::delete('/mess/{mess}/rent/fund/{transaction}',              [HouseRentController::class, 'destroyFundTransaction'])->name('mess.rent.fund.destroy');
 
+    // Support Tokens
+    Route::get ('/mess/{mess}/support',                 [\App\Http\Controllers\Mess\SupportController::class, 'index'])->name('mess.support.index');
+    Route::post('/mess/{mess}/support',                 [\App\Http\Controllers\Mess\SupportController::class, 'store'])->name('mess.support.store');
+    Route::get ('/mess/{mess}/support/{token}',         [\App\Http\Controllers\Mess\SupportController::class, 'show'])->name('mess.support.show');
+    Route::post('/mess/{mess}/support/{token}/message', [\App\Http\Controllers\Mess\SupportController::class, 'message'])->name('mess.support.message');
+
 });
 
 // -------------------------------------------------------------------------
@@ -242,6 +270,24 @@ Route::middleware(['auth', 'super_admin'])->prefix('admin')->name('admin.')->gro
     Route::post('/plans',                                                 [SuperAdminController::class, 'storePlan'])->name('plans.store');
     Route::put('/plans/{plan}',                                           [SuperAdminController::class, 'updatePlan'])->name('plans.update');
     Route::delete('/plans/{plan}',                                        [SuperAdminController::class, 'destroyPlan'])->name('plans.destroy');
+
+    // Support Tickets (admin side)
+    Route::get  ('/support',                  [\App\Http\Controllers\Admin\SupportController::class, 'index'])->name('support.index');
+    Route::get  ('/support/{token}',          [\App\Http\Controllers\Admin\SupportController::class, 'show'])->name('support.show');
+    Route::post ('/support/{token}/reply',    [\App\Http\Controllers\Admin\SupportController::class, 'reply'])->name('support.reply');
+    Route::patch('/support/{token}/close',    [\App\Http\Controllers\Admin\SupportController::class, 'close'])->name('support.close');
+
+    // Announcements
+    Route::get   ('/announcements',                  [\App\Http\Controllers\Admin\AnnouncementController::class, 'index'])->name('announcements.index');
+    Route::post  ('/announcements',                  [\App\Http\Controllers\Admin\AnnouncementController::class, 'store'])->name('announcements.store');
+    Route::put   ('/announcements/{announcement}',   [\App\Http\Controllers\Admin\AnnouncementController::class, 'update'])->name('announcements.update');
+    Route::delete('/announcements/{announcement}',   [\App\Http\Controllers\Admin\AnnouncementController::class, 'destroy'])->name('announcements.destroy');
+
+    // Custom Subscriptions
+    Route::get   ('/custom-subscriptions',                              [\App\Http\Controllers\Admin\CustomSubscriptionController::class, 'index'])->name('custom-subscriptions.index');
+    Route::post  ('/custom-subscriptions',                              [\App\Http\Controllers\Admin\CustomSubscriptionController::class, 'store'])->name('custom-subscriptions.store');
+    Route::put   ('/custom-subscriptions/{customSubscription}',         [\App\Http\Controllers\Admin\CustomSubscriptionController::class, 'update'])->name('custom-subscriptions.update');
+    Route::delete('/custom-subscriptions/{customSubscription}',         [\App\Http\Controllers\Admin\CustomSubscriptionController::class, 'destroy'])->name('custom-subscriptions.destroy');
 });
 
 // Exit impersonation (accessible while impersonating, auth only)

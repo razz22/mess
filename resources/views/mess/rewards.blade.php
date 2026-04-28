@@ -5,7 +5,7 @@
     <div class="content">
         <div class="page-header">
             <div class="page-title">
-                <h4 class="fw-bold">Rewards & Leaderboard — {{ $mess->name }}</h4>
+                <h4 class="fw-bold">{{ __('Rewards & Leaderboard') }} — {{ $mess->name }}</h4>
                 <h6>{{ date('F Y', mktime(0,0,0,$month,1,$year)) }}</h6>
             </div>
             <div class="page-btn">
@@ -84,7 +84,7 @@
                         <table class="table table-hover">
                             <thead>
                                 <tr>
-                                    <th>Member</th>
+                                    <th>{{ __('Member') }}</th>
                                     <th>Type</th>
                                     <th>Points</th>
                                     <th>Gift</th>
@@ -213,7 +213,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="submit" class="btn btn-warning">Award!</button>
                 </div>
             </form>

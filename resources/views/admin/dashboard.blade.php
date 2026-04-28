@@ -122,7 +122,7 @@
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0 small">
                             <thead class="table-light">
-                                <tr><th>User</th><th>Messes</th><th>Status</th><th>Joined</th></tr>
+                                <tr><th>User</th><th>Messes</th><th>{{ __('Status') }}</th><th>{{ __('Joined') }}</th></tr>
                             </thead>
                             <tbody>
                                 @foreach($recentUsers as $u)

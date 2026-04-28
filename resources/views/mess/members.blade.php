@@ -4,18 +4,26 @@
 @php $isManager = Auth::user()->isManagerOf($mess->id); @endphp
 <div class="page-wrapper">
     <div class="content">
+        @php $customSub = \App\Models\CustomSubscription::active()->forMess($mess->id)->first(); @endphp
         <div class="page-header">
             <div class="page-title">
-                <h4 class="fw-bold">Members — {{ $mess->name }}</h4>
-                <h6>{{ $members->count() }} / {{ $mess->getEffectiveMaxMembers() }} members</h6>
+                <h4 class="fw-bold">{{ __('Members') }} — {{ $mess->name }}</h4>
+                <h6 class="d-flex align-items-center gap-2">
+                    {{ $members->count() }} / {{ $mess->getEffectiveMaxMembers() }} {{ __('members') }}
+                    @if($customSub)
+                    <span class="badge d-inline-flex align-items-center gap-1" style="background:#6366f1;font-size:11px;">
+                        <i class="ti ti-star" style="font-size:10px;"></i>{{ $customSub->label }}
+                    </span>
+                    @endif
+                </h6>
             </div>
             <div class="page-btn d-flex gap-2">
                 <a href="{{ route('mess.dashboard', $mess->id) }}" class="btn btn-outline-secondary btn-sm">
-                    <i class="ti ti-arrow-left me-1"></i>Back
+                    <i class="ti ti-arrow-left me-1"></i>{{ __('Back') }}
                 </a>
                 @if($members->count() < $mess->getEffectiveMaxMembers() && $isManager)
                 <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addMemberModal">
-                    <i class="ti ti-user-plus me-1"></i>Add Member
+                    <i class="ti ti-user-plus me-1"></i>{{ __('Add Member') }}
                 </button>
                 @endif
             </div>
@@ -39,10 +47,10 @@
             <div class="card-body py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <div>
                     <i class="ti ti-link me-2 text-primary"></i>
-                    <span>Share invite code: <strong class="fs-5 font-monospace">{{ $mess->invite_code }}</strong> for members to join</span>
+                    <span>{{ __('Share invite code') }}: <strong class="fs-5 font-monospace">{{ $mess->invite_code }}</strong> {{ __('for members to join') }}</span>
                 </div>
-                <button class="btn btn-sm btn-outline-primary" onclick="navigator.clipboard.writeText('{{ $mess->invite_code }}');this.innerHTML='<i class=\'ti ti-check me-1\'></i>Copied!'">
-                    <i class="ti ti-copy me-1"></i>Copy Code
+                <button class="btn btn-sm btn-outline-primary" onclick="navigator.clipboard.writeText('{{ $mess->invite_code }}');this.innerHTML='<i class=\'ti ti-check me-1\'></i>{{ __('Copied!') }}'">
+                    <i class="ti ti-copy me-1"></i>{{ __('Copy Code') }}
                 </button>
             </div>
         </div>
@@ -101,7 +109,7 @@
                             <div class="col-4 text-center">
                                 <div class="bg-light rounded p-1">
                                     <div class="fw-bold small">{{ $m->joined_at ? $m->joined_at->format('d M Y') : '—' }}</div>
-                                    <div style="font-size:10px" class="text-muted">Joined</div>
+                                    <div style="font-size:10px" class="text-muted">{{ __('Joined') }}</div>
                                 </div>
                             </div>
                             <div class="col-4 text-center">
@@ -109,7 +117,7 @@
                                     <div class="fw-bold small {{ $m->carry_forward < 0 ? 'text-danger' : 'text-success' }}">
                                         {{ $m->carry_forward < 0 ? '-' : '' }}৳{{ number_format(abs($m->carry_forward),0) }}
                                     </div>
-                                    <div style="font-size:10px" class="text-muted">Balance</div>
+                                    <div style="font-size:10px" class="text-muted">{{ __('Balance') }}</div>
                                 </div>
                             </div>
                             <div class="col-4 text-center">
@@ -119,7 +127,7 @@
                                         @else <span class="text-muted">—</span>
                                         @endif
                                     </div>
-                                    <div style="font-size:10px" class="text-muted">Rent/mo</div>
+                                    <div style="font-size:10px" class="text-muted">{{ __('Rent/mo') }}</div>
                                 </div>
                             </div>
                         </div>
@@ -128,7 +136,7 @@
                         <div class="d-flex gap-2 mt-3">
                             <a href="{{ route('mess.members.profile', [$mess->id, $m->id]) }}"
                                class="btn btn-sm btn-outline-primary flex-grow-1">
-                                <i class="ti ti-user me-1"></i>Profile
+                                <i class="ti ti-user me-1"></i>{{ __('Profile') }}
                             </a>
                             @if($isManager && $m->role !== 'owner')
                             <button class="btn btn-sm btn-outline-secondary"
@@ -159,7 +167,7 @@
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="ti ti-user-plus me-2"></i>Add New Member</h5>
+                <h5 class="modal-title"><i class="ti ti-user-plus me-2"></i>{{ __('Add New Member') }}</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form action="{{ route('mess.members.store', $mess->id) }}" method="POST" enctype="multipart/form-data">
@@ -171,7 +179,7 @@
                             <i class="ti ti-user"></i>
                         </div><br>
                         <label class="btn btn-sm btn-outline-primary mt-1">
-                            <i class="ti ti-camera me-1"></i>Upload Photo
+                            <i class="ti ti-camera me-1"></i>{{ __('Upload Photo') }}
                             <input type="file" name="avatar" accept="image/*" class="d-none" onchange="previewAvatar(this,'addAvatarPreview')">
                         </label>
                         <div class="form-text">JPG/PNG max 3MB</div>
@@ -335,8 +343,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="ti ti-user-plus me-1"></i>Create & Add Member</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                    <button type="submit" class="btn btn-primary"><i class="ti ti-user-plus me-1"></i>{{ __('Create & Add Member') }}</button>
                 </div>
             </form>
         </div>
@@ -348,7 +356,7 @@
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header bg-warning">
-                <h5 class="modal-title"><i class="ti ti-user-edit me-2"></i>Edit Member</h5>
+                <h5 class="modal-title"><i class="ti ti-user-edit me-2"></i>{{ __('Edit Member') }}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="editMemberForm" method="POST" enctype="multipart/form-data">
@@ -364,7 +372,7 @@
                         </div>
                         <br>
                         <label class="btn btn-sm btn-outline-warning mt-1">
-                            <i class="ti ti-camera me-1"></i>Change Photo
+                            <i class="ti ti-camera me-1"></i>{{ __('Change Photo') }}
                             <input type="file" name="avatar" accept="image/*" class="d-none" onchange="previewAvatar(this,'editAvatarImg','editAvatarPlaceholder')">
                         </label>
                     </div>
@@ -528,8 +536,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-warning"><i class="ti ti-device-floppy me-1"></i>Save Changes</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                    <button type="submit" class="btn btn-warning"><i class="ti ti-device-floppy me-1"></i>{{ __('Save Changes') }}</button>
                 </div>
             </form>
         </div>

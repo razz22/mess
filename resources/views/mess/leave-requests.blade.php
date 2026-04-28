@@ -6,7 +6,7 @@
 
         <div class="page-header">
             <div class="page-title">
-                <h4 class="fw-bold"><i class="ti ti-logout me-2 text-danger"></i>Leave Requests</h4>
+                <h4 class="fw-bold"><i class="ti ti-logout me-2 text-danger"></i>{{ __('Leave Requests') }}</h4>
                 <h6 class="text-muted">{{ $mess->name }}</h6>
             </div>
         </div>
@@ -20,7 +20,7 @@
 
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 fw-semibold"><i class="ti ti-list me-2"></i>All Leave Requests</h6>
+                <h6 class="mb-0 fw-semibold"><i class="ti ti-list me-2"></i>{{ __('All Leave Requests') }}</h6>
                 <span class="badge bg-warning text-dark">
                     Notice Period: {{ $mess->leave_notice_months ?? 1 }} month(s)
                 </span>
@@ -36,14 +36,14 @@
                 <table class="table align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th>Member</th>
-                            <th>Applied</th>
-                            <th>Last Date</th>
-                            <th>Notice Required</th>
-                            <th>Reason</th>
-                            <th>Status</th>
-                            <th>Reviewed By</th>
-                            <th>Actions</th>
+                            <th>{{ __('Member') }}</th>
+                            <th>{{ __('Applied') }}</th>
+                            <th>{{ __('Last Date') }}</th>
+                            <th>{{ __('Notice Required') }}</th>
+                            <th>{{ __('Reason') }}</th>
+                            <th>{{ __('Status') }}</th>
+                            <th>{{ __('Reviewed By') }}</th>
+                            <th>{{ __('Actions') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -119,8 +119,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn" id="reviewSubmitBtn">Confirm</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                    <button type="submit" class="btn" id="reviewSubmitBtn">{{ __('Confirm') }}</button>
                 </div>
             </form>
         </div>
@@ -155,7 +155,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="submit" class="btn btn-warning text-dark">
                         <i class="ti ti-check me-1"></i>Record Refund
                     </button>

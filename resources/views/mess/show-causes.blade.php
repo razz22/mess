@@ -7,8 +7,8 @@
 
         <div class="page-header">
             <div class="page-title">
-                <h4 class="fw-bold">Show Cause Letters — {{ $mess->name }}</h4>
-                <h6 class="text-muted">Formal notices issued to members</h6>
+                <h4 class="fw-bold">{{ __('Show Cause Letters') }} — {{ $mess->name }}</h4>
+                <h6 class="text-muted">{{ __('Formal notices issued to members') }}</h6>
             </div>
             <div class="page-btn d-flex gap-2">
                 <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#issueModal">
@@ -29,19 +29,19 @@
 
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0">All Show Cause Letters</h6>
+                <h6 class="mb-0">{{ __('All Show Cause Letters') }}</h6>
                 <span class="badge bg-secondary">{{ $causes->count() }} total</span>
             </div>
             <div class="table-responsive">
                 <table class="table align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th>Member</th>
-                            <th>Subject</th>
-                            <th>Issued By</th>
-                            <th>Date</th>
-                            <th>Status</th>
-                            <th class="text-center">Actions</th>
+                            <th>{{ __('Member') }}</th>
+                            <th>{{ __('Subject') }}</th>
+                            <th>{{ __('Issued By') }}</th>
+                            <th>{{ __('Date') }}</th>
+                            <th>{{ __('Status') }}</th>
+                            <th class="text-center">{{ __('Actions') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -91,7 +91,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title"><i class="ti ti-file-alert me-2"></i>Issue Show Cause Letter</h5>
+                <h5 class="modal-title"><i class="ti ti-file-alert me-2"></i>{{ __('Issue Show Cause Letter') }}</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form action="{{ route('mess.show-causes.store', $mess->id) }}" method="POST">
@@ -121,8 +121,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-danger"><i class="ti ti-send me-1"></i>Issue Letter</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                    <button type="submit" class="btn btn-danger"><i class="ti ti-send me-1"></i>{{ __('Issue Letter') }}</button>
                 </div>
             </form>
         </div>

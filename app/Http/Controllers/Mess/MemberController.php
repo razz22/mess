@@ -9,9 +9,11 @@ use App\Models\MessMember;
 use App\Models\MessShowCause;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class MemberController extends Controller
 {
@@ -90,15 +92,8 @@ class MemberController extends Controller
             return back()->with('error', "Member limit reached ({$maxMembers}). Upgrade to add more.");
         }
 
-        $avatarPath = null;
-        if ($request->hasFile('avatar')) {
-            $avatarPath = $request->file('avatar')->store('member-avatars', 'public');
-        }
-
-        $nidPath = null;
-        if ($request->hasFile('nid_document')) {
-            $nidPath = $request->file('nid_document')->store('nid_documents', 'public');
-        }
+        $avatarPath = $this->moveUploadedFile($request->file('avatar'), 'member-avatars');
+        $nidPath    = $this->moveUploadedFile($request->file('nid_document'), 'nid_documents');
 
         $user = User::create([
             'name'                       => $request->name,
@@ -195,14 +190,16 @@ class MemberController extends Controller
             $userData['password'] = Hash::make($request->password);
         }
 
-        if ($request->hasFile('avatar')) {
+        $newAvatar = $this->moveUploadedFile($request->file('avatar'), 'member-avatars');
+        if ($newAvatar) {
             if ($profileUser->avatar) Storage::disk('public')->delete($profileUser->avatar);
-            $userData['avatar'] = $request->file('avatar')->store('member-avatars', 'public');
+            $userData['avatar'] = $newAvatar;
         }
 
-        if ($request->hasFile('nid_document')) {
+        $newNid = $this->moveUploadedFile($request->file('nid_document'), 'nid_documents');
+        if ($newNid) {
             if ($profileUser->nid_document) Storage::disk('public')->delete($profileUser->nid_document);
-            $userData['nid_document'] = $request->file('nid_document')->store('nid_documents', 'public');
+            $userData['nid_document'] = $newNid;
         }
 
         $profileUser->update($userData);
@@ -271,6 +268,19 @@ class MemberController extends Controller
 
         $member->update(['is_active' => false]);
         return back()->with('success', 'Member removed.');
+    }
+
+    private function moveUploadedFile(?UploadedFile $file, string $folder): ?string
+    {
+        if (! $file || ! $file->isValid()) return null;
+
+        $dest = storage_path("app/public/{$folder}");
+        if (! is_dir($dest)) mkdir($dest, 0755, true);
+
+        $filename = Str::random(40) . '.' . $file->getClientOriginalExtension();
+        $file->move($dest, $filename);
+
+        return "{$folder}/{$filename}";
     }
 
     private function authorizeManager(Mess $mess): void

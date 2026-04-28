@@ -7,7 +7,7 @@
         {{-- Page Header --}}
         <div class="page-header">
             <div class="page-title">
-                <h4 class="fw-bold"><i class="ti ti-home-dollar me-2 text-primary"></i>House Rent Management</h4>
+                <h4 class="fw-bold"><i class="ti ti-home-dollar me-2 text-primary"></i>{{ __('House Rent Management') }}</h4>
                 <h6 class="text-muted">{{ $mess->name }} &mdash; {{ date('F Y', mktime(0,0,0,$month,1,$year)) }}</h6>
             </div>
             <div class="page-btn d-flex gap-2 flex-wrap">
@@ -200,11 +200,11 @@
                             <thead class="table-light">
                                 <tr>
                                     <th style="width:50px">Room</th>
-                                    <th>Member</th>
+                                    <th>{{ __('Member') }}</th>
                                     <th>Monthly Rent</th>
                                     <th>Paid This Month</th>
                                     <th>Balance</th>
-                                    <th>Status</th>
+                                    <th>{{ __('Status') }}</th>
                                     <th>Advance Held</th>
                                     <th class="text-end">Actions</th>
                                 </tr>
@@ -326,9 +326,9 @@
                         <table class="table table-hover align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Date</th>
-                                    <th>Member</th>
-                                    <th>Amount</th>
+                                    <th>{{ __('Date') }}</th>
+                                    <th>{{ __('Member') }}</th>
+                                    <th>{{ __('Amount') }}</th>
                                     <th>Type</th>
                                     <th>Method</th>
                                     <th>Notes</th>
@@ -456,9 +456,9 @@
                                     <th>Period</th>
                                     <th>House Owner</th>
                                     <th>Rent Amount</th>
-                                    <th>Date</th>
+                                    <th>{{ __('Date') }}</th>
                                     <th>Due Date</th>
-                                    <th>Status</th>
+                                    <th>{{ __('Status') }}</th>
                                     <th class="text-end">Actions</th>
                                 </tr>
                             </thead>
@@ -682,12 +682,12 @@
                         <table class="table align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Date</th>
+                                    <th>{{ __('Date') }}</th>
                                     <th>Type</th>
-                                    <th>Amount</th>
+                                    <th>{{ __('Amount') }}</th>
                                     <th>Description</th>
                                     <th>Source</th>
-                                    <th>Note</th>
+                                    <th>{{ __('Note') }}</th>
                                     <th>By</th>
                                     <th></th>
                                 </tr>
@@ -743,10 +743,10 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>Period</th>
-                                    <th>Date</th>
-                                    <th>Member</th>
+                                    <th>{{ __('Date') }}</th>
+                                    <th>{{ __('Member') }}</th>
                                     <th>Room</th>
-                                    <th>Amount</th>
+                                    <th>{{ __('Amount') }}</th>
                                     <th>Type</th>
                                     <th>Method</th>
                                     <th>Notes</th>
@@ -842,11 +842,11 @@
                         <table class="table table-hover align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Date</th>
-                                    <th>Member</th>
+                                    <th>{{ __('Date') }}</th>
+                                    <th>{{ __('Member') }}</th>
                                     <th>Room</th>
                                     <th>Transaction</th>
-                                    <th>Amount</th>
+                                    <th>{{ __('Amount') }}</th>
                                     <th>Running Balance</th>
                                     <th>Notes</th>
                                     <th>By</th>
@@ -998,7 +998,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="submit" class="btn btn-primary"><i class="ti ti-file-invoice me-1"></i>Create Invoice</button>
                 </div>
             </form>
@@ -1037,8 +1037,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="ti ti-device-floppy me-1"></i>Save</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                    <button type="submit" class="btn btn-primary"><i class="ti ti-device-floppy me-1"></i>{{ __('Save') }}</button>
                 </div>
             </form>
         </div>
@@ -1120,7 +1120,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="submit" class="btn btn-success"><i class="ti ti-device-floppy me-1"></i>Record Payment</button>
                 </div>
             </form>
@@ -1176,7 +1176,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="submit" class="btn btn-primary"><i class="ti ti-device-floppy me-1"></i>Update</button>
                 </div>
             </form>
@@ -1236,7 +1236,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="submit" class="btn btn-warning text-dark"><i class="ti ti-device-floppy me-1"></i>Record</button>
                 </div>
             </form>
@@ -1279,7 +1279,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="submit" class="btn btn-primary"><i class="ti ti-device-floppy me-1"></i>Update</button>
                 </div>
             </form>

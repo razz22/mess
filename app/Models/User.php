@@ -17,6 +17,7 @@ class User extends Authenticatable
         'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relation',
         'date_of_birth', 'gender', 'is_super_admin', 'last_login_at', 'last_login_ip', 'max_messes',
         'google_id', 'email_verified_at',
+        'is_blocked', 'blocked_at', 'blocked_until', 'block_reason',
     ];
 
     protected $hidden = [
@@ -32,6 +33,9 @@ class User extends Authenticatable
             'password'          => 'hashed',
             'is_active'         => 'boolean',
             'is_super_admin'    => 'boolean',
+            'is_blocked'        => 'boolean',
+            'blocked_at'        => 'datetime',
+            'blocked_until'     => 'datetime',
         ];
     }
 

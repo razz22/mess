@@ -436,24 +436,44 @@ img { max-width: 100%; }
       </a>
 
       <ul class="lnav-links d-none d-md-flex">
-        <li><a href="#features">Features</a></li>
-        <li><a href="#how">How it Works</a></li>
-        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#features">{{ __('Features') }}</a></li>
+        <li><a href="#how">{{ __('How it Works') }}</a></li>
+        <li><a href="#pricing">{{ __('Pricing') }}</a></li>
       </ul>
 
-      <div class="lnav-auth lnav-auth-desktop ms-auto d-none d-md-flex">
+      <div class="lnav-auth lnav-auth-desktop ms-auto d-none d-md-flex align-items-center gap-2">
+        {{-- Language switcher --}}
+        @php $llocale = app()->getLocale(); @endphp
+        <div class="dropdown">
+          <button class="btn btn-sm dropdown-toggle d-flex align-items-center gap-2 px-3 py-1"
+                  type="button" data-bs-toggle="dropdown"
+                  style="border-radius:20px;font-size:13px;font-weight:600;color:rgba(255,255,255,.85);background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2)">
+            <img src="{{ URL::asset('build/img/flags/'.($llocale==='bn'?'bd':'us').'.png') }}" alt="" height="14" style="border-radius:2px">
+            {{ $llocale==='bn' ? 'বাংলা' : 'EN' }}
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow py-1" style="border-radius:10px;min-width:130px">
+            <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 {{ $llocale==='en'?'active':'' }}" href="{{ route('lang.switch','en') }}">
+              <img src="{{ URL::asset('build/img/flags/us.png') }}" alt="" height="13" style="border-radius:2px"> English
+              @if($llocale==='en') <i class="ti ti-check ms-auto text-success"></i> @endif
+            </a></li>
+            <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 {{ $llocale==='bn'?'active':'' }}" href="{{ route('lang.switch','bn') }}">
+              <img src="{{ URL::asset('build/img/flags/bd.png') }}" alt="" height="13" style="border-radius:2px"> বাংলা
+              @if($llocale==='bn') <i class="ti ti-check ms-auto text-success"></i> @endif
+            </a></li>
+          </ul>
+        </div>
         @auth
           <a href="{{ url('/') }}" class="nav-user-pill">
             <div class="nav-avatar">{{ strtoupper(substr(Auth::user()->name,0,1)) }}</div>
             <span style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ Auth::user()->name }}</span>
           </a>
           <a href="{{ route('mess.index') }}" class="btn-nav-dash">
-            <i class="ti ti-layout-dashboard"></i> Dashboard
+            <i class="ti ti-layout-dashboard"></i> {{ __('Dashboard') }}
           </a>
         @else
-          <a href="{{ route('signin') }}" class="btn-nav-in">Sign In</a>
+          <a href="{{ route('signin') }}" class="btn-nav-in">{{ __('Sign In') }}</a>
           <a href="{{ route('register') }}" class="btn-nav-up">
-            <i class="ti ti-user-plus me-1"></i>Get Started
+            <i class="ti ti-user-plus me-1"></i>{{ __('Sign Up') }}
           </a>
         @endauth
       </div>
@@ -464,16 +484,19 @@ img { max-width: 100%; }
 
   <div class="lnav-mobile" id="navMobile">
     <div class="container">
-      <a href="#features"><i class="ti ti-layout-grid me-2"></i>Features</a>
-      <a href="#how"><i class="ti ti-route me-2"></i>How it Works</a>
-      <a href="#pricing"><i class="ti ti-tag me-2"></i>Pricing</a>
+      <a href="#features"><i class="ti ti-layout-grid me-2"></i>{{ __('Features') }}</a>
+      <a href="#how"><i class="ti ti-route me-2"></i>{{ __('How it Works') }}</a>
+      <a href="#pricing"><i class="ti ti-tag me-2"></i>{{ __('Pricing') }}</a>
+      <div class="mob-divider"></div>
+      <a href="{{ route('lang.switch','en') }}" style="{{ app()->getLocale()==='en'?'color:var(--orange);font-weight:700':'' }}"><i class="ti ti-language me-2"></i>English</a>
+      <a href="{{ route('lang.switch','bn') }}" style="{{ app()->getLocale()==='bn'?'color:var(--orange);font-weight:700':'' }}"><i class="ti ti-language me-2"></i>বাংলা</a>
       <div class="mob-divider"></div>
       @auth
-        <a href="{{ route('mess.index') }}" style="color:var(--orange);font-weight:700"><i class="ti ti-layout-dashboard me-2"></i>Dashboard</a>
-        <a href="{{ route('signout') }}"><i class="ti ti-logout me-2"></i>Sign Out</a>
+        <a href="{{ route('mess.index') }}" style="color:var(--orange);font-weight:700"><i class="ti ti-layout-dashboard me-2"></i>{{ __('Dashboard') }}</a>
+        <a href="{{ route('signout') }}"><i class="ti ti-logout me-2"></i>{{ __('Logout') }}</a>
       @else
-        <a href="{{ route('signin') }}"><i class="ti ti-login me-2"></i>Sign In</a>
-        <a href="{{ route('register') }}" style="color:var(--orange);font-weight:700"><i class="ti ti-user-plus me-2"></i>Register Free</a>
+        <a href="{{ route('signin') }}"><i class="ti ti-login me-2"></i>{{ __('Sign In') }}</a>
+        <a href="{{ route('register') }}" style="color:var(--orange);font-weight:700"><i class="ti ti-user-plus me-2"></i>{{ __('Sign Up') }}</a>
       @endauth
     </div>
   </div>
@@ -485,29 +508,24 @@ img { max-width: 100%; }
     <div class="row align-items-center g-5">
       <div class="col-lg-6">
         <div class="hero-tag">
-          <span></span> Smart Mess Management Platform
+          <span></span> {{ __('Smart Mess Management Platform') }}
         </div>
-        <h1>
-          Manage Your<br>
-          Mess <span class="orange">Smarter</span><br>
-          &amp; Easier
-        </h1>
+        <h1>{{ __('Manage Your Mess Smarter & Easier') }}</h1>
         <p class="hero-sub">
-          MessManager is the complete platform for shared living — track meals, split expenses,
-          coordinate market duties, generate monthly reports, and more. All automated.
+          {{ __('MessManager is the complete platform for shared living — track meals, split expenses, coordinate market duties, generate monthly reports, and more. All automated.') }}
         </p>
         <div class="hero-btns">
           <a href="{{ route('register') }}" class="btn-orange">
-            <i class="ti ti-rocket"></i> Start Free Today
+            <i class="ti ti-rocket"></i> {{ __('Start Free Today') }}
           </a>
           <a href="#features" class="btn-ghost">
-            <i class="ti ti-eye"></i> See Features
+            <i class="ti ti-eye"></i> {{ __('See Features') }}
           </a>
         </div>
         <div class="hero-proof">
-          <div class="hero-proof-item"><i class="ti ti-check"></i> No credit card needed</div>
-          <div class="hero-proof-item"><i class="ti ti-check"></i> Free plan available</div>
-          <div class="hero-proof-item"><i class="ti ti-check"></i> Setup in 2 minutes</div>
+          <div class="hero-proof-item"><i class="ti ti-check"></i> {{ __('No credit card needed') }}</div>
+          <div class="hero-proof-item"><i class="ti ti-check"></i> {{ __('Free plan available') }}</div>
+          <div class="hero-proof-item"><i class="ti ti-check"></i> {{ __('Setup in 2 minutes') }}</div>
         </div>
       </div>
 
@@ -592,19 +610,19 @@ img { max-width: 100%; }
     <div class="row text-center g-4">
       <div class="col-6 col-md-3">
         <div class="stat-num" data-target="500">0+</div>
-        <div class="stat-lbl">Active Messes</div>
+        <div class="stat-lbl">{{ __('Active Messes') }}</div>
       </div>
       <div class="col-6 col-md-3">
         <div class="stat-num" data-target="10000">0+</div>
-        <div class="stat-lbl">Members Managed</div>
+        <div class="stat-lbl">{{ __('Members Managed') }}</div>
       </div>
       <div class="col-6 col-md-3">
         <div class="stat-num">৳2M+</div>
-        <div class="stat-lbl">Expenses Tracked</div>
+        <div class="stat-lbl">{{ __('Expenses Tracked') }}</div>
       </div>
       <div class="col-6 col-md-3">
         <div class="stat-num">99%</div>
-        <div class="stat-lbl">Satisfaction Rate</div>
+        <div class="stat-lbl">{{ __('Satisfaction Rate') }}</div>
       </div>
     </div>
   </div>
@@ -614,25 +632,25 @@ img { max-width: 100%; }
 <section class="features" id="features">
   <div class="container">
     <div class="text-center mb-5 reveal">
-      <div class="section-label mb-2">What We Offer</div>
-      <h2 class="section-title">Everything Your Mess Needs</h2>
-      <p class="section-sub mt-3">A complete platform covering every aspect of shared mess life — automated, accurate, and always accessible.</p>
+      <div class="section-label mb-2">{{ __('What We Offer') }}</div>
+      <h2 class="section-title">{{ __('Everything Your Mess Needs') }}</h2>
+      <p class="section-sub mt-3">{{ __('A complete platform covering every aspect of shared mess life — automated, accurate, and always accessible.') }}</p>
     </div>
     <div class="row g-4">
       @php
       $features = [
-        ['icon'=>'ti-tools-kitchen-2','title'=>'Meal Management',   'desc'=>'Track daily meal attendance for breakfast, lunch & dinner. Auto-mark members ON, set cut-off times, and manage meal-off requests easily.'],
-        ['icon'=>'ti-shopping-cart',  'title'=>'Market Routine',    'desc'=>'Assign market duty using a visual calendar. Build shopping lists, track spending, and let members exchange duties.'],
-        ['icon'=>'ti-coins',          'title'=>'Expense Tracking',  'desc'=>'Log all mess expenses with categories. Get a full breakdown per member every month — electricity, gas, cook bill, and more.'],
-        ['icon'=>'ti-cash',           'title'=>'Deposit Management','desc'=>'Record monthly deposits from each member. Track who paid, who is due, and keep a clear financial ledger.'],
-        ['icon'=>'ti-report-analytics','title'=>'Monthly Reports',  'desc'=>'Auto-generate monthly reports showing meal cost, expense share, total payable, due amount, and carry-forward.'],
-        ['icon'=>'ti-crown',          'title'=>'Manager Rotation',  'desc'=>'Assign a new manager each month. Members rate the manager with stars. Best manager gets recognized and rewarded!'],
-        ['icon'=>'ti-trophy',         'title'=>'Rewards & Points',  'desc'=>'Recognize outstanding members monthly. Award points and gifts to the best member, market person, and top manager.'],
-        ['icon'=>'ti-layout-kanban',  'title'=>'Meal Kanban Board', 'desc'=>'Plan daily meals visually. Add items to cook, move them to Cooking then Done — keep every member informed in real-time.'],
-        ['icon'=>'ti-flag',           'title'=>'Member Reporting',  'desc'=>'Members report rule violations to the manager. Reporters earn points when resolved, promoting accountability.'],
-        ['icon'=>'ti-users',          'title'=>'Member Management', 'desc'=>'Add, remove, and manage members with roles — owner, manager, author, or member. Share an 8-digit invite code.'],
-        ['icon'=>'ti-arrows-exchange','title'=>'Duty Exchange',     'desc'=>'Can\'t do market duty? Request an exchange with another member. Accept or reject — fully managed in-app.'],
-        ['icon'=>'ti-chart-bar',      'title'=>'Financial Summary', 'desc'=>'See cash in hand, total deposits vs expenses, per-meal cost, and individual dues — all calculated automatically.'],
+        ['icon'=>'ti-tools-kitchen-2','title'=>__('Meal Management'),   'desc'=>__('Track daily meal attendance for breakfast, lunch & dinner. Auto-mark members ON, set cut-off times, and manage meal-off requests easily.')],
+        ['icon'=>'ti-shopping-cart',  'title'=>__('Market Routine'),    'desc'=>__('Assign market duty using a visual calendar. Build shopping lists, track spending, and let members exchange duties.')],
+        ['icon'=>'ti-coins',          'title'=>__('Expense Tracking'),  'desc'=>__('Log all mess expenses with categories. Get a full breakdown per member every month — electricity, gas, cook bill, and more.')],
+        ['icon'=>'ti-cash',           'title'=>__('Deposit Management'),'desc'=>__('Record monthly deposits from each member. Track who paid, who is due, and keep a clear financial ledger.')],
+        ['icon'=>'ti-report-analytics','title'=>__('Monthly Reports'),  'desc'=>__('Auto-generate monthly reports showing meal cost, expense share, total payable, due amount, and carry-forward.')],
+        ['icon'=>'ti-crown',          'title'=>__('Manager Rotation'),  'desc'=>__('Assign a new manager each month. Members rate the manager with stars. Best manager gets recognized and rewarded!')],
+        ['icon'=>'ti-trophy',         'title'=>__('Rewards & Points'),  'desc'=>__('Recognize outstanding members monthly. Award points and gifts to the best member, market person, and top manager.')],
+        ['icon'=>'ti-layout-kanban',  'title'=>__('Meal Kanban Board'), 'desc'=>__('Plan daily meals visually. Add items to cook, move them to Cooking then Done — keep every member informed in real-time.')],
+        ['icon'=>'ti-flag',           'title'=>__('Member Reporting'),  'desc'=>__('Members report rule violations to the manager. Reporters earn points when resolved, promoting accountability.')],
+        ['icon'=>'ti-users',          'title'=>__('Member Management'), 'desc'=>__('Add, remove, and manage members with roles — owner, manager, author, or member. Share an 8-digit invite code.')],
+        ['icon'=>'ti-arrows-exchange','title'=>__('Duty Exchange'),     'desc'=>__("Can't do market duty? Request an exchange with another member. Accept or reject — fully managed in-app.")],
+        ['icon'=>'ti-chart-bar',      'title'=>__('Financial Summary'), 'desc'=>__('See cash in hand, total deposits vs expenses, per-meal cost, and individual dues — all calculated automatically.')],
       ];
       @endphp
       @foreach($features as $i => $f)
@@ -652,16 +670,16 @@ img { max-width: 100%; }
 <section class="how" id="how">
   <div class="container position-relative" style="z-index:2">
     <div class="text-center mb-5 reveal">
-      <div class="section-label mb-2" style="color:var(--orange)">Simple Process</div>
-      <h2 class="section-title" style="color:var(--white)">Up & Running in Minutes</h2>
-      <p class="section-sub mt-3" style="color:rgba(255,255,255,.5)">No complex setup. No technical knowledge needed. Just sign up and start managing your mess today.</p>
+      <div class="section-label mb-2" style="color:var(--orange)">{{ __('Simple Process') }}</div>
+      <h2 class="section-title" style="color:var(--white)">{{ __('Up & Running in Minutes') }}</h2>
+      <p class="section-sub mt-3" style="color:rgba(255,255,255,.5)">{{ __('No complex setup. No technical knowledge needed. Just sign up and start managing your mess today.') }}</p>
     </div>
     <div class="row g-4 g-md-0 align-items-center justify-content-center">
       @foreach([
-        ['n'=>'1','icon'=>'ti-user-plus',          'title'=>'Create Account',   'desc'=>'Register free with your name, email, and password. No credit card required.'],
-        ['n'=>'2','icon'=>'ti-building-community', 'title'=>'Set Up Your Mess', 'desc'=>'Add your mess name and address. You instantly get an 8-digit invite code.'],
-        ['n'=>'3','icon'=>'ti-users',              'title'=>'Invite Members',   'desc'=>'Share the invite code with your housemates. They join in seconds.'],
-        ['n'=>'4','icon'=>'ti-rocket',             'title'=>'Start Managing',   'desc'=>'Mark meals, assign duties, track expenses, and generate monthly reports!'],
+        ['n'=>'1','icon'=>'ti-user-plus',          'title'=>__('Create Account'),   'desc'=>__('Register free with your name, email, and password. No credit card required.')],
+        ['n'=>'2','icon'=>'ti-building-community', 'title'=>__('Set Up Your Mess'), 'desc'=>__('Add your mess name and address. You instantly get an 8-digit invite code.')],
+        ['n'=>'3','icon'=>'ti-users',              'title'=>__('Invite Members'),   'desc'=>__('Share the invite code with your housemates. They join in seconds.')],
+        ['n'=>'4','icon'=>'ti-rocket',             'title'=>__('Start Managing'),   'desc'=>__('Mark meals, assign duties, track expenses, and generate monthly reports!')],
       ] as $i => $step)
       @if($i > 0)
       <div class="col-md-1 d-none d-md-flex align-items-center justify-content-center">
@@ -686,10 +704,10 @@ img { max-width: 100%; }
   <div class="container">
     <div class="row g-4">
       @foreach([
-        ['num'=>'500+', 'label'=>'Messes actively using MessManager',   'icon'=>'ti-building-community'],
-        ['num'=>'10K+', 'label'=>'Members whose dues are auto-calculated','icon'=>'ti-users'],
-        ['num'=>'৳2M+', 'label'=>'Total expenses tracked on the platform','icon'=>'ti-coin'],
-        ['num'=>'100%', 'label'=>'Reports generated automatically every month','icon'=>'ti-report-analytics'],
+        ['num'=>'500+', 'label'=>__('Messes actively using MessManager'),   'icon'=>'ti-building-community'],
+        ['num'=>'10K+', 'label'=>__('Members whose dues are auto-calculated'),'icon'=>'ti-users'],
+        ['num'=>'৳2M+', 'label'=>__('Total expenses tracked on the platform'),'icon'=>'ti-coin'],
+        ['num'=>'100%', 'label'=>__('Reports generated automatically every month'),'icon'=>'ti-report-analytics'],
       ] as $h)
       <div class="col-md-6 col-xl-3 reveal">
         <div class="highlight-card d-flex align-items-start gap-3">
@@ -711,17 +729,17 @@ img { max-width: 100%; }
 <section class="pricing" id="pricing">
   <div class="container">
     <div class="text-center mb-5 reveal">
-      <div class="section-label mb-2">Pricing</div>
-      <h2 class="section-title">Simple, Transparent Pricing</h2>
-      <p class="section-sub mt-3">Start free and upgrade as your mess grows. No hidden fees, no surprise charges.</p>
+      <div class="section-label mb-2">{{ __('Pricing') }}</div>
+      <h2 class="section-title">{{ __('Simple, Transparent Pricing') }}</h2>
+      <p class="section-sub mt-3">{{ __('Start free and upgrade as your mess grows. No hidden fees, no surprise charges.') }}</p>
     </div>
 
     @if($plans->isEmpty())
     <div class="text-center py-5">
       <div style="font-size:3.5rem;opacity:.1;color:var(--navy)" class="mb-3"><i class="ti ti-package-off"></i></div>
-      <p class="text-muted">Pricing plans coming soon. Check back shortly.</p>
+      <p class="text-muted">{{ __('Pricing plans coming soon. Check back shortly.') }}</p>
       <a href="{{ route('register') }}" class="btn-orange d-inline-flex mt-3">
-        <i class="ti ti-rocket"></i> Register Free Now
+        <i class="ti ti-rocket"></i> {{ __('Register Free Now') }}
       </a>
     </div>
     @else
@@ -744,7 +762,7 @@ img { max-width: 100%; }
       <div class="{{ $colClass }} reveal">
         <div class="plan-card {{ $featured ? 'featured' : '' }}">
           @if($featured)
-          <div class="popular-badge">⭐ Popular</div>
+          <div class="popular-badge">⭐ {{ __('Popular') }}</div>
           @endif
 
           <div class="plan-name {{ $textClass }}">{{ $plan->name }}</div>
@@ -757,11 +775,11 @@ img { max-width: 100%; }
             @endif
           </div>
           <div class="plan-period {{ $textClass }}">
-            {{ $isFree ? 'Free forever' : 'per '.($plan->duration_months == 1 ? 'month' : $plan->duration_months.' months') }}
+            {{ $isFree ? __('Free forever') : 'per '.($plan->duration_months == 1 ? __('month(s)') : $plan->duration_months.' '.__('month(s)')) }}
           </div>
 
           <div class="plan-members {{ $textClass }}">
-            <i class="ti ti-users"></i> Up to {{ $plan->max_members }} members / mess
+            <i class="ti ti-users"></i> {{ __('Up to :count members / mess', ['count' => $plan->max_members]) }}
           </div>
 
           <hr class="{{ $featured ? 'plan-divider' : '' }}" style="{{ $featured ? '' : 'border-color:var(--border)' }}">
@@ -775,7 +793,7 @@ img { max-width: 100%; }
             @empty
             <li class="{{ $textClass }}">
               <i class="ti ti-check" style="color:var(--orange)"></i>
-              <span>All features included</span>
+              <span>{{ __('All features included') }}</span>
             </li>
             @endforelse
           </ul>
@@ -800,7 +818,7 @@ img { max-width: 100%; }
 
     <p class="text-center mt-4" style="color:var(--muted);font-size:.85rem">
       <i class="ti ti-shield-check me-1" style="color:var(--green)"></i>
-      All plans include full feature access. No credit card required to get started.
+      {{ __('All plans include full feature access. No credit card required to get started.') }}
     </p>
     @endif
   </div>
@@ -811,14 +829,14 @@ img { max-width: 100%; }
   <div class="container text-center position-relative" style="z-index:2">
     <div class="reveal">
       <div class="section-label mb-3" style="color:var(--orange)">Get Started Today</div>
-      <h2>Ready to Simplify Your Mess Life?</h2>
-      <p class="mt-3 mb-5">Join hundreds of messes already using MessManager to stay organized and conflict-free.</p>
+      <h2>{{ __('Ready to Simplify Your Mess Life?') }}</h2>
+      <p class="mt-3 mb-5">{{ __('Join hundreds of messes already using MessManager to stay organized and conflict-free.') }}</p>
       <div class="d-flex gap-3 justify-content-center flex-wrap">
         <a href="{{ route('register') }}" class="btn-orange" style="font-size:16px;padding:15px 36px">
-          <i class="ti ti-rocket"></i> Create Free Account
+          <i class="ti ti-rocket"></i> {{ __('Create Free Account') }}
         </a>
         <a href="{{ route('signin') }}" class="btn-ghost" style="font-size:16px;padding:14px 32px">
-          <i class="ti ti-login"></i> Sign In
+          <i class="ti ti-login"></i> {{ __('Sign In') }}
         </a>
       </div>
       <div class="mt-4 d-flex justify-content-center gap-4 flex-wrap" style="color:rgba(255,255,255,.35);font-size:13px">
@@ -840,7 +858,7 @@ img { max-width: 100%; }
           MessManager
         </div>
         <p style="font-size:.875rem;line-height:1.7;max-width:300px">
-          Smart mess management for shared living. Track meals, expenses, and more — all in one beautiful platform.
+          {{ __('Smart mess management for shared living. Track meals, expenses, and more — all in one beautiful platform.') }}
         </p>
         <div class="d-flex gap-3 mt-3">
           <a href="#" style="width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.4);font-size:1rem;transition:all .2s" onmouseover="this.style.background='rgba(254,159,67,.2)';this.style.color='#FE9F43'" onmouseout="this.style.background='rgba(255,255,255,.06)';this.style.color='rgba(255,255,255,.4)'">
@@ -850,44 +868,44 @@ img { max-width: 100%; }
         </div>
       </div>
       <div class="col-6 col-md-4 col-lg-2">
-        <div class="lfoot-heading">Product</div>
-        <a href="#features">Features</a>
-        <a href="#how">How It Works</a>
-        <a href="#pricing">Pricing</a>
+        <div class="lfoot-heading">{{ __('Product') }}</div>
+        <a href="#features">{{ __('Features') }}</a>
+        <a href="#how">{{ __('How it Works') }}</a>
+        <a href="#pricing">{{ __('Pricing') }}</a>
       </div>
       <div class="col-6 col-md-4 col-lg-2">
-        <div class="lfoot-heading">Account</div>
-        <a href="{{ route('signin') }}">Sign In</a>
-        <a href="{{ route('register') }}">Register Free</a>
+        <div class="lfoot-heading">{{ __('Account') }}</div>
+        <a href="{{ route('signin') }}">{{ __('Sign In') }}</a>
+        <a href="{{ route('register') }}">{{ __('Register Free') }}</a>
       </div>
       <div class="col-md-4 col-lg-4">
-        <div class="lfoot-heading">Quick Stats</div>
+        <div class="lfoot-heading">{{ __('Quick Stats') }}</div>
         <div class="d-flex gap-4 flex-wrap">
           <div>
             <div style="font-size:1.6rem;font-weight:800;color:var(--white)">500+</div>
-            <div style="font-size:.8rem">Messes</div>
+            <div style="font-size:.8rem">{{ __('Messes') }}</div>
           </div>
           <div>
             <div style="font-size:1.6rem;font-weight:800;color:var(--white)">10K+</div>
-            <div style="font-size:.8rem">Members</div>
+            <div style="font-size:.8rem">{{ __('Members') }}</div>
           </div>
           <div>
             <div style="font-size:1.6rem;font-weight:800;color:var(--white)">৳2M+</div>
-            <div style="font-size:.8rem">Tracked</div>
+            <div style="font-size:.8rem">{{ __('Tracked') }}</div>
           </div>
         </div>
         <div class="mt-3" style="background:rgba(254,159,67,.1);border:1px solid rgba(254,159,67,.2);border-radius:10px;padding:12px 16px">
-          <div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:4px">Start managing your mess today</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:4px">{{ __('Start managing your mess today') }}</div>
           <a href="{{ route('register') }}" style="color:var(--orange);font-size:.875rem;font-weight:700">
-            Register Free <i class="ti ti-arrow-right ms-1"></i>
+            {{ __('Register Free') }} <i class="ti ti-arrow-right ms-1"></i>
           </a>
         </div>
       </div>
     </div>
     <hr class="lfoot-divider">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 lfoot-bottom">
-      <span>© {{ date('Y') }} MessManager. All rights reserved.</span>
-      <span>Built with ❤️ for mess communities</span>
+      <span>© {{ date('Y') }} MessManager. {{ __('All rights reserved.') }}</span>
+      <span>{{ __('Built with ❤️ for mess communities') }}</span>
     </div>
   </div>
 </footer>

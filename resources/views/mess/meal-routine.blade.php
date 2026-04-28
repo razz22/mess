@@ -6,7 +6,7 @@
 
         <div class="page-header">
             <div class="page-title">
-                <h4 class="fw-bold"><i class="ti ti-calendar-event me-2 text-primary"></i>Monthly Meal Routine</h4>
+                <h4 class="fw-bold"><i class="ti ti-calendar-event me-2 text-primary"></i>{{ __('Monthly Meal Routine') }}</h4>
                 <h6 class="text-muted">{{ $mess->name }} &mdash; {{ $monthStart->format('F Y') }}</h6>
             </div>
             <div class="page-btn d-flex gap-2">
@@ -171,7 +171,7 @@
                     <i class="ti ti-trash me-1"></i>Clear
                 </button>
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="button" class="btn btn-primary" id="saveRoutineBtn">
                         <i class="ti ti-check me-1"></i>Save
                     </button>

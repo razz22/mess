@@ -68,11 +68,11 @@
 
 <div class="print-toolbar d-print-none">
     <a href="{{ route('mess.report.monthly', ['mess'=>$mess->id,'month'=>$month,'year'=>$year]) }}"
-        class="btn btn-sm btn-outline-secondary"><i class="ti ti-arrow-left me-1"></i>Back</a>
+        class="btn btn-sm btn-outline-secondary"><i class="ti ti-arrow-left me-1"></i>{{ __('Back') }}</a>
     <span class="fw-semibold text-muted" style="font-size:13px;">All Members · {{ $monthLabel }}</span>
     <span class="spacer"></span>
     <button onclick="window.print()" class="btn btn-sm btn-outline-primary"><i class="ti ti-printer me-1"></i>Print / PDF</button>
-    <button onclick="downloadExcel()" class="btn btn-sm btn-success"><i class="ti ti-file-spreadsheet me-1"></i>Excel</button>
+    <button onclick="downloadExcel()" class="btn btn-sm btn-success"><i class="ti ti-file-spreadsheet me-1"></i>{{ __('Excel') }}</button>
 </div>
 
 @php
@@ -128,13 +128,13 @@
             </div>
         </div>
         <div class="hdr-stats">
-            <div class="hdr-stat"><strong>{{ $members->count() }}</strong><span>Members</span></div>
-            <div class="hdr-stat"><strong>৳{{ number_format($totalMarketAll,2) }}</strong><span>Market Total</span></div>
-            <div class="hdr-stat"><strong>৳{{ number_format($catColumns->sum('total'),2) }}</strong><span>Shared Expenses</span></div>
-            <div class="hdr-stat"><strong>৳{{ number_format($totalPayableAll,2) }}</strong><span>Total Payable</span></div>
-            <div class="hdr-stat"><strong>৳{{ number_format($totalDepositAll,2) }}</strong><span>Total Deposited</span></div>
-            <div class="hdr-stat" style="border-color:rgba(255,100,100,.4);background:rgba(255,80,80,.15);"><strong>৳{{ number_format($totalDueAll,2) }}</strong><span>Total Due</span></div>
-            <div class="hdr-stat" style="border-color:rgba(80,220,120,.4);background:rgba(80,220,120,.12);"><strong>৳{{ number_format($totalExtraAll,2) }}</strong><span>Total Extra</span></div>
+            <div class="hdr-stat"><strong>{{ $members->count() }}</strong><span>{{ __('Members') }}</span></div>
+            <div class="hdr-stat"><strong>৳{{ number_format($totalMarketAll,2) }}</strong><span>{{ __('Market Total') }}</span></div>
+            <div class="hdr-stat"><strong>৳{{ number_format($catColumns->sum('total'),2) }}</strong><span>{{ __('Shared Expenses') }}</span></div>
+            <div class="hdr-stat"><strong>৳{{ number_format($totalPayableAll,2) }}</strong><span>{{ __('Total Payable') }}</span></div>
+            <div class="hdr-stat"><strong>৳{{ number_format($totalDepositAll,2) }}</strong><span>{{ __('Total Deposited') }}</span></div>
+            <div class="hdr-stat" style="border-color:rgba(255,100,100,.4);background:rgba(255,80,80,.15);"><strong>৳{{ number_format($totalDueAll,2) }}</strong><span>{{ __('Total Due') }}</span></div>
+            <div class="hdr-stat" style="border-color:rgba(80,220,120,.4);background:rgba(80,220,120,.12);"><strong>৳{{ number_format($totalExtraAll,2) }}</strong><span>{{ __('Total Extra') }}</span></div>
         </div>
     </div>
 
@@ -151,7 +151,7 @@
                     <th class="text-end cat-head">{{ $cat['name'] }}<br><span style="font-weight:400;opacity:.7;">÷ head</span></th>
                     @endforeach
                     <th rowspan="2" class="text-end">Total<br>Payable</th>
-                    <th rowspan="2" class="text-end">Deposited</th>
+                    <th rowspan="2" class="text-end">{{ __('Deposited') }}</th>
                     <th rowspan="2" class="text-center">Due / Extra</th>
                     <th rowspan="2" class="text-center">Status</th>
                 </tr>
@@ -236,7 +236,7 @@
     <div class="rpt-footer">
         <span>Generated: {{ now()->format('d M Y, h:i A') }}</span>
         <span style="font-weight:600;">{{ $mess->name }} · {{ $monthLabel }}</span>
-        <span>Powered by MessManager</span>
+        <span>{{ __('Powered by MessManager') }}</span>
     </div>
 
 </div>{{-- /rpt-card --}}

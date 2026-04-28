@@ -37,7 +37,7 @@
                     <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
                         <div>
                             <i class="ti ti-file-alert me-2"></i>
-                            <strong>Show Cause Notice</strong>
+                            <strong>{{ __('Show Cause Notice') }}</strong>
                         </div>
                         <small>{{ $cause->issued_at->format('d M Y, h:i A') }}</small>
                     </div>
@@ -115,7 +115,7 @@
                 @if($isConcernedMember && $cause->status === 'pending')
                 <div class="card border-primary">
                     <div class="card-header bg-primary text-white">
-                        <i class="ti ti-pencil me-2"></i><strong>Submit Your Reply</strong>
+                        <i class="ti ti-pencil me-2"></i><strong>{{ __('Submit Your Reply') }}</strong>
                     </div>
                     <form action="{{ route('mess.show-causes.reply', [$mess->id, $cause->id]) }}" method="POST">
                         @csrf
@@ -160,7 +160,7 @@
             {{-- Sidebar --}}
             <div class="col-lg-4">
                 <div class="card mb-3">
-                    <div class="card-header"><h6 class="mb-0">Timeline</h6></div>
+                    <div class="card-header"><h6 class="mb-0">{{ __('Timeline') }}</h6></div>
                     <div class="card-body p-3">
                         <div class="d-flex gap-3 mb-3">
                             <div class="d-flex flex-column align-items-center">
@@ -170,7 +170,7 @@
                                 @if($cause->member_reply)<div style="width:2px;flex:1;background:#dee2e6;margin:4px auto;min-height:30px"></div>@endif
                             </div>
                             <div class="pt-1">
-                                <div class="fw-semibold small">Letter Issued</div>
+                                <div class="fw-semibold small">{{ __('Letter Issued') }}</div>
                                 <div class="text-muted" style="font-size:11px">{{ $cause->issued_at->format('d M Y, h:i A') }}</div>
                                 <div class="text-muted" style="font-size:11px">By {{ $cause->issuedBy->name }}</div>
                             </div>
@@ -185,7 +185,7 @@
                                 @if($cause->final_reply)<div style="width:2px;flex:1;background:#dee2e6;margin:4px auto;min-height:30px"></div>@endif
                             </div>
                             <div class="pt-1">
-                                <div class="fw-semibold small">Member Replied</div>
+                                <div class="fw-semibold small">{{ __('Member Replied') }}</div>
                                 <div class="text-muted" style="font-size:11px">{{ $cause->replied_at->format('d M Y, h:i A') }}</div>
                             </div>
                         </div>
@@ -197,7 +197,7 @@
                                 <i class="ti ti-check" style="font-size:14px"></i>
                             </div>
                             <div class="pt-1">
-                                <div class="fw-semibold small">Closed</div>
+                                <div class="fw-semibold small">{{ __('Closed') }}</div>
                                 <div class="text-muted" style="font-size:11px">{{ $cause->final_replied_at->format('d M Y, h:i A') }}</div>
                             </div>
                         </div>
@@ -212,7 +212,7 @@
                 </div>
 
                 <div class="card">
-                    <div class="card-header"><h6 class="mb-0">Member Info</h6></div>
+                    <div class="card-header"><h6 class="mb-0">{{ __('Member Info') }}</h6></div>
                     <div class="card-body p-3">
                         <div class="d-flex align-items-center gap-3 mb-2">
                             @if($cause->member->user->avatar)

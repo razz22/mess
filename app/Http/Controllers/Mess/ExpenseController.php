@@ -93,8 +93,12 @@ class ExpenseController extends Controller
 
     public function update(Request $request, Mess $mess, Expense $expense)
     {
-        if (!Auth::user()->isManagerOf($mess->id)) abort(403);
         if ((int) $expense->mess_id !== (int) $mess->id) abort(403);
+        $member           = Auth::user()->getMembershipIn($mess->id);
+        $isOwnerOrManager = Auth::user()->is_super_admin
+            || ($member && in_array($member->role, ['owner', 'manager']));
+        $isOwn = (int) $expense->added_by === (int) Auth::id();
+        if (!$isOwnerOrManager && !$isOwn) abort(403);
 
         $request->validate([
             'title'        => 'required|string|max:255',
@@ -108,8 +112,12 @@ class ExpenseController extends Controller
 
     public function destroy(Mess $mess, Expense $expense)
     {
-        if (!Auth::user()->isManagerOf($mess->id)) abort(403);
         if ((int) $expense->mess_id !== (int) $mess->id) abort(403);
+        $member           = Auth::user()->getMembershipIn($mess->id);
+        $isOwnerOrManager = Auth::user()->is_super_admin
+            || ($member && in_array($member->role, ['owner', 'manager']));
+        $isOwn = (int) $expense->added_by === (int) Auth::id();
+        if (!$isOwnerOrManager && !$isOwn) abort(403);
         $expense->delete();
         return back()->with('success', 'Expense deleted.');
     }

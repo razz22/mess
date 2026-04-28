@@ -22,14 +22,15 @@ class UpgradeController extends Controller
             ->where('status', 'pending')
             ->with('plan')
             ->first();
-        $plans    = SubscriptionPlan::active()->get();
+        $plans     = SubscriptionPlan::active()->get();
         $activeSub = \App\Models\MessSubscription::where('mess_id', $mess->id)
             ->where('status', 'active')
             ->where('expires_at', '>', now())
             ->latest()
             ->first();
+        $customSub = \App\Models\CustomSubscription::active()->forMess($mess->id)->first();
 
-        return view('mess.upgrade', compact('mess', 'pendingUpgrade', 'plans', 'activeSub'));
+        return view('mess.upgrade', compact('mess', 'pendingUpgrade', 'plans', 'activeSub', 'customSub'));
     }
 
     // Owner or manager: upgrade history DataTable page

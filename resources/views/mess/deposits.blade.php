@@ -5,13 +5,13 @@
     <div class="content">
         <div class="page-header">
             <div class="page-title">
-                <h4 class="fw-bold">Member Deposits — {{ $mess->name }}</h4>
+                <h4 class="fw-bold">{{ __('Member Deposits') }} — {{ $mess->name }}</h4>
                 <h6>{{ date('F Y', mktime(0,0,0,$month,1,$year)) }}</h6>
             </div>
             <div class="page-btn">
                 @if($member->canManage())
                 <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addDepositModal">
-                    <i class="ti ti-circle-plus me-1"></i>Record Deposit
+                    <i class="ti ti-circle-plus me-1"></i>{{ __('Record Deposit') }}
                 </button>
                 @endif
             </div>
@@ -41,14 +41,14 @@
 
         <!-- Per Member Summary -->
         <div class="card mb-4">
-            <div class="card-header"><h6 class="mb-0">Deposit Summary per Member</h6></div>
+            <div class="card-header"><h6 class="mb-0">{{ __('Deposit Summary per Member') }}</h6></div>
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead>
                         <tr>
-                            <th>Member</th>
-                            <th>Total Deposited</th>
-                            <th>Status</th>
+                            <th>{{ __('Member') }}</th>
+                            <th>{{ __('Total Deposited') }}</th>
+                            <th>{{ __('Status') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -69,7 +69,7 @@
                             </td>
                             <td>
                                 <span class="badge bg-{{ ($depositsByMember[$m->user->id] ?? 0) > 0 ? 'success' : 'warning' }}">
-                                    {{ ($depositsByMember[$m->user->id] ?? 0) > 0 ? 'Deposited' : 'Pending' }}
+                                    {{ ($depositsByMember[$m->user->id] ?? 0) > 0 ? __('Deposited') : __('Pending') }}
                                 </span>
                             </td>
                         </tr>
@@ -77,7 +77,7 @@
                     </tbody>
                     <tfoot>
                         <tr class="table-success fw-bold">
-                            <td>Total</td>
+                            <td>{{ __('Total') }}</td>
                             <td>৳{{ number_format($totalDeposit, 2) }}</td>
                             <td></td>
                         </tr>
@@ -88,17 +88,17 @@
 
         <!-- Deposit History -->
         <div class="card">
-            <div class="card-header"><h6 class="mb-0">Deposit History</h6></div>
+            <div class="card-header"><h6 class="mb-0">{{ __('Deposit History') }}</h6></div>
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead>
                         <tr>
-                            <th>Date</th>
-                            <th>Member</th>
-                            <th>Amount</th>
-                            <th>Note</th>
-                            <th>Received By</th>
-                            @if($member->canManage()) <th>Actions</th> @endif
+                            <th>{{ __('Date') }}</th>
+                            <th>{{ __('Member') }}</th>
+                            <th>{{ __('Amount') }}</th>
+                            <th>{{ __('Note') }}</th>
+                            <th>{{ __('Received By') }}</th>
+                            @if($member->canManage()) <th>{{ __('Actions') }}</th> @endif
                         </tr>
                     </thead>
                     <tbody>
@@ -119,7 +119,7 @@
                             @endif
                         </tr>
                         @empty
-                        <tr><td colspan="6" class="text-center text-muted py-3">No deposits this month.</td></tr>
+                        <tr><td colspan="6" class="text-center text-muted py-3">{{ __('No deposits this month.') }}</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -133,7 +133,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Record Deposit</h5>
+                <h5 class="modal-title">{{ __('Record Deposit') }}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form action="{{ route('mess.deposits.store', $mess->id) }}" method="POST">
@@ -153,7 +153,7 @@
                     </div>
                     <div class="row g-2 mb-3">
                         <div class="col-6">
-                            <label class="form-label">Month</label>
+                            <label class="form-label">{{ __('Month') }}</label>
                             <select name="month" class="form-select">
                                 @for($m = 1; $m <= 12; $m++)
                                 <option value="{{ $m }}" {{ $m == now()->month ? 'selected' : '' }}>{{ date('F', mktime(0,0,0,$m,1)) }}</option>
@@ -161,22 +161,22 @@
                             </select>
                         </div>
                         <div class="col-6">
-                            <label class="form-label">Year</label>
+                            <label class="form-label">{{ __('Year') }}</label>
                             <input type="number" name="year" class="form-control" value="{{ now()->year }}">
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Deposit Date</label>
+                        <label class="form-label">{{ __('Deposit Date') }}</label>
                         <input type="date" name="deposit_date" class="form-control" value="{{ now()->toDateString() }}">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Note</label>
+                        <label class="form-label">{{ __('Note') }}</label>
                         <input type="text" name="note" class="form-control" placeholder="Optional note">
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Record Deposit</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                    <button type="submit" class="btn btn-primary">{{ __('Record Deposit') }}</button>
                 </div>
             </form>
         </div>

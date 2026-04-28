@@ -274,9 +274,19 @@ class MarketController extends Controller
         $item->delete();
 
         $total = $routine->listItems()->sum('actual_cost');
-        $routine->update(['total_spent' => $total]);
+        $update = ['total_spent' => $total];
 
-        return response()->json(['success' => true, 'total' => $total]);
+        // If re-approval was triggered by adding new items and all unapproved items are now gone, revert to approved
+        if ($routine->status === 'pending_reapproval') {
+            $hasUnapproved = $routine->listItems()->where('is_approved', false)->exists();
+            if (!$hasUnapproved) {
+                $update['status'] = 'approved';
+            }
+        }
+
+        $routine->update($update);
+
+        return response()->json(['success' => true, 'total' => $total, 'status' => $routine->fresh()->status]);
     }
 
     public function completeRoutine(Mess $mess, MarketRoutine $routine)
@@ -356,6 +366,66 @@ class MarketController extends Controller
         ]);
 
         return back()->with('success', 'Market expense added.');
+    }
+
+    public function quickAddItems(Request $request, Mess $mess)
+    {
+        $user      = Auth::user();
+        $member    = $user->getMembershipIn($mess->id);
+        $isManager = $user->isManagerOf($mess->id);
+        if (!$member && !$user->is_super_admin) abort(403);
+
+        $request->validate([
+            'date'                => 'required|date',
+            'assigned_to'         => 'required|exists:users,id',
+            'items'               => 'required|array|min:1',
+            'items.*.item_name'   => 'required|string|max:255',
+            'items.*.quantity'    => 'nullable|string|max:50',
+            'items.*.unit'        => 'nullable|string|max:20',
+            'items.*.actual_cost' => 'nullable|numeric|min:0',
+        ]);
+
+        $assignedTo = $isManager ? (int) $request->assigned_to : (int) $user->id;
+        $date       = $request->date;
+
+        $existing = MarketRoutine::where('mess_id', $mess->id)
+            ->where('start_date', '<=', $date)
+            ->where('end_date', '>=', $date)
+            ->with('assignedTo')
+            ->first();
+
+        if ($existing && (int) $existing->assigned_to !== $assignedTo) {
+            return back()->with('error', 'This date is already assigned to ' . $existing->assignedTo->name . '. Choose another date.');
+        }
+
+        $routine = $existing ?? MarketRoutine::create([
+            'mess_id'     => $mess->id,
+            'start_date'  => $date,
+            'end_date'    => $date,
+            'assigned_to' => $assignedTo,
+            'assigned_by' => Auth::id(),
+            'status'      => 'pending',
+        ]);
+
+        foreach ($request->items as $item) {
+            MarketListItem::create([
+                'routine_id'   => $routine->id,
+                'mess_id'      => $mess->id,
+                'item_name'    => $item['item_name'],
+                'quantity'     => $item['quantity'] ?? null,
+                'unit'         => $item['unit'] ?? null,
+                'actual_cost'  => $item['actual_cost'] ?? 0,
+                'expense_date' => $date,
+                'is_approved'  => false,
+                'added_by'     => Auth::id(),
+            ]);
+        }
+
+        $total = $routine->listItems()->sum('actual_cost');
+        $routine->update(['total_spent' => $total]);
+
+        $count = count($request->items);
+        return back()->with('success', $count . ' item' . ($count > 1 ? 's' : '') . ' added to market list.');
     }
 
     public function requestExchange(Request $request, Mess $mess, MarketRoutine $routine)

@@ -5,7 +5,7 @@
     <div class="content">
         <div class="page-header">
             <div class="page-title">
-                <h4 class="fw-bold">Manager Rotation — {{ $mess->name }}</h4>
+                <h4 class="fw-bold">{{ __('Manager Rotation') }} — {{ $mess->name }}</h4>
                 <h6>Monthly manager assignment & voting</h6>
             </div>
             <div class="page-btn">
@@ -115,7 +115,7 @@
                             <th>Manager</th>
                             <th>Avg. Rating</th>
                             <th>Votes</th>
-                            <th>Status</th>
+                            <th>{{ __('Status') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -198,7 +198,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="submit" class="btn btn-warning">Assign Manager</button>
                 </div>
             </form>

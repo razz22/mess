@@ -125,14 +125,26 @@ class Mess extends Model
 
     public function getEffectiveMaxMembers(): int
     {
+        // Custom subscription takes highest priority
+        $custom = \App\Models\CustomSubscription::active()->forMess($this->id)->first();
+        if ($custom) {
+            return $custom->max_members;
+        }
+
         if ($this->subscription) {
             return $this->subscription->max_members;
         }
+
         return $this->max_members;
     }
 
     public function getMemberCount(): int
     {
         return $this->activeMembers()->count();
+    }
+
+    public function adminMessages(): HasMany
+    {
+        return $this->hasMany(AdminMessage::class);
     }
 }

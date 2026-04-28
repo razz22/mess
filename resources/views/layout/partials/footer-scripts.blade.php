@@ -303,3 +303,154 @@
     <!-- Custom JS -->
     <script src="{{ URL::asset('build/js/theme-colorpicker.js') }}"></script>
     <script src="{{ URL::asset('build/js/script.js') }}"></script>
+
+@auth
+@php $__bellMessId = session('active_mess_id'); @endphp
+@if($__bellMessId)
+<script>
+(function(){
+    var latestUrl  = "{{ route('mess.notices.latest', $__bellMessId) }}";
+    var markAllUrl = "{{ route('mess.notices.markallread', $__bellMessId) }}";
+    var csrf       = document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').content : '';
+    var lastUnread = -1;
+    var knownIds   = '';
+
+    function getEl(id){ return document.getElementById(id); }
+
+    function poll(){
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', latestUrl);
+        xhr.setRequestHeader('X-Requested-With','XMLHttpRequest');
+        xhr.setRequestHeader('Accept','application/json');
+        xhr.onload = function(){
+            if(xhr.status !== 200) return;
+            var data;
+            try{ data = JSON.parse(xhr.responseText); } catch(e){ return; }
+            var notices = data.notices || [];
+            var unread  = data.unread  || 0;
+
+            // Detect new notice: unread count increased
+            if(lastUnread >= 0 && unread > lastUnread){
+                var newest = notices.filter(function(n){ return !n.is_read; });
+                if(newest.length) notify(newest[0].title);
+            }
+            lastUnread = unread;
+
+            // Bell badge
+            var badge = getEl('notice-bell-badge');
+            if(badge){
+                badge.textContent   = unread > 9 ? '9+' : unread;
+                badge.style.display = unread > 0 ? '' : 'none';
+            }
+            // Sidebar badge
+            var sb = getEl('sidebar-notice-badge');
+            if(sb){
+                sb.textContent = unread > 9 ? '9+' : unread;
+                unread > 0 ? sb.classList.remove('d-none') : sb.classList.add('d-none');
+            }
+            // Dropdown list
+            var list = getEl('notice-bell-list');
+            if(!list) return;
+            if(!notices.length){
+                list.innerHTML = '<li class="text-center text-muted p-3 small">{{ __("No notices yet.") }}</li>';
+                return;
+            }
+            list.innerHTML = notices.map(function(n){
+                return '<li class="notification-message'+(n.is_read?'':' fw-semibold')+'">'
+                    +'<a href="'+n.url+'">'
+                    +'<div class="media d-flex align-items-start gap-2 p-2">'
+                    +'<span class="flex-shrink-0 rounded bg-primary-subtle d-flex align-items-center justify-content-center" style="width:34px;height:34px;">'
+                    +'<i class="ti ti-speakerphone text-primary"></i></span>'
+                    +'<div class="flex-grow-1 min-w-0">'
+                    +'<p class="noti-details mb-0">'
+                    +(!n.is_read?'<span class="badge bg-danger me-1" style="font-size:9px;">NEW</span>':'')
+                    +n.title+'</p>'
+                    +'<p class="small text-muted mb-0 text-truncate">'+n.body_preview+'</p>'
+                    +'<p class="noti-time mb-0">'+n.published_at+' &middot; '+n.author+'</p>'
+                    +'</div></div></a></li>';
+            }).join('');
+        };
+        xhr.send();
+    }
+
+    function notify(title){
+        if(typeof toastr !== 'undefined'){
+            toastr.info(title, '{{ __("New Notice") }}', {timeOut:7000,closeButton:true,progressBar:true});
+        } else {
+            var d = document.createElement('div');
+            d.style.cssText='position:fixed;top:20px;right:20px;z-index:99999;background:#206bc4;color:#fff;padding:14px 20px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.3);max-width:320px;font-size:14px;cursor:pointer;';
+            d.innerHTML='<strong>&#128226; {{ __("New Notice") }}</strong><br>'+title;
+            d.onclick=function(){document.body.removeChild(d);};
+            document.body.appendChild(d);
+            setTimeout(function(){ if(document.body.contains(d)) document.body.removeChild(d); },7000);
+        }
+    }
+
+    // Mark all read button
+    document.addEventListener('DOMContentLoaded', function(){
+        var btn = getEl('notice-mark-all-btn');
+        if(btn) btn.addEventListener('click', function(){
+            var x = new XMLHttpRequest();
+            x.open('POST', markAllUrl);
+            x.setRequestHeader('X-Requested-With','XMLHttpRequest');
+            x.setRequestHeader('X-CSRF-TOKEN', csrf);
+            x.setRequestHeader('Content-Type','application/json');
+            x.setRequestHeader('Accept','application/json');
+            x.onload = function(){ if(x.status===200) poll(); };
+            x.send('{}');
+        });
+    });
+
+    poll();
+    setInterval(poll, 5000);
+})();
+</script>
+@endif
+
+{{-- Admin global suggestion popup (only on non-suggestions pages) --}}
+@if(Auth::user()->is_super_admin && !Request::routeIs('admin.suggestions.*'))
+<script src="{{ URL::asset('build/js/pusher.min.js') }}"></script>
+<script>
+(function(){
+    var body   = document.body;
+    var rKey   = body.getAttribute('data-reverb-key');
+    if(!rKey || typeof Pusher === 'undefined') return;
+
+    var csrf   = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    var rHost  = body.getAttribute('data-reverb-host') || 'localhost';
+    var rPort  = parseInt(body.getAttribute('data-reverb-port') || '8080');
+    var rScheme= body.getAttribute('data-reverb-scheme') || 'http';
+
+    try {
+        var pusher = new Pusher(rKey, {
+            wsHost:            rHost,
+            wsPort:            rPort,
+            wssPort:           rPort,
+            forceTLS:          rScheme === 'https',
+            enabledTransports: ['ws','wss'],
+            disableStats:      true,
+            cluster:           'mt1',
+            authEndpoint:      '/broadcasting/auth',
+            auth: { headers: { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' } },
+        });
+
+        var ch = pusher.subscribe('private-admin-suggestions');
+        ch.bind('.message.sent', function(data){
+            if(data.sender_role !== 'owner') return;
+            if(typeof toastr !== 'undefined'){
+                toastr.info(
+                    '<a href="/admin/suggestions?mess_id=' + data.mess_id + '" style="color:inherit;text-decoration:underline;">'
+                    + '<strong>' + data.mess_name + '</strong> (' + data.owner_name + ')<br>'
+                    + data.message.substring(0,80) + '</a>',
+                    '{{ __("New Suggestion") }}',
+                    {timeOut:10000, closeButton:true, progressBar:true, allowHtml:true}
+                );
+            }
+            var sb = document.querySelector('.admin-suggestions-badge');
+            if(sb){ sb.textContent = (parseInt(sb.textContent)||0) + 1; sb.classList.remove('d-none'); }
+        });
+    } catch(e) {}
+})();
+</script>
+@endif
+@endauth

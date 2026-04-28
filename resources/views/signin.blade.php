@@ -16,8 +16,8 @@
                         <img src="{{URL::asset('build/img/logo-white.svg')}}" alt="Mess Manager">
                     </a>
                     <div class="login-userheading">
-                        <h3>Sign In</h3>
-                        <h4 class="fs-16">Welcome back! Sign in to manage your mess.</h4>
+                        <h3>{{ __('Sign In') }}</h3>
+                        <h4 class="fs-16">{{ __('Welcome back! Sign in to manage your mess.') }}</h4>
                     </div>
 
                     @if(session('success'))
@@ -28,20 +28,20 @@
                     @endif
 
                     <div class="mb-3">
-                        <label class="form-label">Email <span class="text-danger">*</span></label>
+                        <label class="form-label">{{ __('Email') }} <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <input type="email" name="email" value="{{ old('email') }}"
                                 class="form-control border-end-0 @error('email') is-invalid @enderror"
-                                placeholder="Enter your email" required>
+                                placeholder="{{ __('Email') }}" required>
                             <span class="input-group-text border-start-0">
                                 <i class="ti ti-mail"></i>
                             </span>
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Password <span class="text-danger">*</span></label>
+                        <label class="form-label">{{ __('Password') }} <span class="text-danger">*</span></label>
                         <div class="pass-group">
-                            <input type="password" name="password" class="pass-input form-control" placeholder="Enter your password" required>
+                            <input type="password" name="password" class="pass-input form-control" placeholder="{{ __('Password') }}" required>
                             <span class="ti toggle-password ti-eye-off text-gray-9"></span>
                         </div>
                     </div>
@@ -51,20 +51,20 @@
                                 <div class="custom-control custom-checkbox">
                                     <label class="checkboxs ps-4 mb-0 pb-0 line-height-1 fs-16 text-gray-6">
                                         <input type="checkbox" name="remember">
-                                        <span class="checkmarks"></span>Remember me
+                                        <span class="checkmarks"></span>{{ __('Remember me') }}
                                     </label>
                                 </div>
                                 <div class="text-end">
-                                    <a class="text-orange fs-16 fw-medium" href="{{ url('forgot-password') }}">Forgot Password?</a>
+                                    <a class="text-orange fs-16 fw-medium" href="{{ url('forgot-password') }}">{{ __('Forgot Password?') }}</a>
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div class="form-login mt-3">
-                        <button type="submit" class="btn btn-primary w-100">Sign In</button>
+                        <button type="submit" class="btn btn-primary w-100">{{ __('Sign In') }}</button>
                     </div>
                     <div class="signinform mt-3">
-                        <h4>New here? <a href="{{ route('register') }}" class="hover-a">Create an account</a></h4>
+                        <h4>{{ __("Don't have an account?") }} <a href="{{ route('register') }}" class="hover-a">{{ __('Create Account') }}</a></h4>
                     </div>
 
                     <div class="mt-3 d-flex align-items-center gap-2">
@@ -78,12 +78,12 @@
                                 <path fill="#FBBC05" d="M24 44c5.4 0 10.3-1.8 14.1-4.9l-6.5-5.3C29.6 35.4 26.9 36 24 36c-5.6 0-10.2-3.7-11.9-8.7l-7 5.4C8.8 39.7 15.8 44 24 44z"/>
                                 <path fill="#EA4335" d="M44.5 20H24v8.5h11.9c-.9 2.6-2.6 4.8-4.8 6.3l6.5 5.3C41.8 36.5 44 30.7 44 24c0-1.3-.2-2.7-.5-4z"/>
                             </svg>
-                            Continue with Google
+                            {{ __('Continue with Google') }}
                         </a>
                     </div>
 
                     <div class="mt-3 text-center">
-                        <a href="{{ url('/') }}" class="text-muted small"><i class="ti ti-arrow-left me-1"></i>Back to Home</a>
+                        <a href="{{ url('/') }}" class="text-muted small"><i class="ti ti-arrow-left me-1"></i>{{ __('Back to Home') }}</a>
                     </div>
                 </div>
             </form>

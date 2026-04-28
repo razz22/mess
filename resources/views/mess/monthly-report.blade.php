@@ -5,7 +5,7 @@
     <div class="content">
         <div class="page-header">
             <div class="page-title">
-                <h4 class="fw-bold">Monthly Report — {{ $mess->name }}</h4>
+                <h4 class="fw-bold">{{ __('Monthly Report') }} — {{ $mess->name }}</h4>
                 <h6>{{ date('F Y', mktime(0,0,0,$month,1,$year)) }}</h6>
             </div>
             <div class="page-btn d-flex gap-2">
@@ -135,7 +135,7 @@
                 <table class="table table-hover">
                     <thead class="table-light">
                         <tr>
-                            <th>Member</th>
+                            <th>{{ __('Member') }}</th>
                             <th class="text-center">Meals</th>
                             <th class="text-center">Per Meal Rate</th>
                             <th class="text-end">Meal Cost</th>
@@ -144,9 +144,9 @@
                                 <span class="text-muted" style="font-size:10px;font-weight:normal;display:block;">Shared expenses ÷ members</span>
                             </th>
                             <th class="text-end">Total Payable</th>
-                            <th class="text-end">Deposited</th>
+                            <th class="text-end">{{ __('Deposited') }}</th>
                             <th class="text-end">Due / Extra</th>
-                            <th>Status</th>
+                            <th>{{ __('Status') }}</th>
                             <th></th>
                             @if($isManager) <th></th> @endif
                         </tr>
@@ -371,7 +371,7 @@
                 <div id="extraResultMsg" class="mt-3 d-none"></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">{{ __('Close') }}</button>
             </div>
         </div>
     </div>
@@ -405,7 +405,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="submit" class="btn btn-success"><i class="ti ti-cash me-1"></i>Save Deposit</button>
                 </div>
             </form>
@@ -425,7 +425,7 @@
                 <p class="text-muted text-center">Loading…</p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ __('Close') }}</button>
             </div>
         </div>
     </div>

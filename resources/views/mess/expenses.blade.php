@@ -5,13 +5,13 @@
     <div class="content">
         <div class="page-header">
             <div class="page-title">
-                <h4 class="fw-bold">Expenses — {{ $mess->name }}</h4>
+                <h4 class="fw-bold">{{ __('Expenses') }} — {{ $mess->name }}</h4>
                 <h6>{{ date('F Y', mktime(0,0,0,$month,1,$year)) }}</h6>
             </div>
             <div class="page-btn d-flex gap-2">
                 @if($member->canManage())
                 <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addExpenseModal">
-                    <i class="ti ti-circle-plus me-1"></i>Add Expense
+                    <i class="ti ti-circle-plus me-1"></i>{{ __('Add Expense') }}
                 </button>
                 @endif
             </div>
@@ -44,7 +44,7 @@
             <div class="col-md-4">
                 <div class="card">
                     <div class="card-body text-center">
-                        <div class="text-muted small">Total Expenses</div>
+                        <div class="text-muted small">{{ __('Total Expenses') }}</div>
                         <div class="fs-4 fw-bold text-danger">৳{{ number_format($totalExpense, 2) }}</div>
                     </div>
                 </div>
@@ -52,7 +52,7 @@
             <div class="col-md-4">
                 <div class="card">
                     <div class="card-body text-center">
-                        <div class="text-muted small">Total Entries</div>
+                        <div class="text-muted small">{{ __('Total Entries') }}</div>
                         <div class="fs-4 fw-bold">{{ $expenses->count() }}</div>
                     </div>
                 </div>
@@ -60,7 +60,7 @@
             <div class="col-md-4">
                 <div class="card">
                     <div class="card-body text-center">
-                        <div class="text-muted small">Per Member Estimate</div>
+                        <div class="text-muted small">{{ __('Per Member Estimate') }}</div>
                         @php $memberCount = $mess->getMemberCount(); @endphp
                         <div class="fs-4 fw-bold text-primary">৳{{ $memberCount > 0 ? number_format($totalExpense / $memberCount, 2) : '0.00' }}</div>
                     </div>
@@ -71,17 +71,17 @@
         <div class="row g-3">
             <div class="col-lg-8">
                 <div class="card">
-                    <div class="card-header"><h6 class="mb-0">Expense List</h6></div>
+                    <div class="card-header"><h6 class="mb-0">{{ __('Expense List') }}</h6></div>
                     <div class="table-responsive">
                         <table class="table table-hover">
                             <thead>
                                 <tr>
-                                    <th>Date</th>
-                                    <th>Remarks</th>
-                                    <th>Category</th>
-                                    <th>Amount</th>
-                                    <th>Added By</th>
-                                    @if($member->canManage()) <th>Actions</th> @endif
+                                    <th>{{ __('Date') }}</th>
+                                    <th>{{ __('Remarks') }}</th>
+                                    <th>{{ __('Category') }}</th>
+                                    <th>{{ __('Amount') }}</th>
+                                    <th>{{ __('Added By') }}</th>
+                                    <th>{{ __('Actions') }}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -91,10 +91,10 @@
                                     <td>
                                         {{ $expense->title }}
                                         @if($expense->is_market_expense)
-                                        <span class="badge bg-success-subtle text-success ms-1" style="font-size:10px">Market</span>
+                                        <span class="badge bg-success-subtle text-success ms-1" style="font-size:10px">{{ __('Market') }}</span>
                                         @endif
                                         @if($expense->is_recurring_entry)
-                                        <span class="badge bg-info-subtle text-info ms-1" style="font-size:10px"><i class="ti ti-refresh me-1"></i>Auto</span>
+                                        <span class="badge bg-info-subtle text-info ms-1" style="font-size:10px"><i class="ti ti-refresh me-1"></i>{{ __('Auto') }}</span>
                                         @endif
                                     </td>
                                     <td>
@@ -108,32 +108,45 @@
                                     </td>
                                     <td class="fw-bold text-danger">৳{{ number_format($expense->amount, 2) }}</td>
                                     <td class="text-muted small">{{ $expense->addedBy->name }}</td>
-                                    @if($member->canManage())
+                                    @php
+                                        $isOwnerOrManager = in_array($member->role, ['owner', 'manager']) || Auth::user()->is_super_admin;
+                                        $canEditExpense   = $isOwnerOrManager || $expense->added_by === Auth::id();
+                                        $canDeleteExpense = $isOwnerOrManager || $expense->added_by === Auth::id();
+                                    @endphp
+                                    @if($canEditExpense || $canDeleteExpense)
                                     <td>
                                         <div class="d-flex gap-1">
+                                            @if($canEditExpense)
                                             <button class="btn btn-xs btn-outline-primary"
                                                 onclick="openEditModal({{ $expense->id }}, '{{ addslashes($expense->title) }}', {{ $expense->amount }}, '{{ $expense->expense_date->format('Y-m-d') }}', {{ $expense->category_id ?? 'null' }})"
                                                 title="Edit">
                                                 <i class="ti ti-pencil"></i>
                                             </button>
-                                            <form action="{{ route('mess.expenses.destroy', [$mess->id, $expense->id]) }}" method="POST" onsubmit="return confirm('Delete?')">
-                                                @csrf @method('DELETE')
-                                                <button type="submit" class="btn btn-xs btn-outline-danger" title="Delete"><i class="ti ti-trash"></i></button>
-                                            </form>
+                                            @endif
+                                            @if($canDeleteExpense)
+                                            <button type="button" class="btn btn-xs btn-outline-danger" title="Delete"
+                                                onclick="openDeleteModal(
+                                                    '{{ route('mess.expenses.destroy', [$mess->id, $expense->id]) }}',
+                                                    '{{ addslashes($expense->title) }}',
+                                                    'expense'
+                                                )"><i class="ti ti-trash"></i></button>
+                                            @endif
                                         </div>
                                     </td>
+                                    @else
+                                    <td></td>
                                     @endif
                                 </tr>
                                 @empty
-                                <tr><td colspan="6" class="text-center text-muted py-3">No expenses this month.</td></tr>
+                                <tr><td colspan="6" class="text-center text-muted py-3">{{ __('No expenses this month.') }}</td></tr>
                                 @endforelse
                             </tbody>
                             @if($expenses->count() > 0)
                             <tfoot>
                                 <tr class="table-danger">
-                                    <td colspan="3" class="fw-bold text-end">Total</td>
+                                    <td colspan="3" class="fw-bold text-end">{{ __('Total') }}</td>
                                     <td class="fw-bold">৳{{ number_format($totalExpense, 2) }}</td>
-                                    <td colspan="{{ $member->canManage() ? 2 : 1 }}"></td>
+                                    <td colspan="2"></td>
                                 </tr>
                             </tfoot>
                             @endif
@@ -144,19 +157,19 @@
             <div class="col-lg-4">
                 <!-- By Category -->
                 <div class="card">
-                    <div class="card-header"><h6 class="mb-0">By Category</h6></div>
+                    <div class="card-header"><h6 class="mb-0">{{ __('By Category') }}</h6></div>
                     <div class="card-body">
                         @forelse($byCategory as $catId => $amount)
                         @php $cat = $categories->where('id', $catId)->first(); @endphp
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <div class="d-flex align-items-center gap-2">
                                 <i class="{{ $cat?->icon ?? 'ti-coins' }} text-{{ $cat?->color ?? 'secondary' }}"></i>
-                                <span class="small">{{ $cat?->name ?? 'Uncategorized' }}</span>
+                                <span class="small">{{ $cat?->name ?? __('Uncategorized') }}</span>
                             </div>
                             <strong class="text-danger small">৳{{ number_format($amount, 2) }}</strong>
                         </div>
                         @empty
-                        <p class="text-muted text-center">No data</p>
+                        <p class="text-muted text-center">{{ __('No data') }}</p>
                         @endforelse
                     </div>
                 </div>
@@ -164,7 +177,7 @@
                 <!-- Categories List -->
                 <div class="card mt-3">
                     <div class="card-header d-flex align-items-center justify-content-between py-2">
-                        <h6 class="mb-0">Categories</h6>
+                        <h6 class="mb-0">{{ __('Categories') }}</h6>
                         @if($member->canManage())
                         <button class="btn btn-xs btn-outline-primary py-0" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
                             <i class="ti ti-plus" style="font-size:12px"></i> Add
@@ -193,18 +206,17 @@
                                     onclick="openEditCategoryModal({{ $cat->id }}, '{{ addslashes($cat->name) }}', '{{ $cat->icon }}', '{{ $cat->color }}', {{ $cat->is_recurring ? 'true' : 'false' }}, '{{ $cat->recurring_amount ?? '' }}')">
                                     <i class="ti ti-pencil" style="font-size:11px"></i>
                                 </button>
-                                <form action="{{ route('mess.expense-categories.destroy', [$mess->id, $cat->id]) }}" method="POST"
-                                    onsubmit="return confirm('Delete category \'{{ addslashes($cat->name) }}\'? Existing expenses will become uncategorized.')">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="btn btn-xs btn-outline-danger py-0 px-1" title="Delete">
-                                        <i class="ti ti-trash" style="font-size:11px"></i>
-                                    </button>
-                                </form>
+                                                <button type="button" class="btn btn-xs btn-outline-danger py-0 px-1" title="Delete"
+                                    onclick="openDeleteModal(
+                                        '{{ route('mess.expense-categories.destroy', [$mess->id, $cat->id]) }}',
+                                        '{{ addslashes($cat->name) }}',
+                                        'category'
+                                    )"><i class="ti ti-trash" style="font-size:11px"></i></button>
                             </div>
                             @endif
                         </div>
                         @empty
-                        <p class="text-muted text-center small py-3">No categories yet.</p>
+                        <p class="text-muted text-center small py-3">{{ __('No categories yet.') }}</p>
                         @endforelse
                     </div>
                 </div>
@@ -218,12 +230,21 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Add Expense</h5>
+                <h5 class="modal-title">{{ __('Add Expense') }}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form action="{{ route('mess.expenses.store', $mess->id) }}" method="POST">
                 @csrf
                 <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">{{ __('Category') }}</label>
+                        <select name="category_id" class="form-select">
+                            <option value="">-- No Category --</option>
+                            @foreach($categories as $cat)
+                            <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                     <div class="mb-3">
                         <label class="form-label">Remarks <span class="text-danger">*</span></label>
                         <input type="text" name="title" class="form-control" required placeholder="e.g. Monthly electricity bill">
@@ -233,26 +254,17 @@
                         <input type="number" name="amount" class="form-control" required step="0.01" min="0.01">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Date</label>
+                        <label class="form-label">{{ __('Date') }}</label>
                         <input type="date" name="expense_date" class="form-control" value="{{ now()->toDateString() }}">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Category</label>
-                        <select name="category_id" class="form-select">
-                            <option value="">-- No Category --</option>
-                            @foreach($categories as $cat)
-                            <option value="{{ $cat->id }}">{{ $cat->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Description</label>
+                        <label class="form-label">{{ __('Description') }}</label>
                         <textarea name="description" class="form-control" rows="2"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add Expense</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                    <button type="submit" class="btn btn-primary">{{ __('Add Expense') }}</button>
                 </div>
             </form>
         </div>
@@ -264,7 +276,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Edit Expense</h5>
+                <h5 class="modal-title">{{ __('Edit Expense') }}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="editExpenseForm" method="POST">
@@ -279,11 +291,11 @@
                         <input type="number" name="amount" id="editAmount" class="form-control" required step="0.01" min="0.01">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Date</label>
+                        <label class="form-label">{{ __('Date') }}</label>
                         <input type="date" name="expense_date" id="editDate" class="form-control">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Category</label>
+                        <label class="form-label">{{ __('Category') }}</label>
                         <select name="category_id" id="editCategory" class="form-select">
                             <option value="">-- No Category --</option>
                             @foreach($categories as $cat)
@@ -293,8 +305,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                    <button type="submit" class="btn btn-primary">{{ __('Save Changes') }}</button>
                 </div>
             </form>
         </div>
@@ -320,7 +332,7 @@ function openEditModal(id, title, amount, date, categoryId) {
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Add Expense Category</h5>
+                <h5 class="modal-title">{{ __('Add Expense Category') }}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form action="{{ route('mess.expense-categories.store', $mess->id) }}" method="POST">
@@ -336,14 +348,14 @@ function openEditModal(id, title, amount, date, categoryId) {
                             <input type="text" name="icon" class="form-control" placeholder="ti-droplet">
                         </div>
                         <div class="col-6">
-                            <label class="form-label">Color</label>
+                            <label class="form-label">{{ __('Color') }}</label>
                             <select name="color" class="form-select">
-                                <option value="primary">Blue</option>
-                                <option value="success">Green</option>
-                                <option value="warning">Yellow</option>
+                                <option value="primary">{{ __('Blue') }}</option>
+                                <option value="success">{{ __('Green') }}</option>
+                                <option value="warning">{{ __('Yellow') }}</option>
                                 <option value="danger">Red</option>
-                                <option value="info">Cyan</option>
-                                <option value="secondary">Grey</option>
+                                <option value="info">{{ __('Cyan') }}</option>
+                                <option value="secondary">{{ __('Grey') }}</option>
                             </select>
                         </div>
                     </div>
@@ -363,8 +375,8 @@ function openEditModal(id, title, amount, date, categoryId) {
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add Category</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                    <button type="submit" class="btn btn-primary">{{ __('Add Category') }}</button>
                 </div>
             </form>
         </div>
@@ -376,7 +388,7 @@ function openEditModal(id, title, amount, date, categoryId) {
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Edit Category</h5>
+                <h5 class="modal-title">{{ __('Edit Category') }}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="editCategoryForm" method="POST">
@@ -392,14 +404,14 @@ function openEditModal(id, title, amount, date, categoryId) {
                             <input type="text" name="icon" id="ecIcon" class="form-control">
                         </div>
                         <div class="col-6">
-                            <label class="form-label">Color</label>
+                            <label class="form-label">{{ __('Color') }}</label>
                             <select name="color" id="ecColor" class="form-select">
-                                <option value="primary">Blue</option>
-                                <option value="success">Green</option>
-                                <option value="warning">Yellow</option>
+                                <option value="primary">{{ __('Blue') }}</option>
+                                <option value="success">{{ __('Green') }}</option>
+                                <option value="warning">{{ __('Yellow') }}</option>
                                 <option value="danger">Red</option>
-                                <option value="info">Cyan</option>
-                                <option value="secondary">Grey</option>
+                                <option value="info">{{ __('Cyan') }}</option>
+                                <option value="secondary">{{ __('Grey') }}</option>
                             </select>
                         </div>
                     </div>
@@ -419,13 +431,62 @@ function openEditModal(id, title, amount, date, categoryId) {
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                    <button type="submit" class="btn btn-primary">{{ __('Save Changes') }}</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:400px">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title d-flex align-items-center gap-2">
+                    <span class="rounded-circle d-flex align-items-center justify-content-center bg-danger text-white flex-shrink-0" style="width:32px;height:32px">
+                        <i class="ti ti-trash fs-6"></i>
+                    </span>
+                    <span id="deleteModalTitle">Delete</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-3">
+                <p class="mb-2 text-muted small" id="deleteModalMessage"></p>
+                <div class="rounded p-3 bg-light border">
+                    <span class="fw-semibold small" id="deleteModalItemName"></span>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0 justify-content-center gap-2">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="ti ti-x me-1"></i>{{ __('Cancel') }}
+                </button>
+                <form id="deleteConfirmForm" method="POST" class="d-inline">
+                    @csrf @method('DELETE')
+                    <button type="submit" class="btn btn-danger px-4">
+                        <i class="ti ti-trash me-1"></i>{{ __('Yes, Delete') }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openDeleteModal(action, name, type) {
+    document.getElementById('deleteConfirmForm').action = action;
+    document.getElementById('deleteModalItemName').textContent = name;
+    if (type === 'category') {
+        document.getElementById('deleteModalTitle').textContent = '{{ __("Delete Category") }}';
+        document.getElementById('deleteModalMessage').textContent = '{{ __("Existing expenses will become uncategorized. This action cannot be undone.") }}';
+    } else {
+        document.getElementById('deleteModalTitle').textContent = '{{ __("Delete Expense") }}';
+        document.getElementById('deleteModalMessage').textContent = '{{ __("This will permanently delete the expense record.") }}';
+    }
+    new bootstrap.Modal(document.getElementById('deleteConfirmModal')).show();
+}
+</script>
 
 <script>
 function openEditCategoryModal(id, name, icon, color, isRecurring, recurringAmount) {

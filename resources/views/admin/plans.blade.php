@@ -97,7 +97,7 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>#</th>
-                                    <th>Plan</th>
+                                    <th>{{ __('Plan') }}</th>
                                     <th class="text-center">Members</th>
                                     <th class="text-center">Price</th>
                                     <th class="text-center">Duration</th>
@@ -220,8 +220,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="ti ti-device-floppy me-1"></i>Save Changes</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                    <button type="submit" class="btn btn-primary"><i class="ti ti-device-floppy me-1"></i>{{ __('Save Changes') }}</button>
                 </div>
             </form>
         </div>

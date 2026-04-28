@@ -60,7 +60,8 @@ class MessController extends Controller
                 ->with('error', "You can only create up to {$maxMesses} messes.");
         }
 
-        return view('mess.create');
+        $sysSettings = \App\Models\SystemSetting::instance();
+        return view('mess.create', compact('sysSettings'));
     }
 
     public function store(Request $request)
@@ -264,6 +265,9 @@ class MessController extends Controller
                 ->get();
         }
 
+        $announcements = \App\Models\Announcement::active()->forMess($mess->id)->latest()->get();
+        $customSub     = \App\Models\CustomSubscription::active()->forMess($mess->id)->first();
+
         return view('mess.dashboard', compact(
             'mess', 'member', 'currentManager', 'todayMeals',
             'todayRoutine', 'monthlyExpenses', 'monthlyDeposits',
@@ -273,7 +277,8 @@ class MessController extends Controller
             'todayWeekNo', 'todayDayOfWeek',
             'routineMonthStart', 'routineCalDays',
             'dashChartMemberNames', 'dashChartMealDays', 'dashChartPayables',
-            'dashChartCatNames', 'dashChartCatTotals'
+            'dashChartCatNames', 'dashChartCatTotals',
+            'announcements', 'customSub'
         ));
     }
 

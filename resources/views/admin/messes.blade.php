@@ -135,7 +135,7 @@
                     <div class="form-text">Current: {{ $m->active_members_count }} active members</div>
                 </div>
                 <div class="modal-footer py-2">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="submit" class="btn btn-primary btn-sm"><i class="ti ti-check me-1"></i>Update</button>
                 </div>
             </form>
@@ -178,7 +178,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="submit" class="btn btn-success"><i class="ti ti-device-floppy me-1"></i>Create Mess</button>
                 </div>
             </form>

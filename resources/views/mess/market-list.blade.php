@@ -19,8 +19,8 @@
     // Add items: assigned member or manager always can; adding to approved triggers re-approval
     $canAdd = $isManager || $isAssigned || $isSuperAdmin;
 
-    // Approve button: only manager/owner, when status needs approval
-    $canApprove = ($isManager || $isSuperAdmin) && $needsApproval;
+    // Approve button: only manager/owner, when status needs approval AND list has items
+    $canApprove = ($isManager || $isSuperAdmin) && $needsApproval && $items->isNotEmpty();
 @endphp
 <div class="page-wrapper">
     <div class="content">
@@ -36,6 +36,7 @@
                     @endif
                 </h4>
                 <h6>Assigned to: <strong>{{ $routine->assignedTo->name }}</strong>
+                    @if($items->isNotEmpty() || $isApproved)
                     @php
                         $badgeColor = match($status) {
                             'approved','completed' => 'success',
@@ -48,12 +49,13 @@
                             default                => 'Pending Approval',
                         };
                     @endphp
-                    <span class="badge bg-{{ $badgeColor }} ms-2">{{ $badgeLabel }}</span>
+                    <span id="statusBadge" class="badge bg-{{ $badgeColor }} ms-2">{{ $badgeLabel }}</span>
+                    @endif
                 </h6>
             </div>
             <div class="page-btn d-flex gap-2">
                 @if($canApprove)
-                <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#approveModal">
+                <button id="approveBtnWrap" type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#approveModal">
                     <i class="ti ti-circle-check me-1"></i>{{ $needsReapproval ? 'Re-approve' : 'Approve' }}
                 </button>
                 @endif
@@ -88,6 +90,27 @@
                                     <th class="text-end" style="width:110px">Cost (৳)</th>
                                     <th style="width:70px"></th>
                                 </tr>
+                                @if($canAdd)
+                                <tr class="bg-primary-subtle">
+                                    <td class="py-2 px-2">
+                                        <input type="text" id="new_name" class="form-control form-control-sm" placeholder="Item name *" required>
+                                    </td>
+                                    <td class="py-2 px-1">
+                                        <div class="d-flex gap-1">
+                                            <input type="text" id="new_qty" class="form-control form-control-sm" placeholder="Qty" style="width:48px">
+                                            <input type="text" id="new_unit" class="form-control form-control-sm" placeholder="Unit" style="width:48px">
+                                        </div>
+                                    </td>
+                                    <td class="py-2 px-1 text-end">
+                                        <input type="number" id="new_cost" class="form-control form-control-sm text-end" placeholder="0.00 *" step="0.01" min="0.01" required>
+                                    </td>
+                                    <td class="py-2 px-1 text-center">
+                                        <button type="button" class="btn btn-primary btn-sm px-2" id="addBtn" onclick="submitAddItem(event)">
+                                            <i class="ti ti-plus"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                @endif
                             </thead>
                             <tbody id="itemsTbody">
                                 @forelse($items as $item)
@@ -171,36 +194,6 @@
                         </table>
                     </div>
 
-                    {{-- Inline Add Form --}}
-                    @if($canAdd)
-                    <div class="card-footer bg-light border-top">
-                        <div class="d-flex align-items-center gap-2 mb-1">
-                            <i class="ti ti-plus text-primary"></i>
-                            <span class="fw-semibold small text-primary">Add Item</span>
-                        </div>
-                        <form id="addItemForm" onsubmit="submitAddItem(event)">
-                            <div class="row g-2 align-items-end">
-                                <div class="col-12 col-sm-5">
-                                    <input type="text" id="new_name" class="form-control form-control-sm" placeholder="Item name *" required>
-                                </div>
-                                <div class="col-5 col-sm-2">
-                                    <input type="text" id="new_qty" class="form-control form-control-sm" placeholder="Qty">
-                                </div>
-                                <div class="col-4 col-sm-2">
-                                    <input type="text" id="new_unit" class="form-control form-control-sm" placeholder="Unit">
-                                </div>
-                                <div class="col-6 col-sm-2">
-                                    <input type="number" id="new_cost" class="form-control form-control-sm" placeholder="Cost ৳" step="0.01" min="0">
-                                </div>
-                                <div class="col-6 col-sm-1">
-                                    <button type="submit" class="btn btn-primary btn-sm w-100" id="addBtn">
-                                        <i class="ti ti-plus"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                    @endif
                 </div>
             </div>
 
@@ -239,11 +232,11 @@
                         <!-- Status badge -->
                         <div style="padding:12px 20px;">
                             @if($isApproved)
-                            <span class="badge bg-success w-100 py-2" style="font-size:12px;"><i class="ti ti-circle-check me-1"></i>Approved</span>
+                            <span id="summaryStatusBadge" class="badge bg-success w-100 py-2" style="font-size:12px;"><i class="ti ti-circle-check me-1"></i>Approved</span>
                             @elseif($needsReapproval)
-                            <span class="badge bg-danger w-100 py-2" style="font-size:12px;"><i class="ti ti-alert-circle me-1"></i>New Items Added — Awaiting Re-approval</span>
+                            <span id="summaryStatusBadge" class="badge bg-danger w-100 py-2" style="font-size:12px;"><i class="ti ti-alert-circle me-1"></i>New Items Added — Awaiting Re-approval</span>
                             @else
-                            <span class="badge bg-warning text-dark w-100 py-2" style="font-size:12px;"><i class="ti ti-clock me-1"></i>Awaiting Approval</span>
+                            <span id="summaryStatusBadge" class="badge bg-warning text-dark w-100 py-2" style="font-size:12px;"><i class="ti ti-clock me-1"></i>Awaiting Approval</span>
                             @endif
                         </div>
                     </div>
@@ -286,7 +279,9 @@ function updateItem(itemId, data) {
 function submitAddItem(e) {
     e.preventDefault();
     const name = document.getElementById('new_name').value.trim();
+    const cost = parseFloat(document.getElementById('new_cost').value);
     if (!name) { document.getElementById('new_name').focus(); return; }
+    if (!cost || cost <= 0) { document.getElementById('new_cost').focus(); return; }
     const btn = document.getElementById('addBtn');
     btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2 ti-spin"></i>';
 
@@ -295,7 +290,7 @@ function submitAddItem(e) {
     formData.append('items[0][item_name]', name);
     formData.append('items[0][quantity]', document.getElementById('new_qty').value.trim());
     formData.append('items[0][unit]', document.getElementById('new_unit').value.trim());
-    formData.append('items[0][actual_cost]', document.getElementById('new_cost').value || 0);
+    formData.append('items[0][actual_cost]', cost);
     formData.append('items[0][assigned_to]', '{{ $routine->assigned_to }}');
     formData.append('items[0][expense_date]', '{{ $routine->start_date->format('Y-m-d') }}');
 
@@ -376,6 +371,15 @@ function confirmDeleteItem() {
             tr.innerHTML = '<td colspan="4" class="text-center text-muted py-4"><i class="ti ti-shopping-cart-off fs-3 d-block mb-2 opacity-30"></i>No items yet.</td>';
             document.getElementById('itemsTbody').appendChild(tr);
         }
+        // Revert status UI if pending_reapproval resolved
+        if (d.status === 'approved') {
+            const approveBtn = document.getElementById('approveBtnWrap');
+            if (approveBtn) approveBtn.classList.add('d-none');
+            const hdrBadge = document.getElementById('statusBadge');
+            if (hdrBadge) { hdrBadge.className = 'badge bg-success ms-2'; hdrBadge.textContent = 'Approved'; }
+            const sumBadge = document.getElementById('summaryStatusBadge');
+            if (sumBadge) { sumBadge.className = 'badge bg-success w-100 py-2'; sumBadge.style.fontSize = '12px'; sumBadge.innerHTML = '<i class="ti ti-circle-check me-1"></i>Approved'; }
+        }
     }).catch(err => { console.error('Delete error:', err); alert('Delete failed. Please try again.'); });
 }
 </script>
@@ -413,7 +417,7 @@ function confirmDeleteItem() {
                 </div>
             </div>
             <div class="modal-footer justify-content-center border-0 pt-0 pb-4 gap-2">
-                <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                 <form action="{{ route('mess.market.complete', [$mess->id, $routine->id]) }}" method="POST" class="d-inline">
                     @csrf
                     <button type="submit" class="btn btn-success px-4">

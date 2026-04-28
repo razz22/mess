@@ -52,8 +52,8 @@
                             <th>Phone</th>
                             <th>Owned Messes</th>
                             <th>Last Login</th>
-                            <th>Joined</th>
-                            <th>Status</th>
+                            <th>{{ __('Joined') }}</th>
+                            <th>{{ __('Status') }}</th>
                             <th class="text-end">Actions</th>
                         </tr>
                     </thead>
@@ -181,7 +181,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="submit" class="btn btn-primary"><i class="ti ti-device-floppy me-1"></i>Create User</button>
                 </div>
             </form>
@@ -222,7 +222,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="submit" class="btn btn-primary"><i class="ti ti-device-floppy me-1"></i>Update</button>
                 </div>
             </form>
@@ -252,7 +252,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="submit" class="btn btn-warning btn-sm text-dark">Reset</button>
                 </div>
             </form>
@@ -299,7 +299,7 @@ function resetPassword(id, name) {
                     <div class="form-text">Currently owns: {{ $u->ownedMesses->count() }} mess(es)</div>
                 </div>
                 <div class="modal-footer py-2">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="submit" class="btn btn-info btn-sm text-white"><i class="ti ti-check me-1"></i>Update</button>
                 </div>
             </form>

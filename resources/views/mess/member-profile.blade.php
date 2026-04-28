@@ -13,7 +13,7 @@
     <div class="content">
         <div class="page-header">
             <div class="page-title">
-                <h4 class="fw-bold">Member Profile</h4>
+                <h4 class="fw-bold">{{ __('Member Profile') }}</h4>
                 <h6>{{ $mess->name }}</h6>
             </div>
             <div class="page-btn d-flex gap-2">
@@ -544,8 +544,8 @@
                                 <th>Applied</th>
                                 <th>Last Date</th>
                                 <th>Reason</th>
-                                <th>Status</th>
-                                <th>Note</th>
+                                <th>{{ __('Status') }}</th>
+                                <th>{{ __('Note') }}</th>
                             </tr>
                         </thead>
                         <tbody>

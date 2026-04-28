@@ -7,10 +7,10 @@
         {{-- Header --}}
         <div class="page-header">
             <div class="page-title">
-                <h4 class="fw-bold">Meal Attendance — {{ $mess->name }}</h4>
+                <h4 class="fw-bold">{{ __('Meal Attendance') }} — {{ $mess->name }}</h4>
                 <h6 class="text-muted">{{ \Carbon\Carbon::parse($date)->format('l, d F Y') }}
-                    @if($isPast) <span class="badge bg-secondary ms-2">Past — Read Only</span> @endif
-                    @if($date === $today) <span class="badge bg-success ms-2">Today</span> @endif
+                    @if($isPast) <span class="badge bg-secondary ms-2">{{ __('Past — Read Only') }}</span> @endif
+                    @if($date === $today) <span class="badge bg-success ms-2">{{ __('Today') }}</span> @endif
                 </h6>
             </div>
             <div class="page-btn d-flex gap-2 align-items-center">
@@ -19,23 +19,23 @@
                 <div class="d-flex align-items-center gap-1 px-3 py-1 rounded border {{ $remaining === 0 ? 'border-danger bg-danger-subtle' : 'border-secondary bg-light' }}">
                     <i class="ti ti-refresh {{ $remaining === 0 ? 'text-danger' : 'text-muted' }} fs-6"></i>
                     <span class="small fw-semibold {{ $remaining === 0 ? 'text-danger' : 'text-muted' }}" id="changes-remaining">
-                        {{ $remaining }}/3 changes left today
+                        {{ $remaining }}/3 {{ __('changes left today') }}
                     </span>
                 </div>
                 @endif
                 <button class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#bulkAttendanceModal">
-                    <i class="ti ti-calendar-stats me-1"></i>Bulk Attendance
+                    <i class="ti ti-calendar-stats me-1"></i>{{ __('Bulk Attendance') }}
                 </button>
                 <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#whatsappModal">
-                    <i class="ti ti-brand-whatsapp me-1"></i>Share Meal Count
+                    <i class="ti ti-brand-whatsapp me-1"></i>{{ __('Share Meal Count') }}
                 </button>
                 @if($isManager)
                 <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addMealTypeModal">
-                    <i class="ti ti-plus me-1"></i>Add Meal Type
+                    <i class="ti ti-plus me-1"></i>{{ __('Add Meal Type') }}
                 </button>
                 @endif
                 <a href="{{ route('mess.dashboard', $mess->id) }}" class="btn btn-outline-secondary btn-sm">
-                    <i class="ti ti-arrow-left me-1"></i>Back
+                    <i class="ti ti-arrow-left me-1"></i>{{ __('Back') }}
                 </a>
             </div>
         </div>
@@ -92,7 +92,7 @@
                                 <i class="ti ti-lock" style="font-size:11px"></i>
                             </button>
                             @elseif($sch && $sch->status === 'closed')
-                            <span class="badge bg-secondary" style="font-size:10px"><i class="ti ti-lock me-1" style="font-size:9px"></i>Closed</span>
+                            <span class="badge bg-secondary" style="font-size:10px"><i class="ti ti-lock me-1" style="font-size:9px"></i>{{ __('Closed') }}</span>
                             @if($isOwner || $isSuperAdmin)
                             <button class="btn btn-xs btn-outline-success py-0" onclick="reopenMeal({{ $sch->id }}, '{{ $mt->name }}')" title="Reopen {{ $mt->name }}">
                                 <i class="ti ti-lock-open" style="font-size:11px"></i>
@@ -112,7 +112,7 @@
 
         {{-- Spreadsheet --}}
         @if($mealTypes->isEmpty())
-        <div class="alert alert-info">No meal types configured. <button class="btn btn-sm btn-primary ms-2" data-bs-toggle="modal" data-bs-target="#addMealTypeModal">Add Meal Type</button></div>
+        <div class="alert alert-info">{{ __('No meal types configured.') }} <button class="btn btn-sm btn-primary ms-2" data-bs-toggle="modal" data-bs-target="#addMealTypeModal">{{ __('Add Meal Type') }}</button></div>
         @else
         <div class="card">
             <div class="card-body p-0">
@@ -121,7 +121,7 @@
                         <thead>
                             <tr class="align-middle">
                                 <th class="bg-light" style="min-width:180px;position:sticky;left:0;z-index:2;">
-                                    <i class="ti ti-users text-primary me-1"></i> Member
+                                    <i class="ti ti-users text-primary me-1"></i> {{ __('Member') }}
                                 </th>
                                 @foreach($mealTypes as $mt)
                                 @php
@@ -148,9 +148,9 @@
                                     <div class="hdr-items-{{ Str::slug($mt->name) }} text-muted mx-1 mb-1" style="font-size:10px;border:1px solid #dee2e6;border-radius:5px;padding:3px 6px;{{ empty($itemList) ? 'display:none;' : '' }}">{{ implode(', ', $itemList) }}</div>
                                     {{-- Status / counts --}}
                                     @if($closed)
-                                        <span class="badge bg-secondary" style="font-size:10px">Closed</span>
+                                        <span class="badge bg-secondary" style="font-size:10px">{{ __('Closed') }}</span>
                                     @elseif($expired)
-                                        <span class="badge bg-warning text-dark" style="font-size:10px">Expired</span>
+                                        <span class="badge bg-warning text-dark" style="font-size:10px">{{ __('Expired') }}</span>
                                     @elseif($sch)
                                         <div class="d-flex justify-content-center gap-2 mt-1" id="hdr-qty-{{ $sch->id }}" style="font-size:10px;">
                                             <span class="badge rounded-pill bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2">
@@ -281,7 +281,7 @@
                         </tbody>
                         <tfoot>
                             <tr class="bg-light fw-semibold">
-                                <td class="bg-light small" style="position:sticky;left:0;z-index:1;">Totals</td>
+                                <td class="bg-light small" style="position:sticky;left:0;z-index:1;">{{ __('Totals') }}</td>
                                 @foreach($mealTypes as $mt)
                                 @php
                                     $sch     = $schedules[$mt->name] ?? null;
@@ -320,9 +320,9 @@
                         <thead class="table-light">
                             <tr>
                                 <th style="width:50px" class="text-center">#</th>
-                                <th>Name</th>
+                                <th>{{ __('Name') }}</th>
                                 <th>Closes At</th>
-                                <th>Status</th>
+                                <th>{{ __('Status') }}</th>
                                 <th class="text-center" style="width:120px">Actions</th>
                             </tr>
                         </thead>
@@ -417,7 +417,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="submit" class="btn btn-primary btn-sm"><i class="ti ti-plus me-1"></i>Add</button>
                 </div>
             </form>
@@ -458,7 +458,7 @@
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Status</label>
                         <select name="is_active" id="edit-mt-active" class="form-select">
-                            <option value="1">Active</option>
+                            <option value="1">{{ __('Active') }}</option>
                             <option value="0">Disabled</option>
                         </select>
                     </div>
@@ -469,8 +469,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary btn-sm"><i class="ti ti-check me-1"></i>Save</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="ti ti-check me-1"></i>{{ __('Save') }}</button>
                 </div>
             </form>
         </div>
@@ -684,7 +684,7 @@
                 </div>
                 <div class="modal-footer">
                     <div class="me-auto text-muted small" id="bulkSummaryText"></div>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="submit" class="btn btn-success" id="bulkSubmitBtn">
                         <i class="ti ti-check me-1"></i>Apply Bulk Attendance
                     </button>
@@ -1395,7 +1395,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <i class="ti ti-copy me-1"></i>Copy Message
                 </button>
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <a id="waSendBtn" href="#" target="_blank" rel="noopener"
                         class="btn btn-success disabled" style="pointer-events:none;">
                         <i class="ti ti-brand-whatsapp me-1"></i>Open WhatsApp
@@ -1538,7 +1538,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <textarea id="routineModalTextarea" class="form-control" rows="4"
                         placeholder="e.g. Plain Rice, Chicken Curry, Dal, Salad"></textarea>
                     <div class="d-flex gap-2 mt-2">
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="routineModalCancelBtn">Cancel</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="routineModalCancelBtn">{{ __('Cancel') }}</button>
                         <button type="button" class="btn btn-primary btn-sm flex-fill" id="routineModalSaveBtn">
                             <i class="ti ti-check me-1"></i>Save Menu
                         </button>
@@ -1683,7 +1683,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <input type="hidden" id="reopenMealScheduleId">
                 <input type="hidden" id="reopenMealMealName">
                 <div class="d-flex justify-content-center gap-2">
-                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="button" class="btn btn-success px-4" id="reopenMealConfirmBtn">
                         <i class="ti ti-lock-open me-1"></i>Yes, Reopen
                     </button>
@@ -1708,7 +1708,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <input type="hidden" id="closeMealScheduleId">
                 <input type="hidden" id="closeMealMealName">
                 <div class="d-flex justify-content-center gap-2">
-                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="button" class="btn btn-warning px-4" id="closeMealConfirmBtn">
                         <i class="ti ti-lock me-1"></i>Yes, Close
                     </button>

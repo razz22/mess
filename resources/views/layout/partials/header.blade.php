@@ -343,110 +343,86 @@ document.addEventListener('keydown', function(e){
                 </a>
             </li> -->
 
-            <!-- Flag -->
-            <li class="nav-item dropdown has-arrow flag-nav nav-item-box">
-                <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="javascript:void(0);"
-                    role="button">
-                    <img src="{{URL::asset('build/img/flags/us-flag.svg')}}" alt="Language" class="img-fluid">
+            <!-- Language Switcher -->
+            <li class="nav-item nav-item-box dropdown">
+                @php $hl = app()->getLocale(); @endphp
+                <a class="nav-link dropdown-toggle d-flex align-items-center gap-1 px-2" href="#"
+                   data-bs-toggle="dropdown" title="{{ __('Language') }}" style="font-size:12px;font-weight:600">
+                    <img src="{{ URL::asset('build/img/flags/'.($hl==='bn'?'bd':'us').'.png') }}"
+                         alt="" height="14" style="border-radius:2px">
+                    <span class="d-none d-lg-inline">{{ $hl==='bn'?'বাং':'EN' }}</span>
                 </a>
-                <div class="dropdown-menu dropdown-menu-right">
-                    <a href="javascript:void(0);" class="dropdown-item">
-                        <img src="{{URL::asset('build/img/flags/english.svg')}}" alt="Img" height="16">English
-                    </a>
-                    <a href="javascript:void(0);" class="dropdown-item">
-                        <img src="{{URL::asset('build/img/flags/arabic.svg')}}" alt="Img" height="16">Arabic
-                    </a>
-                </div>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm py-1" style="min-width:120px;border-radius:8px;font-size:13px">
+                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 {{ $hl==='en'?'active':'' }}"
+                           href="{{ route('lang.switch','en') }}">
+                        <img src="{{ URL::asset('build/img/flags/us.png') }}" alt="" height="13" style="border-radius:2px"> English
+                        @if($hl==='en')<i class="ti ti-check ms-auto text-success" style="font-size:12px"></i>@endif
+                    </a></li>
+                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 {{ $hl==='bn'?'active':'' }}"
+                           href="{{ route('lang.switch','bn') }}">
+                        <img src="{{ URL::asset('build/img/flags/bd.png') }}" alt="" height="13" style="border-radius:2px"> বাংলা
+                        @if($hl==='bn')<i class="ti ti-check ms-auto text-success" style="font-size:12px"></i>@endif
+                    </a></li>
+                </ul>
             </li>
-            <!-- /Flag -->
+            <!-- /Language Switcher -->
 
             <li class="nav-item nav-item-box">
                 <a href="javascript:void(0);" id="btnFullscreen">
                     <i class="ti ti-maximize"></i>
                 </a>
             </li>
-            <li class="nav-item nav-item-box">
+            <!-- <li class="nav-item nav-item-box">
                 <a href="{{url('email')}}">
                     <i class="ti ti-mail"></i>
                     <span class="badge rounded-pill">1</span>
                 </a>
-            </li>
-            <!-- Notifications -->
+            </li> -->
+            <!-- Notices Bell -->
+            @auth
+            @if(session('active_mess_id'))
             <li class="nav-item dropdown nav-item-box">
                 <a href="javascript:void(0);" class="dropdown-toggle nav-link" data-bs-toggle="dropdown">
-                    <i class="ti ti-bell"></i>
+                    <i class="ti ti-speakerphone"></i>
+                    <span class="badge rounded-pill bg-danger" id="notice-bell-badge" style="display:none;">0</span>
                 </a>
-                <div class="dropdown-menu notifications">
-                    <div class="topnav-dropdown-header">
-                        <h5 class="notification-title">Notifications</h5>
-                        <a href="javascript:void(0)" class="clear-noti">Mark all as read</a>
+                <div class="dropdown-menu notifications" style="min-width:380px;">
+                    <div class="topnav-dropdown-header d-flex justify-content-between align-items-center">
+                        <h5 class="notification-title mb-0">{{ __('Notices') }}</h5>
+                        <a href="javascript:void(0)" id="notice-mark-all-btn" class="clear-noti">{{ __('Mark all as read') }}</a>
                     </div>
                     <div class="noti-content">
-                        <ul class="notification-list">
-                            <li class="notification-message">
-                                <a href="{{url('activities')}}">
-                                    <div class="media d-flex">
-                                        <span class="avatar flex-shrink-0">
-                                            <img alt="Img" src="{{URL::asset('build/img/profiles/avatar-13.jpg')}}">
-                                        </span>
-                                        <div class="flex-grow-1">
-                                            <p class="noti-details"><span class="noti-title">James Kirwin</span> confirmed his order.  Order No: #78901.Estimated delivery: 2 days</p>
-                                            <p class="noti-time">4 mins ago</p>
-                                        </div>
-                                    </div>
-                                </a>
-                            </li>
-                            <li class="notification-message">
-                                <a href="{{url('activities')}}">
-                                    <div class="media d-flex">
-                                        <span class="avatar flex-shrink-0">
-                                            <img alt="Img" src="{{URL::asset('build/img/profiles/avatar-03.jpg')}}">
-                                        </span>
-                                        <div class="flex-grow-1">
-                                            <p class="noti-details"><span class="noti-title">Leo Kelly</span> cancelled his order scheduled for  17 Jan 2025</p>
-                                            <p class="noti-time">10 mins ago</p>
-                                        </div>
-                                    </div>
-                                </a>
-                            </li>
-                            <li class="notification-message">
-                                <a href="{{url('activities')}}" class="recent-msg">
-                                    <div class="media d-flex">
-                                        <span class="avatar flex-shrink-0">
-                                            <img alt="Img" src="{{URL::asset('build/img/profiles/avatar-17.jpg')}}">
-                                        </span>
-                                        <div class="flex-grow-1">
-                                            <p class="noti-details">Payment of $50 received for Order #67890 from <span class="noti-title">Antonio Engle</span></p>
-                                            <p class="noti-time">05 mins ago</p>
-                                        </div>
-                                    </div>
-                                </a>
-                            </li>
-                            <li class="notification-message">
-                                <a href="{{url('activities')}}" class="recent-msg">
-                                    <div class="media d-flex">
-                                        <span class="avatar flex-shrink-0">
-                                            <img alt="Img" src="{{URL::asset('build/img/profiles/avatar-02.jpg')}}">
-                                        </span>
-                                        <div class="flex-grow-1">
-                                            <p class="noti-details"><span class="noti-title">Andrea</span> confirmed his order.  Order No: #73401.Estimated delivery: 3 days</p>
-                                            <p class="noti-time">4 mins ago</p>
-                                        </div>
-                                    </div>
-                                </a>
-                            </li>
+                        <ul class="notification-list" id="notice-bell-list">
+                            <li class="text-center p-3 text-muted small">{{ __('Loading...') }}</li>
                         </ul>
                     </div>
-                    <div class="topnav-dropdown-footer d-flex align-items-center gap-3">
-                        <a href="#" class="btn btn-secondary btn-md w-100">Cancel</a>
-                        <a href="{{url('activities')}}" class="btn btn-primary btn-md w-100">View all</a>
+                    <div class="topnav-dropdown-footer">
+                        <a href="{{ route('mess.notices.index', session('active_mess_id')) }}" class="btn btn-primary btn-md w-100">{{ __('View All Notices') }}</a>
                     </div>
                 </div>
             </li>
-            <!-- /Notifications -->
+            @endif
+            @endauth
+            <!-- /Notices Bell -->
 
             <li class="nav-item nav-item-box">
-                <a href="{{url('general-settings')}}"><i class="ti ti-settings"></i></a>
+                @auth
+                @if(session('active_mess_id'))
+                <a href="{{ route('mess.settings', session('active_mess_id')) }}" title="{{ __('Mess Settings') }}">
+                    <i class="ti ti-settings"></i>
+                </a>
+                @elseif(Auth::user()->is_super_admin)
+                <a href="{{ route('admin.settings') }}" title="{{ __('System Settings') }}">
+                    <i class="ti ti-settings"></i>
+                </a>
+                @else
+                <a href="{{ route('mess.index') }}" title="{{ __('My Messes') }}">
+                    <i class="ti ti-settings"></i>
+                </a>
+                @endif
+                @else
+                <a href="{{ url('/') }}"><i class="ti ti-settings"></i></a>
+                @endauth
             </li>
             <li class="nav-item dropdown has-arrow main-drop profile-nav">
                 <a href="javascript:void(0);" class="nav-link userset" data-bs-toggle="dropdown">
@@ -474,13 +450,13 @@ document.addEventListener('keydown', function(e){
                             <h6 class="fw-medium">{{ Auth::user()->name }}</h6>
                             <p>{{ Auth::user()->email }}</p>
                             @else
-                            <h6 class="fw-medium">Guest</h6>
+                            <h6 class="fw-medium">{{ __('Guest') }}</h6>
                             @endauth
                         </div>
                     </div>
-                    <a class="dropdown-item" href="{{ route('profile') }}"><i class="ti ti-user-circle me-2"></i>My Profile</a>
+                    <a class="dropdown-item" href="{{ route('profile') }}"><i class="ti ti-user-circle me-2"></i>{{ __('My Profile') }}</a>
                     <hr class="my-2">
-                    <a class="dropdown-item logout pb-0" href="{{ route('signout') }}"><i class="ti ti-logout me-2"></i>Logout</a>
+                    <a class="dropdown-item logout pb-0" href="{{ route('signout') }}"><i class="ti ti-logout me-2"></i>{{ __('Logout') }}</a>
                 </div>
             </li>
         </ul>

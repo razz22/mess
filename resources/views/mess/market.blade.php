@@ -9,7 +9,7 @@
     <div class="content">
         <div class="page-header">
             <div class="page-title">
-                <h4 class="fw-bold">Market Routine — {{ $mess->name }}</h4>
+                <h4 class="fw-bold">{{ __('Market Routine') }} — {{ $mess->name }}</h4>
                 <h6 class="fs-14">{{ \Carbon\Carbon::createFromDate($year, $month, 1)->format('F Y') }}</h6>
             </div>
             <div class="page-btn d-flex gap-2 flex-wrap">
@@ -18,9 +18,9 @@
                     <i class="ti ti-user-check me-1"></i>Assign Dates
                 </button>
                 @endif
-                @if($isManager)
-                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#quickExpenseModal">
-                    <i class="ti ti-plus me-1"></i>Add Market Expense
+                @if($member)
+                <button class="btn btn-success btn-sm" onclick="openFreeExpense()">
+                    <i class="ti ti-plus me-1"></i>Add Market Items
                 </button>
                 @endif
                 <a href="{{ route('mess.dashboard', $mess->id) }}" class="btn btn-outline-secondary btn-sm">
@@ -207,9 +207,9 @@
                         <tr>
                             <th>Period</th>
                             <th>Assigned To</th>
-                            <th>Status</th>
+                            <th>{{ __('Status') }}</th>
                             <th class="text-end">Spent</th>
-                            <th>Actions</th>
+                            <th>{{ __('Actions') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -287,10 +287,12 @@
                                         <button class="btn btn-xs btn-outline-secondary" onclick="openReassignModal({{ $routine->id }})">
                                             <i class="ti ti-edit me-1"></i>Reassign
                                         </button>
+                                        @if($hasItems)
                                         <button class="btn btn-xs btn-success"
                                             onclick="openApproveModal('{{ route('mess.market.complete', [$mess->id, $routine->id]) }}','{{ addslashes($routine->assignedTo->name) }}','{{ $routine->start_date->format('d M') }}','{{ $routine->total_spent > 0 ? '৳'.number_format($routine->total_spent,0) : '' }}')">
                                             <i class="ti ti-check me-1"></i>Approve
                                         </button>
+                                        @endif
                                         @endif
                                     @endif
 
@@ -340,7 +342,7 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0"><i class="ti ti-receipt me-2"></i>Individual Market Expenses This Month</h6>
-                <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#quickExpenseModal">
+                <button class="btn btn-sm btn-success" onclick="openMemberExpense('{{ now()->toDateString() }}')">
                     <i class="ti ti-plus me-1"></i>Add
                 </button>
             </div>
@@ -348,7 +350,7 @@
                 <table class="table table-sm align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th>Date</th>
+                            <th>{{ __('Date') }}</th>
                             <th>Item</th>
                             <th>Buyer</th>
                             <th class="text-end">Amount</th>
@@ -440,7 +442,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-sm btn-outline-secondary" id="assignClearBtn">Clear Selection</button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="submit" class="btn btn-primary" id="assignSubmitBtn" disabled>Assign Selected Dates</button>
                 </div>
             </form>
@@ -475,7 +477,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="submit" class="btn btn-warning" id="exchangeSubmitBtn">Send Request</button>
                 </div>
             </form>
@@ -501,56 +503,124 @@
 ])
 @endif
 
-<!-- Quick Market Expense Modal (standalone, no routine) -->
+<!-- Add Market Items Modal (multi-item, posts to routine list) -->
 <div class="modal fade" id="quickExpenseModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="ti ti-receipt me-2"></i>Add Market Expense</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form action="{{ route('mess.market.quick-expense', $mess->id) }}" method="POST">
-                @csrf
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Item / Description <span class="text-danger">*</span></label>
-                        <input type="text" name="item_name" class="form-control" required placeholder="e.g. Fish, Vegetables">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow" style="border-radius:16px;overflow:hidden;">
+
+            {{-- Header --}}
+            <div class="modal-header border-0 px-4 pt-4 pb-3" style="background:linear-gradient(135deg,#198754 0%,#20c997 100%);">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0"
+                         style="width:44px;height:44px;background:rgba(255,255,255,.2);">
+                        <i class="ti ti-shopping-cart text-white fs-4"></i>
                     </div>
-                    <div class="row g-2 mb-3">
-                        <div class="col-6">
-                            <label class="form-label fw-semibold">Amount (৳) <span class="text-danger">*</span></label>
-                            <input type="number" name="amount" class="form-control" step="0.01" min="0.01" required>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold">Date <span class="text-danger">*</span></label>
-                            <input type="date" name="expense_date" class="form-control" value="{{ now()->toDateString() }}" required>
-                        </div>
-                    </div>
-                    @if($isManager)
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Bought By <span class="text-danger">*</span></label>
-                        <select name="member_id" class="form-select" required>
-                            @foreach($members as $m)
-                            <option value="{{ $m->user->id }}">{{ $m->user->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    @else
-                    <input type="hidden" name="member_id" value="{{ Auth::id() }}">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Bought By</label>
-                        <div class="form-control bg-light text-muted">{{ Auth::user()->name }}</div>
-                    </div>
-                    @endif
-                    <div class="alert alert-info py-2 small mb-0">
-                        <i class="ti ti-info-circle me-1"></i>This expense will count toward meal cost calculation.
+                    <div>
+                        <h5 class="modal-title fw-bold text-white mb-0">{{ __('Add Market Items') }}</h5>
+                        <div class="small mt-1" style="color:rgba(255,255,255,.8);" id="qeModalSubtitle"></div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success">Add Expense</button>
+                <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal"></button>
+            </div>
+
+            <form id="quickExpenseForm" method="POST">
+                @csrf
+
+                {{-- Free mode: date + member picker (hidden in routine mode) --}}
+                <div id="qeFreeModeSection" class="d-none px-4 pt-3">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-sm-5">
+                            <label class="form-label fw-semibold small mb-1">{{ __('Date') }} <span class="text-danger">*</span></label>
+                            <input type="date" id="qeFreeDatePicker" name="date" class="form-control form-control-sm" oninput="qeCheckConflict()">
+                        </div>
+                        <div class="col-sm-7">
+                            <label class="form-label fw-semibold small mb-1">{{ __('Member') }} <span class="text-danger">*</span></label>
+                            @if($isManager)
+                            <select id="qeFreeAssignedTo" name="assigned_to" class="form-select form-select-sm" onchange="qeCheckConflict()">
+                                @foreach($members as $m)
+                                <option value="{{ $m->user->id }}">{{ $m->user->name }}</option>
+                                @endforeach
+                            </select>
+                            @else
+                            <input type="hidden" name="assigned_to" id="qeFreeAssignedTo" value="{{ Auth::id() }}">
+                            <div class="form-control form-control-sm bg-light text-muted">{{ Auth::user()->name }}</div>
+                            @endif
+                        </div>
+                    </div>
+                    <div id="qeConflictWarning" class="alert alert-warning py-2 small mt-2 mb-0 d-none">
+                        <i class="ti ti-alert-triangle me-1"></i><span id="qeConflictMsg"></span>
+                    </div>
+                </div>
+
+                <div class="modal-body p-0">
+
+                    {{-- Table wrapper: fixed header, scrollable body --}}
+                    <div style="padding:20px 24px 0;">
+                        <div class="rounded-3 border overflow-hidden" style="box-shadow:0 2px 8px rgba(0,0,0,.06);">
+                            <table class="table mb-0" style="font-size:13.5px;table-layout:fixed;width:100%;">
+                                <colgroup>
+                                    <col style="width:auto;">
+                                    <col style="width:90px;">
+                                    <col style="width:90px;">
+                                    <col style="width:130px;">
+                                    <col style="width:48px;">
+                                </colgroup>
+                                <thead style="background:#f8f9fb;position:sticky;top:0;z-index:1;">
+                                    <tr>
+                                        <th class="px-3 py-2 fw-semibold text-muted small border-bottom">{{ __('Item Name') }} <span class="text-danger">*</span></th>
+                                        <th class="px-2 py-2 fw-semibold text-muted small border-bottom text-center">{{ __('Qty') }}</th>
+                                        <th class="px-2 py-2 fw-semibold text-muted small border-bottom text-center">{{ __('Unit') }}</th>
+                                        <th class="px-2 py-2 fw-semibold text-muted small border-bottom text-end">{{ __('Cost (৳)') }}</th>
+                                        <th class="px-2 py-2 border-bottom"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="qeItemsBody" style="max-height:320px;display:table-row-group;">
+                                    <tr class="qe-item-row" style="background:#fff;">
+                                        <td class="px-3 py-2 border-bottom">
+                                            <input type="text" name="items[0][item_name]" class="form-control form-control-sm border-0 bg-light" placeholder="{{ __('e.g. Fish, Rice, Oil') }}" required style="border-radius:8px;">
+                                        </td>
+                                        <td class="px-2 py-2 border-bottom">
+                                            <input type="text" name="items[0][quantity]" class="form-control form-control-sm border-0 bg-light text-center" placeholder="1" style="border-radius:8px;">
+                                        </td>
+                                        <td class="px-2 py-2 border-bottom">
+                                            <input type="text" name="items[0][unit]" class="form-control form-control-sm border-0 bg-light text-center" placeholder="kg" style="border-radius:8px;">
+                                        </td>
+                                        <td class="px-2 py-2 border-bottom">
+                                            <input type="number" name="items[0][actual_cost]" class="form-control form-control-sm border-0 bg-light text-end qe-cost" placeholder="0.00" step="0.01" min="0.01" required style="border-radius:8px;">
+                                        </td>
+                                        <td class="px-2 py-2 border-bottom text-center"></td>
+                                    </tr>
+                                </tbody>
+                                <tfoot>
+                                    <tr style="background:#f8f9fb;">
+                                        <td colspan="3" class="px-3 py-3 text-end fw-semibold small text-muted border-top-0">{{ __('Total Estimated Cost') }}</td>
+                                        <td class="px-2 py-3 text-end border-top-0">
+                                            <span class="fw-bold fs-6 text-success" id="qeTotal">৳0.00</span>
+                                        </td>
+                                        <td class="border-top-0"></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
+                    {{-- Add row button --}}
+                    <div class="px-4 py-3">
+                        <button type="button" class="btn btn-outline-success btn-sm d-inline-flex align-items-center gap-2 px-3" onclick="qeAddRow()" style="border-radius:8px;border-style:dashed;">
+                            <i class="ti ti-plus"></i>{{ __('Add Another Item') }}
+                        </button>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer border-top px-4 py-3" style="background:#fafbfc;">
+                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                    <button type="submit" id="qeSubmitBtn" class="btn btn-success d-inline-flex align-items-center gap-2 px-4">
+                        <i class="ti ti-check"></i>{{ __('Submit Items') }}
+                    </button>
                 </div>
             </form>
+
         </div>
     </div>
 </div>
@@ -558,8 +628,19 @@
 @php
 // Build routine data for JS quick-add (routine id keyed by start_date)
 $routineJs = [];
+$routineAssigneeData = [];
 foreach($routines as $r) {
-    $routineJs[$r->start_date->format('Y-m-d')] = $r->id;
+    $cur = $r->start_date->copy();
+    while ($cur <= $r->end_date) {
+        $ds = $cur->format('Y-m-d');
+        $routineJs[$ds] = $r->id;
+        $routineAssigneeData[$ds] = [
+            'routineId'    => $r->id,
+            'assignedToId' => $r->assigned_to,
+            'name'         => $r->assignedTo->name,
+        ];
+        $cur->addDay();
+    }
 }
 @endphp
 
@@ -655,11 +736,15 @@ foreach($routines as $r) {
 </style>
 
 <script>
-const messId  = {{ $mess->id }};
-const baseUrl = '{{ rtrim(url('/'), '/') }}';
-const routineByDate = @json($routineJs);
+const messId             = {{ $mess->id }};
+const baseUrl            = '{{ rtrim(url('/'), '/') }}';
+const routineByDate      = @json($routineJs);
+const routineAssigneeData = @json($routineAssigneeData);
+const quickAddItemsUrl   = '{{ route("mess.market.quick-add-items", $mess->id) }}';
+const currentUserId      = {{ Auth::id() }};
 const members = @json($members->map(fn($m) => ['id' => $m->user->id, 'name' => $m->user->name])->values());
 const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+let qeMode = 'routine'; // 'routine' | 'free'
 
 // ---- Multi-select assign calendar ----
 const takenDates  = new Set(@json(array_keys($dateRoutineMap)));
@@ -773,10 +858,132 @@ function openExchangeModal(routineId, isAssigned) {
     new bootstrap.Modal(document.getElementById('exchangeModal')).show();
 }
 
-function openMemberExpense(dateStr) {
-    var dateInput = document.querySelector('#quickExpenseModal input[name="expense_date"]');
-    if (dateInput) dateInput.value = dateStr;
+var qeRoutineMap = @json($routineJs);
+var qeBaseUrl    = '{{ url("mess/".$mess->id."/market") }}';
+
+// Opens modal in routine mode — for the calendar + button (routine always exists)
+function openQuickAdd(dateStr) {
+    var routineId = routineByDate[dateStr];
+    if (!routineId) return;
+
+    qeMode = 'routine';
+    document.getElementById('quickExpenseForm').action = qeBaseUrl + '/' + routineId + '/list';
+    document.getElementById('qeFreeModeSection').classList.add('d-none');
+
+    var info = routineAssigneeData[dateStr];
+    var d = new Date(dateStr + 'T00:00:00');
+    var dateLabel = d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+    document.getElementById('qeModalSubtitle').textContent = dateLabel + (info ? ' • ' + info.name : '');
+
+    var submitBtn = document.getElementById('qeSubmitBtn');
+    if (submitBtn) submitBtn.disabled = false;
+
+    qeResetRows();
     new bootstrap.Modal(document.getElementById('quickExpenseModal')).show();
+}
+
+// Opens modal in free mode — for the top "Add Market Items" button
+function openFreeExpense() {
+    qeMode = 'free';
+    document.getElementById('qeFreeModeSection').classList.remove('d-none');
+    document.getElementById('qeModalSubtitle').textContent = '{{ __("Select date and add items") }}';
+
+    var today = new Date().toISOString().slice(0, 10);
+    document.getElementById('qeFreeDatePicker').value = today;
+    document.getElementById('quickExpenseForm').action = quickAddItemsUrl;
+
+    qeCheckConflict();
+    qeResetRows();
+    new bootstrap.Modal(document.getElementById('quickExpenseModal')).show();
+}
+
+function qeCheckConflict() {
+    if (qeMode !== 'free') return;
+    var dateVal = document.getElementById('qeFreeDatePicker').value;
+    var assignedToEl = document.getElementById('qeFreeAssignedTo');
+    var selectedMemberId = assignedToEl ? parseInt(assignedToEl.value) : currentUserId;
+    var conflictInfo = dateVal ? routineAssigneeData[dateVal] : null;
+    var warning   = document.getElementById('qeConflictWarning');
+    var msgEl     = document.getElementById('qeConflictMsg');
+    var submitBtn = document.getElementById('qeSubmitBtn');
+
+    if (conflictInfo && parseInt(conflictInfo.assignedToId) !== selectedMemberId) {
+        warning.classList.remove('d-none');
+        msgEl.textContent = 'Already assigned to ' + conflictInfo.name + '. Choose another date.';
+        if (submitBtn) submitBtn.disabled = true;
+    } else {
+        warning.classList.add('d-none');
+        if (submitBtn) submitBtn.disabled = false;
+    }
+}
+
+function openMemberExpense(dateStr) {
+    var routineId = qeRoutineMap[dateStr];
+    if (!routineId) {
+        alert('{{ __("No routine assigned for this date. Please assign a member first.") }}');
+        return;
+    }
+    document.getElementById('quickExpenseForm').action = qeBaseUrl + '/' + routineId + '/list';
+    var d = new Date(dateStr + 'T00:00:00');
+    var label = d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+    document.getElementById('qeModalSubtitle').textContent = '{{ __("Adding items for") }}: ' + label;
+    qeResetRows();
+    new bootstrap.Modal(document.getElementById('quickExpenseModal')).show();
+}
+
+function qeResetRows() {
+    var tbody = document.getElementById('qeItemsBody');
+    tbody.innerHTML = qeRowHtml(0);
+    qeBindCostInputs();
+    qeRecalcTotal();
+}
+
+function qeRowHtml(idx) {
+    var removBtn = idx > 0
+        ? '<button type="button" class="btn btn-xs btn-outline-danger py-0 px-1 d-flex align-items-center justify-content-center" onclick="qeRemoveRow(this)" style="width:28px;height:28px;border-radius:6px;"><i class="ti ti-x" style="font-size:12px;"></i></button>'
+        : '';
+    return '<tr class="qe-item-row" style="background:#fff;">' +
+        '<td class="px-3 py-2 border-bottom"><input type="text" name="items['+idx+'][item_name]" class="form-control form-control-sm border-0 bg-light" placeholder="{{ __("e.g. Fish, Rice, Oil") }}" required style="border-radius:8px;"></td>' +
+        '<td class="px-2 py-2 border-bottom"><input type="text" name="items['+idx+'][quantity]" class="form-control form-control-sm border-0 bg-light text-center" placeholder="1" style="border-radius:8px;"></td>' +
+        '<td class="px-2 py-2 border-bottom"><input type="text" name="items['+idx+'][unit]" class="form-control form-control-sm border-0 bg-light text-center" placeholder="kg" style="border-radius:8px;"></td>' +
+        '<td class="px-2 py-2 border-bottom"><input type="number" name="items['+idx+'][actual_cost]" class="form-control form-control-sm border-0 bg-light text-end qe-cost" placeholder="0.00" step="0.01" min="0.01" required style="border-radius:8px;"></td>' +
+        '<td class="px-2 py-2 border-bottom text-center">' + removBtn + '</td>' +
+    '</tr>';
+}
+
+function qeAddRow() {
+    var tbody = document.getElementById('qeItemsBody');
+    var idx   = tbody.querySelectorAll('tr').length;
+    tbody.insertAdjacentHTML('beforeend', qeRowHtml(idx));
+    qeBindCostInputs();
+}
+
+function qeRemoveRow(btn) {
+    btn.closest('tr').remove();
+    qeReindexRows();
+    qeRecalcTotal();
+}
+
+function qeReindexRows() {
+    document.querySelectorAll('#qeItemsBody tr').forEach(function(tr, i) {
+        tr.querySelectorAll('input').forEach(function(inp) {
+            inp.name = inp.name.replace(/items\[\d+\]/, 'items[' + i + ']');
+        });
+    });
+}
+
+function qeBindCostInputs() {
+    document.querySelectorAll('#qeItemsBody .qe-cost').forEach(function(inp) {
+        inp.oninput = qeRecalcTotal;
+    });
+}
+
+function qeRecalcTotal() {
+    var total = 0;
+    document.querySelectorAll('#qeItemsBody .qe-cost').forEach(function(inp) {
+        total += parseFloat(inp.value) || 0;
+    });
+    document.getElementById('qeTotal').textContent = '৳' + total.toFixed(2);
 }
 
 function openReassignModal(routineId) {
@@ -784,11 +991,6 @@ function openReassignModal(routineId) {
     new bootstrap.Modal(document.getElementById('assignModal')).show();
 }
 
-function openQuickAdd(dateStr) {
-    const routineId = routineByDate[dateStr];
-    if (!routineId) return;
-    window.location.href = baseUrl + '/mess/' + messId + '/market/' + routineId + '/list';
-}
 
 function openUnassignModal(action, name, period, hasItems, isCompleted) {
     document.getElementById('unassignForm').action   = action;
@@ -840,7 +1042,7 @@ function openDayModal(d) {
     body.innerHTML = html;
 
     // Footer actions
-    let fhtml = `<button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>`;
+    let fhtml = `<button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ __('Close') }}</button>`;
     if (d.hasRoutine && d.listUrl) {
         fhtml += `<a href="${d.listUrl}" class="btn btn-primary btn-sm"><i class="ti ti-list me-1"></i>View List</a>`;
     }
@@ -874,6 +1076,11 @@ function openApproveModal(action, name, date, spent) {
     }
     new bootstrap.Modal(document.getElementById('approveRoutineModal')).show();
 }
+
+document.getElementById('quickExpenseModal').addEventListener('shown.bs.modal', function () {
+    qeBindCostInputs();
+    qeRecalcTotal();
+});
 </script>
 
 {{-- Mobile Day Detail Modal --}}

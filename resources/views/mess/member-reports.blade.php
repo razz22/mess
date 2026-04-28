@@ -5,7 +5,7 @@
     <div class="content">
         <div class="page-header">
             <div class="page-title">
-                <h4 class="fw-bold">Member Reports — {{ $mess->name }}</h4>
+                <h4 class="fw-bold">{{ __('Member Reports') }} — {{ $mess->name }}</h4>
                 <h6>Report misconduct & earn reward points</h6>
             </div>
             <div class="page-btn">
@@ -36,13 +36,13 @@
                 <table class="table table-hover">
                     <thead>
                         <tr>
-                            <th>Date</th>
+                            <th>{{ __('Date') }}</th>
                             <th>Reported By</th>
                             <th>Reported</th>
                             <th>Reason</th>
-                            <th>Status</th>
+                            <th>{{ __('Status') }}</th>
                             <th>Points</th>
-                            @if($member->canManage()) <th>Actions</th> @endif
+                            @if($member->canManage()) <th>{{ __('Actions') }}</th> @endif
                         </tr>
                     </thead>
                     <tbody>
@@ -141,7 +141,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="submit" class="btn btn-danger">Submit Report</button>
                 </div>
             </form>
@@ -178,7 +178,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="submit" class="btn btn-primary">Submit Review</button>
                 </div>
             </form>

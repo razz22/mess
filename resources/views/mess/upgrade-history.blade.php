@@ -6,7 +6,7 @@
 
         <div class="page-header">
             <div class="page-title">
-                <h4 class="fw-bold"><i class="ti ti-history me-2 text-primary"></i>Upgrade History</h4>
+                <h4 class="fw-bold"><i class="ti ti-history me-2 text-primary"></i>{{ __('Upgrade History') }}</h4>
                 <h6 class="text-muted">{{ $mess->name }} — All subscription upgrade requests</h6>
             </div>
             <div class="page-btn">
@@ -20,25 +20,25 @@
         <div class="row g-3 mb-4">
             <div class="col-6 col-md-3">
                 <div class="card border-0 shadow-sm text-center py-3">
-                    <div class="text-muted small mb-1"><i class="ti ti-list me-1"></i>Total Requests</div>
+                    <div class="text-muted small mb-1"><i class="ti ti-list me-1"></i>{{ __('Total Requests') }}</div>
                     <div class="fs-3 fw-bold text-primary">{{ $upgrades->count() }}</div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
                 <div class="card border-0 shadow-sm text-center py-3">
-                    <div class="text-muted small mb-1"><i class="ti ti-circle-check me-1"></i>Approved</div>
+                    <div class="text-muted small mb-1"><i class="ti ti-circle-check me-1"></i>{{ __('Approved') }}</div>
                     <div class="fs-3 fw-bold text-success">{{ $upgrades->where('status','approved')->count() }}</div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
                 <div class="card border-0 shadow-sm text-center py-3">
-                    <div class="text-muted small mb-1"><i class="ti ti-clock me-1"></i>Pending</div>
+                    <div class="text-muted small mb-1"><i class="ti ti-clock me-1"></i>{{ __('Pending') }}</div>
                     <div class="fs-3 fw-bold text-warning">{{ $upgrades->where('status','pending')->count() }}</div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
                 <div class="card border-0 shadow-sm text-center py-3">
-                    <div class="text-muted small mb-1"><i class="ti ti-currency-taka me-1"></i>Total Paid</div>
+                    <div class="text-muted small mb-1"><i class="ti ti-currency-taka me-1"></i>{{ __('Total Paid') }}</div>
                     <div class="fs-3 fw-bold text-info">৳{{ number_format($upgrades->where('status','approved')->sum('amount'), 0) }}</div>
                 </div>
             </div>
@@ -47,7 +47,7 @@
         {{-- DataTable --}}
         <div class="card shadow-sm">
             <div class="card-header d-flex align-items-center justify-content-between">
-                <h6 class="mb-0"><i class="ti ti-table me-2"></i>All Requests</h6>
+                <h6 class="mb-0"><i class="ti ti-table me-2"></i>{{ __('All Requests') }}</h6>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -55,14 +55,14 @@
                         <thead class="table-light">
                             <tr>
                                 <th>#</th>
-                                <th>Date</th>
-                                <th>Plan</th>
-                                <th>Member Limit</th>
-                                <th>Amount</th>
+                                <th>{{ __('Date') }}</th>
+                                <th>{{ __('Plan') }}</th>
+                                <th>{{ __('Member Limit') }}</th>
+                                <th>{{ __('Amount') }}</th>
                                 <th>bKash Tx ID</th>
-                                <th>Status</th>
-                                <th>Reviewed</th>
-                                <th>Admin Note</th>
+                                <th>{{ __('Status') }}</th>
+                                <th>{{ __('Reviewed') }}</th>
+                                <th>{{ __('Admin Note') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -79,7 +79,7 @@
                                         <i class="ti ti-rocket me-1"></i>{{ $u->plan->name }}
                                     </span>
                                     @else
-                                    <span class="text-muted small">Custom</span>
+                                    <span class="text-muted small">{{ __('Custom') }}</span>
                                     @endif
                                 </td>
                                 <td>

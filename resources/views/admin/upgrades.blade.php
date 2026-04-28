@@ -49,10 +49,10 @@
                         <tr>
                             <th>Mess / Owner</th>
                             <th>Requested</th>
-                            <th>Amount</th>
+                            <th>{{ __('Amount') }}</th>
                             <th>bKash Details</th>
-                            <th>Date</th>
-                            <th>Status</th>
+                            <th>{{ __('Date') }}</th>
+                            <th>{{ __('Status') }}</th>
                             <th class="text-end">Actions</th>
                         </tr>
                     </thead>
@@ -158,7 +158,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="submit" class="btn btn-success"><i class="ti ti-check me-1"></i>Confirm Approve</button>
                 </div>
             </form>
@@ -186,7 +186,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="submit" class="btn btn-danger"><i class="ti ti-x me-1"></i>Confirm Reject</button>
                 </div>
             </form>

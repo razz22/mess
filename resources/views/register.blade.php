@@ -16,8 +16,8 @@
                         <img src="{{URL::asset('build/img/logo-white.svg')}}" alt="Mess Manager">
                     </a>
                     <div class="login-userheading">
-                        <h3>Create Account</h3>
-                        <h4>Register to start managing your mess</h4>
+                        <h3>{{ __('Create Account') }}</h3>
+                        <h4>{{ __('Register to start managing your mess') }}</h4>
                     </div>
 
                     @if($errors->any())
@@ -31,18 +31,18 @@
                     @endif
 
                     <div class="mb-3">
-                        <label class="form-label">Full Name <span class="text-danger">*</span></label>
+                        <label class="form-label">{{ __('Full Name') }} <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <input type="text" name="name" value="{{ old('name') }}"
                                 class="form-control border-end-0 @error('name') is-invalid @enderror"
-                                placeholder="Your full name" required>
+                                placeholder="{{ __('Full Name') }}" required>
                             <span class="input-group-text border-start-0">
                                 <i class="ti ti-user"></i>
                             </span>
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Email <span class="text-danger">*</span></label>
+                        <label class="form-label">{{ __('Email') }} <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <input type="email" name="email" value="{{ old('email') }}"
                                 class="form-control border-end-0 @error('email') is-invalid @enderror"
@@ -53,7 +53,7 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Phone (Optional)</label>
+                        <label class="form-label">{{ __('Phone (Optional)') }}</label>
                         <div class="input-group">
                             <input type="text" name="phone" value="{{ old('phone') }}"
                                 class="form-control border-end-0"
@@ -64,18 +64,18 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Password <span class="text-danger">*</span></label>
+                        <label class="form-label">{{ __('Password') }} <span class="text-danger">*</span></label>
                         <div class="pass-group">
                             <input type="password" name="password" class="pass-input form-control"
-                                placeholder="Minimum 6 characters" required>
+                                placeholder="{{ __('Password') }}" required>
                             <span class="ti toggle-password ti-eye-off text-gray-9"></span>
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Confirm Password <span class="text-danger">*</span></label>
+                        <label class="form-label">{{ __('Confirm Password') }} <span class="text-danger">*</span></label>
                         <div class="pass-group">
                             <input type="password" name="password_confirmation" class="pass-inputs form-control"
-                                placeholder="Repeat your password" required>
+                                placeholder="{{ __('Confirm Password') }}" required>
                             <span class="ti toggle-passwords ti-eye-off text-gray-9"></span>
                         </div>
                     </div>
@@ -83,14 +83,14 @@
                         <label class="checkboxs ps-4 mb-0 pb-0 line-height-1">
                             <input type="checkbox" required>
                             <span class="checkmarks"></span>
-                            I agree to the <a href="#" class="text-primary">Terms & Privacy</a>
+                            {{ __('I agree to the Terms & Privacy') }}
                         </label>
                     </div>
                     <div class="form-login">
-                        <button type="submit" class="btn btn-primary w-100">Create Account</button>
+                        <button type="submit" class="btn btn-primary w-100">{{ __('Create Account') }}</button>
                     </div>
                     <div class="signinform mt-3">
-                        <h4>Already have an account? <a href="{{ route('signin') }}" class="hover-a">Sign In</a></h4>
+                        <h4>{{ __('Already have an account?') }} <a href="{{ route('signin') }}" class="hover-a">{{ __('Sign In') }}</a></h4>
                     </div>
 
                     <div class="mt-3 d-flex align-items-center gap-2">
@@ -104,12 +104,12 @@
                                 <path fill="#FBBC05" d="M24 44c5.4 0 10.3-1.8 14.1-4.9l-6.5-5.3C29.6 35.4 26.9 36 24 36c-5.6 0-10.2-3.7-11.9-8.7l-7 5.4C8.8 39.7 15.8 44 24 44z"/>
                                 <path fill="#EA4335" d="M44.5 20H24v8.5h11.9c-.9 2.6-2.6 4.8-4.8 6.3l6.5 5.3C41.8 36.5 44 30.7 44 24c0-1.3-.2-2.7-.5-4z"/>
                             </svg>
-                            Sign up with Google
+                            {{ __('Sign up with Google') }}
                         </a>
                     </div>
 
                     <div class="mt-3 text-center">
-                        <a href="{{ url('/') }}" class="text-muted small"><i class="ti ti-arrow-left me-1"></i>Back to Home</a>
+                        <a href="{{ url('/') }}" class="text-muted small"><i class="ti ti-arrow-left me-1"></i>{{ __('Back to Home') }}</a>
                     </div>
                 </div>
             </form>

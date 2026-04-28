@@ -183,7 +183,7 @@
         <table class="rpt-table" id="meal-table">
             <thead>
                 <tr>
-                    <th>Date</th>
+                    <th>{{ __('Date') }}</th>
                     @foreach($mealTypes as $mt)
                     <th class="text-center">{{ $mt->name }}</th>
                     @endforeach
@@ -256,7 +256,7 @@
         <table class="rpt-table" id="market-table">
             <thead>
                 <tr>
-                    <th>Date</th>
+                    <th>{{ __('Date') }}</th>
                     <th>Title</th>
                     <th>Paid By</th>
                     <th class="text-end">Amount</th>
@@ -341,8 +341,8 @@
         <table class="rpt-table" id="deposit-table">
             <thead>
                 <tr>
-                    <th>Date</th>
-                    <th>Note</th>
+                    <th>{{ __('Date') }}</th>
+                    <th>{{ __('Note') }}</th>
                     <th class="text-end">Amount</th>
                 </tr>
             </thead>

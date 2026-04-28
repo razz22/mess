@@ -5,7 +5,7 @@
     <div class="content">
         <div class="page-header">
             <div class="page-title">
-                <h4 class="fw-bold">Mess Settings — {{ $mess->name }}</h4>
+                <h4 class="fw-bold">{{ __('Mess Settings') }} — {{ $mess->name }}</h4>
                 <h6>Configure your mess preferences</h6>
             </div>
             <div class="page-btn">
@@ -50,17 +50,17 @@
                                 <input type="text" name="name" class="form-control" value="{{ old('name', $mess->name) }}" required>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label fw-semibold">Description</label>
+                                <label class="form-label fw-semibold">{{ __('Description') }}</label>
                                 <textarea name="description" class="form-control" rows="3">{{ old('description', $mess->description) }}</textarea>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label fw-semibold">Address</label>
+                                <label class="form-label fw-semibold">{{ __('Address') }}</label>
                                 <input type="text" name="address" class="form-control" value="{{ old('address', $mess->address) }}">
                             </div>
 
                             <!-- Invite Code -->
                             <div class="p-3 bg-light rounded">
-                                <label class="form-label fw-semibold mb-1">Invite Code</label>
+                                <label class="form-label fw-semibold mb-1">{{ __('Invite Code') }}</label>
                                 <div class="d-flex align-items-center gap-2">
                                     <code class="fs-5 fw-bold">{{ $mess->invite_code }}</code>
                                     <button type="button" class="btn btn-sm btn-outline-secondary"
@@ -76,16 +76,16 @@
                 <!-- Meal Settings -->
                 <div class="col-lg-6">
                     <div class="card">
-                        <div class="card-header"><h6 class="mb-0"><i class="ti ti-tools-kitchen-2 me-2"></i>Meal Settings</h6></div>
+                        <div class="card-header"><h6 class="mb-0"><i class="ti ti-tools-kitchen-2 me-2"></i>{{ __('Meal Settings') }}</h6></div>
                         <div class="card-body">
                             <div class="mb-3">
-                                <label class="form-label fw-semibold">Meal Cost Calculation Mode</label>
+                                <label class="form-label fw-semibold">{{ __('Meal Cost Calculation Mode') }}</label>
                                 <div class="d-flex flex-column gap-2 mt-1">
                                     <div class="form-check">
                                         <input class="form-check-input" type="radio" name="meal_cost_mode" id="modeMonthly" value="monthly"
                                             {{ ($settings->meal_cost_mode ?? 'monthly') === 'monthly' ? 'checked' : '' }}>
                                         <label class="form-check-label" for="modeMonthly">
-                                            <span class="fw-semibold">Monthly</span>
+                                            <span class="fw-semibold">{{ __('Monthly') }}</span>
                                             <div class="text-muted small">Total monthly expenses ÷ total meals = per meal rate</div>
                                         </label>
                                     </div>
@@ -93,7 +93,7 @@
                                         <input class="form-check-input" type="radio" name="meal_cost_mode" id="modeDaily" value="daily"
                                             {{ ($settings->meal_cost_mode ?? 'monthly') === 'daily' ? 'checked' : '' }}>
                                         <label class="form-check-label" for="modeDaily">
-                                            <span class="fw-semibold">Daily</span>
+                                            <span class="fw-semibold">{{ __('Daily') }}</span>
                                             <div class="text-muted small">Each day's market expenses ÷ that day's total meals = daily meal rate</div>
                                         </label>
                                     </div>
@@ -103,7 +103,7 @@
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" name="allow_meal_off" id="allowMealOff"
                                         {{ ($settings->allow_meal_off ?? true) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="allowMealOff">Allow members to mark meal OFF</label>
+                                    <label class="form-check-label" for="allowMealOff">{{ __('Allow members to mark meal OFF') }}</label>
                                 </div>
                             </div>
                             <div class="mb-3">
@@ -119,11 +119,11 @@
 
                     {{-- Leave Settings --}}
                     <div class="card mb-4">
-                        <div class="card-header"><h6 class="mb-0"><i class="ti ti-logout me-2 text-danger"></i>Leave Settings</h6></div>
+                        <div class="card-header"><h6 class="mb-0"><i class="ti ti-logout me-2 text-danger"></i>{{ __('Leave Settings') }}</h6></div>
                         <div class="card-body">
                             <div class="row g-3">
                                 <div class="col-md-6">
-                                    <label class="form-label fw-semibold">Leave Notice Period</label>
+                                    <label class="form-label fw-semibold">{{ __('Leave Notice Period') }}</label>
                                     <div class="input-group" style="max-width:220px;">
                                         <input type="number" name="leave_notice_months" class="form-control"
                                             min="1" max="6" value="{{ $mess->leave_notice_months ?? 1 }}">
@@ -151,7 +151,7 @@
         @endif
         <div class="card mt-4">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0"><i class="ti ti-address-book me-2 text-success"></i>Phone Book</h6>
+                <h6 class="mb-0"><i class="ti ti-address-book me-2 text-success"></i>{{ __('Phone Book') }}</h6>
                 <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addContactModal">
                     <i class="ti ti-plus me-1"></i>Add Contact
                 </button>
@@ -166,10 +166,10 @@
                 <table class="table align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th>Name</th>
+                            <th>{{ __('Name') }}</th>
                             <th>Phone (WhatsApp)</th>
-                            <th>Notes</th>
-                            <th class="text-center">Actions</th>
+                            <th>{{ __('Notes') }}</th>
+                            <th class="text-center">{{ __('Actions') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -202,12 +202,12 @@
         <!-- Danger Zone -->
         <div class="card mt-4 border-danger">
             <div class="card-header bg-danger-subtle">
-                <h6 class="mb-0 text-danger"><i class="ti ti-alert-triangle me-2"></i>Danger Zone</h6>
+                <h6 class="mb-0 text-danger"><i class="ti ti-alert-triangle me-2"></i>{{ __('Danger Zone') }}</h6>
             </div>
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <div class="fw-semibold">Delete This Mess</div>
+                        <div class="fw-semibold">{{ __('Delete This Mess') }}</div>
                         <div class="text-muted small">This will permanently delete the mess and all its data.</div>
                     </div>
                     <form action="{{ route('mess.destroy', $mess->id) }}" method="POST"
@@ -227,7 +227,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="ti ti-address-book me-2"></i>Add Contact</h5>
+                <h5 class="modal-title"><i class="ti ti-address-book me-2"></i>{{ __('Add Contact') }}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form action="{{ route('mess.contacts.store', $mess->id) }}" method="POST">
@@ -245,13 +245,13 @@
                         <div class="form-text">Include country code without + (e.g. 8801712345678 for Bangladesh)</div>
                     </div>
                     <div class="mb-0">
-                        <label class="form-label fw-semibold">Notes</label>
+                        <label class="form-label fw-semibold">{{ __('Notes') }}</label>
                         <input type="text" name="notes" class="form-control" maxlength="255" placeholder="Optional note">
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success"><i class="ti ti-check me-1"></i>Save Contact</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                    <button type="submit" class="btn btn-success"><i class="ti ti-check me-1"></i>{{ __('Save Contact') }}</button>
                 </div>
             </form>
         </div>
@@ -263,7 +263,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="ti ti-edit me-2"></i>Edit Contact</h5>
+                <h5 class="modal-title"><i class="ti ti-edit me-2"></i>{{ __('Edit Contact') }}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="editContactForm" method="POST">
@@ -279,13 +279,13 @@
                         <input type="text" name="phone" id="ecPhone" class="form-control" required maxlength="20">
                     </div>
                     <div class="mb-0">
-                        <label class="form-label fw-semibold">Notes</label>
+                        <label class="form-label fw-semibold">{{ __('Notes') }}</label>
                         <input type="text" name="notes" id="ecNotes" class="form-control" maxlength="255">
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="ti ti-device-floppy me-1"></i>Update</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                    <button type="submit" class="btn btn-primary"><i class="ti ti-device-floppy me-1"></i>{{ __('Update') }}</button>
                 </div>
             </form>
         </div>

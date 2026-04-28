@@ -6,7 +6,7 @@
 
         <div class="page-header">
             <div class="page-title">
-                <h4 class="fw-bold"><i class="ti ti-rocket me-2 text-primary"></i>Upgrade Mess</h4>
+                <h4 class="fw-bold"><i class="ti ti-rocket me-2 text-primary"></i>{{ __('Upgrade Mess') }}</h4>
                 <h6 class="text-muted">{{ $mess->name }} — Choose a subscription plan</h6>
             </div>
             <div class="page-btn d-flex gap-2">
@@ -26,29 +26,31 @@
         <div class="alert alert-danger alert-dismissible fade show">{{ session('error') }}<button class="btn-close" data-bs-dismiss="alert"></button></div>
         @endif
 
+        @php $customSub = \App\Models\CustomSubscription::active()->forMess($mess->id)->first(); @endphp
+
         {{-- Status Bar --}}
         <div class="row g-3 mb-4">
             <div class="col-6 col-md-3">
                 <div class="card border-0 shadow-sm text-center py-3">
-                    <div class="text-muted small mb-1"><i class="ti ti-users me-1"></i>Current Members</div>
+                    <div class="text-muted small mb-1"><i class="ti ti-users me-1"></i>{{ __('Current Members') }}</div>
                     <div class="fs-3 fw-bold text-primary">{{ $mess->getMemberCount() }}</div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
                 <div class="card border-0 shadow-sm text-center py-3">
-                    <div class="text-muted small mb-1"><i class="ti ti-users-plus me-1"></i>Member Limit</div>
-                    <div class="fs-3 fw-bold text-info">{{ $mess->max_members }}</div>
+                    <div class="text-muted small mb-1"><i class="ti ti-users-plus me-1"></i>{{ __('Member Limit') }}</div>
+                    <div class="fs-3 fw-bold text-info">{{ $mess->getEffectiveMaxMembers() }}</div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
                 <div class="card border-0 shadow-sm text-center py-3">
-                    <div class="text-muted small mb-1"><i class="ti ti-chart-bar me-1"></i>Slots Free</div>
-                    <div class="fs-3 fw-bold text-success">{{ $mess->max_members - $mess->getMemberCount() }}</div>
+                    <div class="text-muted small mb-1"><i class="ti ti-chart-bar me-1"></i>{{ __('Slots Free') }}</div>
+                    <div class="fs-3 fw-bold text-success">{{ max(0, $mess->getEffectiveMaxMembers() - $mess->getMemberCount()) }}</div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
                 <div class="card border-0 shadow-sm text-center py-3">
-                    <div class="text-muted small mb-1"><i class="ti ti-clock me-1"></i>Pending Request</div>
+                    <div class="text-muted small mb-1"><i class="ti ti-clock me-1"></i>{{ __('Pending Request') }}</div>
                     <div class="fs-3 fw-bold {{ $pendingUpgrade ? 'text-warning' : 'text-muted' }}">
                         {{ $pendingUpgrade ? 'Yes' : 'No' }}
                     </div>
@@ -69,12 +71,12 @@
 
         {{-- Heading --}}
         <div class="text-center mb-4">
-            <h5 class="fw-bold mb-1">Choose the Right Plan for Your Mess</h5>
+            <h5 class="fw-bold mb-1">{{ __('Choose the Right Plan for Your Mess') }}</h5>
             <p class="text-muted mb-0">Click any plan to subscribe via bKash payment</p>
         </div>
 
         {{-- Plan Cards --}}
-        @if($plans->isEmpty())
+        @if($plans->isEmpty() && !$customSub)
         <div class="card shadow-sm">
             <div class="card-body text-center py-5 text-muted">
                 <i class="ti ti-package-off fs-1 d-block mb-3 opacity-40"></i>
@@ -95,6 +97,87 @@
             $planIcons = ['ti-rocket','ti-crown','ti-diamond','ti-bolt','ti-stars','ti-award'];
         @endphp
         <div class="row g-4 justify-content-center">
+
+            {{-- Custom Subscription Card (shown as active/selected) --}}
+            @if($customSub)
+            <div class="col-sm-6 col-lg-4 col-xl-3">
+                <div class="position-relative" style="border-radius:20px;border:2px solid #6366f1;
+                     background:#fff;overflow:hidden;box-shadow:0 8px 32px rgba(99,102,241,.28);">
+
+                    {{-- ACTIVE ribbon --}}
+                    <div style="position:absolute;top:14px;right:-28px;background:#6366f1;color:#fff;
+                                font-size:10px;font-weight:700;padding:4px 36px;transform:rotate(45deg);
+                                letter-spacing:.5px;z-index:2;">{{ __('ACTIVE') }}</div>
+
+                    {{-- Header --}}
+                    <div style="background:linear-gradient(135deg,#6366f1,#818cf8);padding:28px 20px 24px;text-align:center;">
+                        <div style="width:58px;height:58px;border-radius:50%;background:rgba(255,255,255,.2);
+                                    display:flex;align-items:center;justify-content:center;margin:0 auto 12px;
+                                    box-shadow:0 4px 12px rgba(0,0,0,.15);">
+                            <i class="ti ti-star" style="font-size:26px;color:#fff;"></i>
+                        </div>
+                        <div style="color:rgba(255,255,255,.85);font-size:11px;font-weight:700;
+                                    letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;">
+                            {{ $customSub->label }}
+                        </div>
+                        @if($customSub->is_free)
+                        <div style="color:#fff;font-size:36px;font-weight:800;line-height:1;">{{ __('Free') }}</div>
+                        @else
+                        <div style="color:#fff;line-height:1;">
+                            <span style="font-size:15px;vertical-align:top;line-height:28px;font-weight:600;">৳</span>
+                            <span style="font-size:42px;font-weight:800;">{{ number_format($customSub->price, 0) }}</span>
+                        </div>
+                        @endif
+                        <div style="color:rgba(255,255,255,.7);font-size:12px;margin-top:4px;">
+                            {{ __('Custom Plan') }} &middot; {{ __('Assigned by Admin') }}
+                        </div>
+                    </div>
+
+                    {{-- Body --}}
+                    <div style="padding:20px 22px 22px;">
+                        <ul style="list-style:none;padding:0;margin:0 0 20px;">
+                            <li style="display:flex;align-items:center;gap:9px;padding:7px 0;
+                                       font-size:13px;color:#374151;border-bottom:1px dashed #f0f0f0;">
+                                <span style="width:22px;height:22px;border-radius:50%;background:#6366f118;
+                                             display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="ti ti-users" style="color:#6366f1;font-size:13px;"></i>
+                                </span>
+                                {{ __('Up to') }} <strong style="margin:0 3px;">{{ $customSub->max_members }}</strong> {{ __('members') }}
+                            </li>
+                            <li style="display:flex;align-items:center;gap:9px;padding:7px 0;
+                                       font-size:13px;color:#374151;border-bottom:1px dashed #f0f0f0;">
+                                <span style="width:22px;height:22px;border-radius:50%;background:#6366f118;
+                                             display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="ti ti-user-check" style="color:#6366f1;font-size:13px;"></i>
+                                </span>
+                                {{ __('Currently') }}: <strong style="margin:0 3px;">{{ $mess->getMemberCount() }}</strong> {{ __('members') }}
+                            </li>
+                            @if($customSub->expires_at)
+                            <li style="display:flex;align-items:center;gap:9px;padding:7px 0;
+                                       font-size:13px;color:#374151;border-bottom:1px dashed #f0f0f0;">
+                                <span style="width:22px;height:22px;border-radius:50%;background:#6366f118;
+                                             display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="ti ti-calendar" style="color:#6366f1;font-size:13px;"></i>
+                                </span>
+                                {{ __('Valid until') }}: <strong style="margin:0 3px;">{{ $customSub->expires_at->format('d M Y') }}</strong>
+                            </li>
+                            @endif
+                        </ul>
+
+                        <div style="background:#ede9fe;color:#4338ca;border-radius:10px;padding:10px 14px;
+                                    text-align:center;font-size:13px;font-weight:700;border:1px solid #c4b5fd;">
+                            <i class="ti ti-star me-1"></i>{{ __('Custom Plan Active') }}
+                        </div>
+                        @if($customSub->expires_at)
+                        <div style="text-align:center;font-size:11px;color:#6b7280;margin-top:7px;">
+                            <i class="ti ti-clock me-1"></i>
+                            {{ max(0, (int) now()->diffInDays($customSub->expires_at, false)) }} {{ __('days left') }}
+                        </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+            @endif
             @foreach($plans as $i => $plan)
             @php
                 $color = $planColors[$i % count($planColors)];
@@ -125,11 +208,11 @@
                     @if($isActivePlan)
                     <div style="position:absolute;top:14px;right:-28px;background:#10b981;color:#fff;
                                 font-size:10px;font-weight:700;padding:4px 36px;transform:rotate(45deg);
-                                letter-spacing:.5px;z-index:2;">ACTIVE</div>
+                                letter-spacing:.5px;z-index:2;">{{ __('ACTIVE') }}</div>
                     @elseif($popular)
                     <div style="position:absolute;top:14px;right:-28px;background:#f72585;color:#fff;
                                 font-size:10px;font-weight:700;padding:4px 36px;transform:rotate(45deg);
-                                letter-spacing:.5px;z-index:2;">POPULAR</div>
+                                letter-spacing:.5px;z-index:2;">{{ __('POPULAR') }}</div>
                     @endif
 
                     {{-- Gradient Header --}}
@@ -307,7 +390,7 @@
                     </div>
 
                     <div class="modal-footer border-0 px-0 pt-0 pb-4">
-                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                         <button type="submit" id="submitBtn" class="btn btn-primary flex-grow-1">
                             <i class="ti ti-send me-1"></i>Submit Upgrade Request
                         </button>

@@ -6,7 +6,7 @@
 
         <div class="page-header">
             <div class="page-title">
-                <h4 class="fw-bold"><i class="ti ti-logout me-2 text-danger"></i>Leave Application</h4>
+                <h4 class="fw-bold"><i class="ti ti-logout me-2 text-danger"></i>{{ __('Leave Application') }}</h4>
                 <h6 class="text-muted">{{ $mess->name }}</h6>
             </div>
         </div>

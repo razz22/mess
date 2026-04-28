@@ -255,7 +255,7 @@
                         <table class="table align-middle mb-0 small">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Date</th>
+                                    <th>{{ __('Date') }}</th>
                                     <th>Description</th>
                                     <th class="text-end">Amount</th>
                                     <th></th>

@@ -6,8 +6,8 @@
         <div class="page-header">
             <div class="add-item d-flex">
                 <div class="page-title">
-                    <h4 class="fw-bold">My Messes</h4>
-                    <h6>Manage your mess memberships</h6>
+                    <h4 class="fw-bold">{{ __('My Messes') }}</h4>
+                    <h6>{{ __('Manage your mess memberships') }}</h6>
                 </div>
             </div>
             <div class="page-btn d-flex gap-2">
@@ -245,7 +245,7 @@
                 <form id="toggleStatusForm" method="POST">
                     @csrf
                     <div class="d-flex justify-content-center gap-2">
-                        <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                         <button type="submit" class="btn px-4" id="toggleModalBtn"></button>
                     </div>
                 </form>

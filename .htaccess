@@ -14,7 +14,7 @@
     RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
 
     # Serve static assets from public/ folder
-    RewriteRule ^(build|storage|favicon\.ico|robots\.txt)(.*)?$ public/$1$2 [L]
+    RewriteRule ^(build|storage|uploads|favicon\.ico|robots\.txt)(.*)?$ public/$1$2 [L]
 
     # Redirect Trailing Slashes If Not A Folder...
     RewriteCond %{REQUEST_FILENAME} !-d

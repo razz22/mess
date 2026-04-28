@@ -94,7 +94,7 @@
                     <div class="table-responsive">
                         <table class="table table-sm align-middle mb-0">
                             <thead class="table-light">
-                                <tr><th>Member</th><th>Room</th><th>Monthly Rent</th><th>Paid</th><th>Balance</th><th>Status</th></tr>
+                                <tr><th>{{ __('Member') }}</th><th>Room</th><th>Monthly Rent</th><th>Paid</th><th>Balance</th><th>{{ __('Status') }}</th></tr>
                             </thead>
                             <tbody>
                                 @foreach($members as $m)
@@ -134,11 +134,11 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th>Member</th>
-                            <th>Role</th>
+                            <th>{{ __('Member') }}</th>
+                            <th>{{ __('Role') }}</th>
                             <th>Room</th>
                             <th>Monthly Rent</th>
-                            <th>Joined</th>
+                            <th>{{ __('Joined') }}</th>
                             <th class="text-end">Actions</th>
                         </tr>
                     </thead>
@@ -237,7 +237,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="submit" class="btn btn-success"><i class="ti ti-user-plus me-1"></i>Add Member</button>
                 </div>
             </form>
@@ -268,7 +268,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="submit" class="btn btn-primary btn-sm">Update Role</button>
                 </div>
             </form>
@@ -292,7 +292,7 @@
                 <form action="{{ route('admin.mess.toggle-status', $mess->id) }}" method="POST">
                     @csrf
                     <div class="d-flex justify-content-center gap-2">
-                        <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                         <button type="submit" class="btn btn-warning px-4"><i class="ti ti-ban me-1"></i>Yes, Deactivate</button>
                     </div>
                 </form>
@@ -307,7 +307,7 @@
                 <form action="{{ route('admin.mess.toggle-status', $mess->id) }}" method="POST">
                     @csrf
                     <div class="d-flex justify-content-center gap-2">
-                        <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                         <button type="submit" class="btn btn-success px-4"><i class="ti ti-shield-check me-1"></i>Yes, Activate</button>
                     </div>
                 </form>

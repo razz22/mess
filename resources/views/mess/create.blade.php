@@ -5,8 +5,8 @@
     <div class="content">
         <div class="page-header">
             <div class="page-title">
-                <h4 class="fw-bold">Create New Mess</h4>
-                <h6>Set up your mess and start managing</h6>
+                <h4 class="fw-bold">{{ __('Create New Mess') }}</h4>
+                <h6>{{ __('Set up your mess and start managing') }}</h6>
             </div>
         </div>
 
@@ -20,7 +20,7 @@
             <div class="col-lg-7">
                 <div class="card">
                     <div class="card-header">
-                        <h5 class="card-title mb-0"><i class="ti ti-building-community me-2 text-primary"></i>Mess Details</h5>
+                        <h5 class="card-title mb-0"><i class="ti ti-building-community me-2 text-primary"></i>{{ __('Mess Details') }}</h5>
                     </div>
                     <div class="card-body">
                         <form action="{{ route('mess.store') }}" method="POST" enctype="multipart/form-data">
@@ -48,13 +48,13 @@
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label fw-semibold">Description</label>
+                                <label class="form-label fw-semibold">{{ __('Description') }}</label>
                                 <textarea name="description" class="form-control" rows="3"
                                     placeholder="Brief description of your mess">{{ old('description') }}</textarea>
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label fw-semibold">Address</label>
+                                <label class="form-label fw-semibold">{{ __('Address') }}</label>
                                 <input type="text" name="address" class="form-control"
                                     value="{{ old('address') }}" placeholder="Mess address / location">
                             </div>
@@ -62,8 +62,8 @@
                             <div class="alert alert-info d-flex align-items-start gap-2 mb-4">
                                 <i class="ti ti-info-circle fs-5 mt-1"></i>
                                 <div>
-                                    <strong>Free Plan:</strong> Default 20 members per mess. Upgrade subscription to add more members (up to 50+).
-                                    You can create up to <strong>2 messes</strong>.
+                                    <strong>{{ __('Free Plan') }}:</strong> {{ __('Default') }} {{ $sysSettings->default_max_members }} {{ __('members per mess') }}. {{ __('Upgrade subscription to add more members') }}.
+                                    {{ __('You can create up to') }} <strong>{{ $sysSettings->default_max_messes }} {{ __('messes') }}</strong>.
                                 </div>
                             </div>
 
