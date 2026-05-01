@@ -7,6 +7,7 @@ use App\Http\Controllers\Concerns\AuthorizesMessAccess;
 use App\Models\Mess;
 use App\Models\MessUpgrade;
 use App\Models\SubscriptionPlan;
+use App\Models\SystemSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -28,9 +29,10 @@ class UpgradeController extends Controller
             ->where('expires_at', '>', now())
             ->latest()
             ->first();
-        $customSub = \App\Models\CustomSubscription::active()->forMess($mess->id)->first();
+        $customSub   = \App\Models\CustomSubscription::active()->forMess($mess->id)->first();
+        $bkashNumber = SystemSetting::instance()->bkash_number;
 
-        return view('mess.upgrade', compact('mess', 'pendingUpgrade', 'plans', 'activeSub', 'customSub'));
+        return view('mess.upgrade', compact('mess', 'pendingUpgrade', 'plans', 'activeSub', 'customSub', 'bkashNumber'));
     }
 
     // Owner or manager: upgrade history DataTable page

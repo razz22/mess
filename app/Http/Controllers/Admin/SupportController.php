@@ -34,39 +34,38 @@ class SupportController extends Controller
         return view('admin.support.index', compact('tokens', 'totalUnread'));
     }
 
-    public function show(SupportToken $token)
+    public function show(SupportToken $supportToken)
     {
         abort_unless(Auth::user()->is_super_admin, 403);
 
-        // Auto-expire
-        if ($token->status === 'open' && $token->isExpired()) {
-            $token->update(['status' => 'expired']);
-            $token->refresh();
+        if ($supportToken->status === 'open' && $supportToken->isExpired()) {
+            $supportToken->update(['status' => 'expired']);
+            $supportToken->refresh();
         }
 
-        // Mark user messages as read
-        SupportMessage::where('support_token_id', $token->id)
+        SupportMessage::where('support_token_id', $supportToken->id)
             ->where('sender_type', 'user')
             ->where('is_read', false)
             ->update(['is_read' => true]);
 
-        $messages = $token->messages()->with('sender')->orderBy('created_at')->get();
-        $token->load(['mess', 'user']);
+        $messages = $supportToken->messages()->with('sender')->orderBy('created_at')->get();
+        $supportToken->load(['mess', 'user']);
 
-        $role = $this->getUserRole($token);
+        $role  = $this->getUserRole($supportToken);
+        $token = $supportToken;
 
         return view('admin.support.show', compact('token', 'messages', 'role'));
     }
 
-    public function reply(Request $request, SupportToken $token)
+    public function reply(Request $request, SupportToken $supportToken)
     {
         abort_unless(Auth::user()->is_super_admin, 403);
 
-        if ($token->status === 'open' && $token->isExpired()) {
-            $token->update(['status' => 'expired']);
+        if ($supportToken->status === 'open' && $supportToken->isExpired()) {
+            $supportToken->update(['status' => 'expired']);
         }
 
-        if ($token->status === 'closed') {
+        if ($supportToken->status === 'closed') {
             return back()->withErrors(['message' => __('This ticket is closed.')]);
         }
 
@@ -84,27 +83,27 @@ class SupportController extends Controller
         }
 
         SupportMessage::create([
-            'support_token_id' => $token->id,
+            'support_token_id' => $supportToken->id,
             'sender_id'        => Auth::id(),
             'sender_type'      => 'admin',
             'message'          => $request->message,
             'image_path'       => $imagePath,
         ]);
 
-        return redirect()->route('admin.support.show', $token)->with('success', __('Reply sent.'));
+        return redirect()->route('admin.support.show', $supportToken)->with('success', __('Reply sent.'));
     }
 
-    public function close(SupportToken $token)
+    public function close(SupportToken $supportToken)
     {
         abort_unless(Auth::user()->is_super_admin, 403);
-        $token->update(['status' => 'closed']);
+        $supportToken->update(['status' => 'closed']);
         return back()->with('success', __('Ticket closed.'));
     }
 
-    private function getUserRole(SupportToken $token): string
+    private function getUserRole(SupportToken $supportToken): string
     {
-        $member = \App\Models\MessMember::where('mess_id', $token->mess_id)
-            ->where('user_id', $token->user_id)
+        $member = \App\Models\MessMember::where('mess_id', $supportToken->mess_id)
+            ->where('user_id', $supportToken->user_id)
             ->first();
 
         if (!$member) return 'Owner';

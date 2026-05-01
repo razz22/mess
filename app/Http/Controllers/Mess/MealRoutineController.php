@@ -29,8 +29,8 @@ class MealRoutineController extends Controller
         $prevMonth   = $monthStart->copy()->subMonth()->format('Y-m');
         $nextMonth   = $monthStart->copy()->addMonth()->format('Y-m');
 
-        // All meal types for this mess
-        $mealTypes = MessMealType::where('mess_id', $mess->id)->orderBy('id')->get();
+        // Active meal types for this mess
+        $mealTypes = MessMealType::where('mess_id', $mess->id)->where('is_active', true)->orderBy('id')->get();
 
         // Selected meal type (default to first)
         $selectedType = $request->get('meal_type', $mealTypes->first()?->name ?? '');

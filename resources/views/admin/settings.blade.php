@@ -29,6 +29,7 @@
                     <div class="card-body">
                         <form action="{{ route('admin.settings.update') }}" method="POST">
                             @csrf
+                            <input type="hidden" name="bkash_number" value="{{ $settings->bkash_number }}">
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">Default Member Limit <span class="text-danger">*</span></label>
                                 <input type="number" name="default_max_members" min="1" max="1000"
@@ -62,9 +63,10 @@
                     <div class="card-body">
                         <form action="{{ route('admin.settings.update') }}" method="POST">
                             @csrf
-                            {{-- hidden: carry over the limit fields so they don't reset --}}
+                            {{-- hidden: carry over other fields so they don't reset --}}
                             <input type="hidden" name="default_max_members" value="{{ $settings->default_max_members }}">
                             <input type="hidden" name="default_max_messes"  value="{{ $settings->default_max_messes }}">
+                            <input type="hidden" name="bkash_number"        value="{{ $settings->bkash_number }}">
 
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">Google Client ID</label>
@@ -104,6 +106,43 @@
                             </div>
                             <button type="submit" class="btn w-100 text-white" style="background:#4285f4;">
                                 <i class="ti ti-brand-google me-1"></i>Save Google Settings
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            {{-- bKash Payment Number --}}
+            <div class="col-lg-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header" style="background:linear-gradient(135deg,#e2136e,#f95c8a);color:#fff;">
+                        <h6 class="mb-0"><i class="ti ti-brand-cashapp me-2"></i>bKash Payment Number</h6>
+                    </div>
+                    <div class="card-body">
+                        <form action="{{ route('admin.settings.update') }}" method="POST">
+                            @csrf
+                            {{-- carry over other fields --}}
+                            <input type="hidden" name="default_max_members" value="{{ $settings->default_max_members }}">
+                            <input type="hidden" name="default_max_messes"  value="{{ $settings->default_max_messes }}">
+                            <input type="hidden" name="google_client_id"    value="{{ $settings->google_client_id }}">
+                            <input type="hidden" name="google_login_enabled" value="{{ $settings->google_login_enabled ? '1' : '0' }}">
+
+                            <p class="text-muted small mb-3">This number will be shown to mess owners when they subscribe to a plan, so they know where to send the bKash payment.</p>
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold">bKash Number</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="ti ti-phone"></i></span>
+                                    <input type="text" name="bkash_number"
+                                        class="form-control @error('bkash_number') is-invalid @enderror"
+                                        placeholder="01XXXXXXXXXX"
+                                        value="{{ old('bkash_number', $settings->bkash_number) }}"
+                                        maxlength="20">
+                                </div>
+                                <div class="form-text">Leave blank to hide from the payment modal.</div>
+                                @error('bkash_number')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <button type="submit" class="btn w-100 text-white" style="background:#e2136e;">
+                                <i class="ti ti-device-floppy me-1"></i>Save bKash Number
                             </button>
                         </form>
                     </div>

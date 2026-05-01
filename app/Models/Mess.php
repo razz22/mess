@@ -44,6 +44,12 @@ class Mess extends Model
         return $this->hasMany(MessMember::class)->where('is_active', true);
     }
 
+    public function currentManagers(): HasMany
+    {
+        return $this->hasMany(ManagerRotation::class)->where('is_current', true)->latest();
+    }
+
+    /** @deprecated use currentManagers() */
     public function currentManager(): HasOne
     {
         return $this->hasOne(ManagerRotation::class)->where('is_current', true)->latest();

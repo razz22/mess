@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Mess;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Concerns\AuthorizesMessAccess;
 use App\Models\Expense;
+use App\Models\IndividualMarketPurchase;
 use App\Models\MarketListItem;
 use App\Models\MarketRoutine;
 use App\Models\MarketRoutineExchange;
@@ -50,14 +51,13 @@ class MarketController extends Controller
             }
         }
 
-        // Individual market expenses this month (not from routines, for the quick list)
-        $quickExpenses = Expense::where('mess_id', $mess->id)
-            ->where('is_market_expense', true)
-            ->whereNull('routine_id')
+        // Individual market purchases (with approval flow)
+        $individualPurchases = IndividualMarketPurchase::where('mess_id', $mess->id)
             ->whereMonth('expense_date', $month)
             ->whereYear('expense_date', $year)
-            ->with('member')
-            ->orderBy('expense_date')
+            ->with(['member', 'addedBy', 'approvedBy'])
+            ->orderByDesc('expense_date')
+            ->orderByDesc('created_at')
             ->get();
 
         $members = $mess->activeMembers()->with('user')->get();
@@ -66,7 +66,7 @@ class MarketController extends Controller
 
         return view('mess.market', compact(
             'mess', 'routines', 'dateRoutineMap', 'members', 'member',
-            'calendarDays', 'month', 'year', 'quickExpenses'
+            'calendarDays', 'month', 'year', 'individualPurchases'
         ));
     }
 
@@ -246,8 +246,10 @@ class MarketController extends Controller
 
         $item->update($data);
 
-        $total = $item->routine->listItems()->sum('actual_cost');
-        $item->routine->update(['total_spent' => $total]);
+        $routine = $item->routine;
+        $total   = $routine->listItems()->sum('actual_cost');
+        $routine->update(['total_spent' => $total]);
+        $this->syncExpensesFromItems($routine);
 
         return response()->json(['success' => true, 'total' => $total]);
     }
@@ -255,19 +257,14 @@ class MarketController extends Controller
     public function deleteListItem(Request $request, Mess $mess, MarketListItem $item)
     {
         if ((int) $item->mess_id !== (int) $mess->id) abort(403);
+        $this->authorizeMember($mess);
 
         $isManager    = Auth::user()->isManagerOf($mess->id);
         $isSuperAdmin = Auth::user()->is_super_admin;
-        $isAssigned   = (int) $item->routine->assigned_to === (int) Auth::id();
 
-        // Members can only delete unapproved items they added
-        if (!$isManager && !$isSuperAdmin) {
-            if ($item->is_approved) {
-                return response()->json(['error' => 'Approved items cannot be deleted.'], 403);
-            }
-            if (!$isAssigned && (int) $item->added_by !== (int) Auth::id()) {
-                return response()->json(['error' => 'You can only delete items you added.'], 403);
-            }
+        // Individually approved items can only be deleted by manager/super admin
+        if ($item->is_approved && !$isManager && !$isSuperAdmin) {
+            return response()->json(['error' => 'This item is approved. Only a manager can delete it.'], 403);
         }
 
         $routine = $item->routine;
@@ -285,6 +282,7 @@ class MarketController extends Controller
         }
 
         $routine->update($update);
+        $this->syncExpensesFromItems($routine);
 
         return response()->json(['success' => true, 'total' => $total, 'status' => $routine->fresh()->status]);
     }
@@ -302,38 +300,8 @@ class MarketController extends Controller
         // Mark all current items as approved
         $routine->listItems()->update(['is_approved' => true]);
 
-        // Create one expense per distinct expense_date in list items, else one for start_date
-        $itemsByDate = $routine->listItems()->where('actual_cost', '>', 0)->get()
-            ->groupBy(fn($i) => $i->expense_date ? $i->expense_date->format('Y-m-d') : $routine->start_date->format('Y-m-d'));
-
-        if ($itemsByDate->isEmpty() && $total > 0) {
-            Expense::firstOrCreate(
-                ['mess_id' => $mess->id, 'expense_date' => $routine->start_date, 'routine_id' => $routine->id],
-                [
-                    'title'             => 'Market - ' . $routine->start_date->format('d M') . ($routine->end_date->ne($routine->start_date) ? ' to ' . $routine->end_date->format('d M Y') : ' ' . $routine->start_date->format('Y')),
-                    'amount'            => $total,
-                    'added_by'          => Auth::id(),
-                    'member_id'         => $routine->assigned_to,
-                    'is_market_expense' => true,
-                ]
-            );
-        } else {
-            foreach ($itemsByDate as $dateStr => $items) {
-                $dayTotal    = $items->sum('actual_cost');
-                $assignedTo  = $items->first()->assigned_to ?? $routine->assigned_to;
-                $expenseDate = Carbon::parse($dateStr);
-
-                Expense::updateOrCreate(
-                    ['mess_id' => $mess->id, 'expense_date' => $expenseDate, 'routine_id' => $routine->id, 'member_id' => $assignedTo],
-                    [
-                        'title'             => 'Market - ' . $expenseDate->format('d M Y'),
-                        'amount'            => $dayTotal,
-                        'added_by'          => Auth::id(),
-                        'is_market_expense' => true,
-                    ]
-                );
-            }
-        }
+        // Expenses are already created when items were added; just ensure they're up to date
+        $this->syncExpensesFromItems($routine);
 
         return back()->with('success', 'Shopping list approved and expense recorded.');
     }
@@ -492,6 +460,168 @@ class MarketController extends Controller
         }
 
         return back()->with('success', 'Exchange ' . $request->action . 'ed.');
+    }
+
+    // ── Individual Market Purchases ──────────────────────────────────────────
+
+    public function storeIndividualPurchase(Request $request, Mess $mess)
+    {
+        $user   = Auth::user();
+        $member = $user->getMembershipIn($mess->id);
+        if (!$member && !$user->is_super_admin) abort(403);
+
+        $isManager = $user->isManagerOf($mess->id);
+
+        $request->validate([
+            'expense_date'        => 'required|date',
+            'description'         => 'nullable|string|max:255',
+            'member_id'           => 'nullable|exists:users,id',
+            'items'               => 'required|array|min:1',
+            'items.*.item_name'   => 'required|string|max:255',
+            'items.*.quantity'    => 'nullable|string|max:50',
+            'items.*.unit'        => 'nullable|string|max:20',
+            'items.*.actual_cost' => 'required|numeric|min:0.01',
+        ]);
+
+        $buyerId = $isManager ? ($request->member_id ?? $user->id) : $user->id;
+        $total   = collect($request->items)->sum('actual_cost');
+
+        IndividualMarketPurchase::create([
+            'mess_id'      => $mess->id,
+            'added_by'     => $user->id,
+            'member_id'    => $buyerId,
+            'expense_date' => $request->expense_date,
+            'description'  => $request->description,
+            'items'        => $request->items,
+            'total_amount' => $total,
+            'status'       => 'pending',
+        ]);
+
+        return back()->with('success', 'Individual market expense submitted and awaiting approval.');
+    }
+
+    public function approveIndividualPurchase(Mess $mess, IndividualMarketPurchase $individualMarketPurchase)
+    {
+        if ((int) $individualMarketPurchase->mess_id !== (int) $mess->id) abort(403);
+
+        $user = Auth::user();
+        if (!$user->isManagerOf($mess->id) && !$user->is_super_admin) abort(403);
+
+        if (!$individualMarketPurchase->isPending()) {
+            return back()->with('error', 'This purchase is already ' . $individualMarketPurchase->status . '.');
+        }
+
+        $expense = Expense::create([
+            'mess_id'           => $mess->id,
+            'title'             => $individualMarketPurchase->description
+                                    ?: 'Market - ' . $individualMarketPurchase->expense_date->format('d M Y'),
+            'amount'            => $individualMarketPurchase->total_amount,
+            'expense_date'      => $individualMarketPurchase->expense_date,
+            'added_by'          => $user->id,
+            'member_id'         => $individualMarketPurchase->member_id,
+            'is_market_expense' => true,
+        ]);
+
+        $individualMarketPurchase->update([
+            'status'      => 'approved',
+            'approved_by' => $user->id,
+            'approved_at' => now(),
+            'expense_id'  => $expense->id,
+        ]);
+
+        return back()->with('success', 'Purchase approved and expense recorded.');
+    }
+
+    public function rejectIndividualPurchase(Request $request, Mess $mess, IndividualMarketPurchase $individualMarketPurchase)
+    {
+        if ((int) $individualMarketPurchase->mess_id !== (int) $mess->id) abort(403);
+
+        $user = Auth::user();
+        if (!$user->isManagerOf($mess->id) && !$user->is_super_admin) abort(403);
+
+        if (!$individualMarketPurchase->isPending()) {
+            return back()->with('error', 'This purchase is already ' . $individualMarketPurchase->status . '.');
+        }
+
+        $individualMarketPurchase->update([
+            'status'        => 'rejected',
+            'approved_by'   => $user->id,
+            'approved_at'   => now(),
+            'reject_reason' => $request->reject_reason,
+        ]);
+
+        return back()->with('success', 'Purchase rejected.');
+    }
+
+    public function deleteIndividualPurchase(Mess $mess, IndividualMarketPurchase $individualMarketPurchase)
+    {
+        if ((int) $individualMarketPurchase->mess_id !== (int) $mess->id) abort(403);
+
+        $user      = Auth::user();
+        $isManager = $user->isManagerOf($mess->id);
+
+        if (!$isManager && !$user->is_super_admin && (int) $individualMarketPurchase->added_by !== (int) $user->id) {
+            abort(403, 'You can only delete your own purchases.');
+        }
+
+        if ($individualMarketPurchase->expense_id) {
+            Expense::where('id', $individualMarketPurchase->expense_id)->delete();
+        }
+
+        $individualMarketPurchase->delete();
+
+        return back()->with('success', 'Purchase deleted.');
+    }
+
+    /**
+     * Create or update Expense records from market list items.
+     * Called whenever items are added, edited, or deleted so the expense menu
+     * always reflects the current market list in real time.
+     */
+    private function syncExpensesFromItems(MarketRoutine $routine): void
+    {
+        if (!in_array($routine->status, ['approved', 'completed'])) return;
+
+        $allItems = $routine->listItems()->get();
+
+        $itemsByDate = $allItems->groupBy(
+            fn($i) => ($i->expense_date ?? $routine->start_date)->format('Y-m-d')
+        );
+
+        $syncedDates = [];
+
+        foreach ($itemsByDate as $dateStr => $items) {
+            $dayTotal   = $items->sum('actual_cost');
+            $assignedTo = $items->first()->assigned_to ?? $routine->assigned_to;
+            $expDate    = Carbon::parse($dateStr);
+
+            Expense::updateOrCreate(
+                [
+                    'mess_id'      => $routine->mess_id,
+                    'routine_id'   => $routine->id,
+                    'expense_date' => $expDate->toDateString(),
+                ],
+                [
+                    'title'             => 'Market - ' . $expDate->format('d M Y'),
+                    'amount'            => $dayTotal,
+                    'member_id'         => $assignedTo,
+                    'added_by'          => Auth::id(),
+                    'is_market_expense' => true,
+                ]
+            );
+
+            $syncedDates[] = $expDate->toDateString();
+        }
+
+        // Remove expense records for dates that no longer have any items
+        if (!empty($syncedDates)) {
+            Expense::where('routine_id', $routine->id)
+                ->whereNotIn('expense_date', $syncedDates)
+                ->delete();
+        } elseif ($allItems->isEmpty()) {
+            // All items removed — delete all expenses for this routine
+            Expense::where('routine_id', $routine->id)->delete();
+        }
     }
 
     private function buildCalendar(int $year, int $month): array

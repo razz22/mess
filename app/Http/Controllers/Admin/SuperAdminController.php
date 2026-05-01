@@ -458,6 +458,7 @@ class SuperAdminController extends Controller
             'google_client_id'     => 'nullable|string|max:255',
             'google_client_secret' => 'nullable|string|max:255',
             'google_login_enabled' => 'nullable|boolean',
+            'bkash_number'         => 'nullable|string|max:20',
         ]);
 
         $data['google_login_enabled'] = $request->boolean('google_login_enabled');

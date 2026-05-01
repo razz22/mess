@@ -38,4 +38,9 @@ class Expense extends Model
     {
         return $this->belongsTo(User::class, 'member_id');
     }
+
+    public function individualPurchase(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(\App\Models\IndividualMarketPurchase::class, 'expense_id');
+    }
 }

@@ -38,7 +38,7 @@ class RewardController extends Controller
             ->get();
 
         // Manager rewards based on votes
-        $currentRotation = $mess->currentManager;
+        $currentRotation = $mess->currentManagers()->with('votes')->first();
         $managerRating   = $currentRotation ? $currentRotation->getAverageRating() : 0;
 
         $members = $mess->activeMembers()->with('user')->get();

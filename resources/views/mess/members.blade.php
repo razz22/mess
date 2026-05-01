@@ -1,7 +1,10 @@
 <?php $page = "mess-members" ?>
 @extends('layout.mainlayout')
 @section('content')
-@php $isManager = Auth::user()->isManagerOf($mess->id); @endphp
+@php
+    $isManager = Auth::user()->isManagerOf($mess->id);
+    $isOwner   = $mess->owner_id === Auth::id() || Auth::user()->is_super_admin;
+@endphp
 <div class="page-wrapper">
     <div class="content">
         @php $customSub = \App\Models\CustomSubscription::active()->forMess($mess->id)->first(); @endphp
@@ -120,6 +123,7 @@
                                     <div style="font-size:10px" class="text-muted">{{ __('Balance') }}</div>
                                 </div>
                             </div>
+                            @if($isOwner || $m->user_id === Auth::id())
                             <div class="col-4 text-center">
                                 <div class="bg-light rounded p-1">
                                     <div class="fw-bold small">
@@ -130,6 +134,14 @@
                                     <div style="font-size:10px" class="text-muted">{{ __('Rent/mo') }}</div>
                                 </div>
                             </div>
+                            @else
+                            <div class="col-4 text-center">
+                                <div class="bg-light rounded p-1">
+                                    <div class="fw-bold small text-muted">—</div>
+                                    <div style="font-size:10px" class="text-muted">{{ __('Rent/mo') }}</div>
+                                </div>
+                            </div>
+                            @endif
                         </div>
 
                         <!-- Actions -->
@@ -406,7 +418,9 @@
                                     <select name="role" id="eRole" class="form-select">
                                         <option value="member">Member</option>
                                         <option value="author">Author</option>
+                                        @if(Auth::user()->is_super_admin)
                                         <option value="manager">Manager</option>
+                                        @endif
                                     </select>
                                 </div>
                                 <div class="col-md-4">

@@ -204,11 +204,11 @@ class MealController extends Controller
         $this->requireManagerOrSuper($mess);
 
         $request->validate([
-            'name'             => 'required|string|max:50',
-            'close_time'       => 'nullable|date_format:H:i',
-            'close_days_before'=> 'nullable|integer|min:0|max:30',
-            'rate'             => 'nullable|numeric|min:0',
-            'sort_order'       => 'nullable|integer|min:1|max:99',
+            'name'              => 'required|string|max:50',
+            'close_time'        => 'nullable|date_format:H:i',
+            'close_days_before' => 'nullable|integer|min:0|max:30',
+            'rate'              => 'nullable|numeric|min:0',
+            'sort_order'        => 'nullable|integer|min:1|max:99',
         ]);
 
         $max = MessMealType::where('mess_id', $mess->id)->max('sort_order') ?? 0;
@@ -452,7 +452,7 @@ class MealController extends Controller
 
     private function ensureDefaultMealTypes(Mess $mess): void
     {
-        if ($mess->mealTypes()->count() === 0) {
+        if (MessMealType::where('mess_id', $mess->id)->count() === 0) {
             $defaults = [
                 ['name' => 'Breakfast', 'close_time' => '09:00:00', 'sort_order' => 1],
                 ['name' => 'Lunch',     'close_time' => '14:00:00', 'sort_order' => 2],

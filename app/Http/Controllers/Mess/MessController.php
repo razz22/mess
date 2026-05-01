@@ -168,7 +168,7 @@ class MessController extends Controller
         session(['active_mess_id' => $mess->id]);
 
         $member = Auth::user()->getMembershipIn($mess->id);
-        $currentManager = $mess->currentManager()->with('user')->first();
+        $currentManagers = $mess->currentManagers()->with('user')->get();
         $today = now()->toDateString();
 
         $todayMeals = $mess->mealSchedules()
@@ -268,8 +268,15 @@ class MessController extends Controller
         $announcements = \App\Models\Announcement::active()->forMess($mess->id)->latest()->get();
         $customSub     = \App\Models\CustomSubscription::active()->forMess($mess->id)->first();
 
+        // Notices published within the last 24 hours for the marquee ticker
+        $recentNotices = \App\Models\MessNotice::where('mess_id', $mess->id)
+            ->where('status', 'published')
+            ->where('published_at', '>=', now()->subHours(24))
+            ->orderByDesc('published_at')
+            ->get();
+
         return view('mess.dashboard', compact(
-            'mess', 'member', 'currentManager', 'todayMeals',
+            'mess', 'member', 'currentManagers', 'todayMeals',
             'todayRoutine', 'monthlyExpenses', 'monthlyDeposits',
             'totalMembers', 'pendingReports', 'mySummary',
             'pendingShowCauses', 'repliedShowCauses',
@@ -278,7 +285,7 @@ class MessController extends Controller
             'routineMonthStart', 'routineCalDays',
             'dashChartMemberNames', 'dashChartMealDays', 'dashChartPayables',
             'dashChartCatNames', 'dashChartCatTotals',
-            'announcements', 'customSub'
+            'announcements', 'customSub', 'recentNotices'
         ));
     }
 

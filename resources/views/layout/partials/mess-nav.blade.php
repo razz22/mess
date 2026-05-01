@@ -80,7 +80,11 @@
     <div class="d-flex align-items-center gap-2 px-2 py-1 rounded" style="background:rgba(0,0,0,0.05)">
         <i class="ti ti-door-enter text-primary"></i>
         <span class="small fw-semibold text-truncate">{{ $sma->name }}</span>
-        @if($isMember && !$isManager)
+        @if($isOwner)
+        <span class="badge bg-warning text-dark ms-auto" style="font-size:9px;">{{ __('Owner') }}</span>
+        @elseif($isManager)
+        <span class="badge bg-primary ms-auto" style="font-size:9px;">{{ __('Manager') }}</span>
+        @elseif($isMember)
         <span class="badge bg-secondary ms-auto" style="font-size:9px;">{{ __('Member') }}</span>
         @endif
     </div>
@@ -171,7 +175,7 @@
     <ul>
         @if($myMember)
         <li class="{{ Request::routeIs('mess.members.profile') && Request::segment(4) == $myMember->id ? 'active' : '' }}">
-            <a href="{{ route('mess.members.profile', [$sma->id, $myMember->id]) }}"><i class="ti ti-user-circle fs-16 me-2"></i><span>{{ __('My Profile') }}</span></a>
+            <a href="{{ route('mess.members.profile', [$sma->id, $myMember->id]) }}"><i class="ti ti-id-badge fs-16 me-2"></i><span>{{ __('Profile Details') }}</span></a>
         </li>
         @endif
         <li class="{{ Request::routeIs('mess.leave.my') ? 'active' : '' }}">

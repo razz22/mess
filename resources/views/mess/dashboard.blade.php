@@ -17,8 +17,13 @@
                         <span class="badge bg-{{ $member->role === 'owner' ? 'danger' : ($member->role === 'manager' ? 'warning' : ($member->role === 'author' ? 'info' : 'secondary')) }}">
                             {{ ucfirst($member->role) }}
                         </span>
-                        @if($currentManager)
-                        &nbsp;<span class="text-muted small"><i class="ti ti-crown me-1"></i>{{ __('Manager') }}: <strong>{{ $currentManager->user->name }}</strong></span>
+                        @if($currentManagers->isNotEmpty())
+                        &nbsp;<span class="text-muted small">
+                            <i class="ti ti-crown me-1"></i>{{ __('Manager') }}:
+                            @foreach($currentManagers as $cm)
+                            <strong>{{ $cm->user->name }}</strong>@if(!$loop->last), @endif
+                            @endforeach
+                        </span>
                         @endif
                     </h6>
                 </div>
@@ -34,6 +39,103 @@
                 @endif
             </div>
         </div>
+
+        {{-- Notice Ticker: shows notices published within the last 24 hours --}}
+        @if($recentNotices->isNotEmpty())
+        <div class="notice-ticker-wrap mb-3" role="region" aria-label="Recent Notices">
+            <div class="notice-ticker d-flex align-items-stretch">
+                <div class="notice-ticker-label flex-shrink-0 d-flex align-items-center gap-2 px-3">
+                    <i class="ti ti-speakerphone fs-5"></i>
+                    <span class="fw-bold text-uppercase tracking-wide" style="letter-spacing:.05em;font-size:.78rem;">Notice</span>
+                </div>
+                <div class="notice-ticker-track flex-grow-1 overflow-hidden position-relative">
+                    <div class="notice-ticker-inner d-flex align-items-center gap-0" id="noticeTicker">
+                        @foreach($recentNotices as $n)
+                        <a href="{{ route('mess.notices.show', [$mess->id, $n->id]) }}"
+                           class="notice-ticker-item flex-shrink-0 d-inline-flex align-items-center gap-2 text-white text-decoration-none px-4">
+                            <i class="ti ti-point-filled opacity-75" style="font-size:.55rem;"></i>
+                            <span class="fw-semibold me-1">{{ $n->title }}</span>
+                            <span class="opacity-75 notice-ticker-body">{{ \Illuminate\Support\Str::limit(strip_tags($n->body), 100) }}</span>
+                            <span class="badge ms-2" style="font-size:.68rem;background:rgba(255,255,255,.9);color:#b02a37;">{{ $n->published_at->diffForHumans() }}</span>
+                        </a>
+                        @endforeach
+                        {{-- Duplicate for seamless loop --}}
+                        @foreach($recentNotices as $n)
+                        <a href="{{ route('mess.notices.show', [$mess->id, $n->id]) }}"
+                           class="notice-ticker-item flex-shrink-0 d-inline-flex align-items-center gap-2 text-white text-decoration-none px-4"
+                           aria-hidden="true" tabindex="-1">
+                            <i class="ti ti-point-filled opacity-75" style="font-size:.55rem;"></i>
+                            <span class="fw-semibold me-1">{{ $n->title }}</span>
+                            <span class="opacity-75 notice-ticker-body">{{ \Illuminate\Support\Str::limit(strip_tags($n->body), 100) }}</span>
+                            <span class="badge ms-2" style="font-size:.68rem;background:rgba(255,255,255,.9);color:#b02a37;">{{ $n->published_at->diffForHumans() }}</span>
+                        </a>
+                        @endforeach
+                    </div>
+                </div>
+                <a href="{{ route('mess.notices.index', $mess->id) }}"
+                   class="notice-ticker-all flex-shrink-0 d-flex align-items-center gap-1 px-3 text-white text-decoration-none fw-semibold"
+                   style="font-size:.78rem;white-space:nowrap;border-left:1px solid rgba(255,255,255,.25);">
+                    All&nbsp;<i class="ti ti-chevron-right"></i>
+                </a>
+            </div>
+        </div>
+        <style>
+        .notice-ticker-wrap {
+            border-radius: .5rem;
+            overflow: hidden;
+            box-shadow: 0 2px 12px rgba(220,53,69,.25);
+        }
+        .notice-ticker {
+            background: linear-gradient(90deg, #b02a37 0%, #dc3545 100%);
+            min-height: 44px;
+            color: #fff;
+        }
+        .notice-ticker-label {
+            background: rgba(0,0,0,.20);
+            min-width: 90px;
+        }
+        .notice-ticker-track {
+            mask-image: linear-gradient(to right, transparent 0%, black 4%, black 96%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to right, transparent 0%, black 4%, black 96%, transparent 100%);
+        }
+        .notice-ticker-inner {
+            white-space: nowrap;
+            animation: noticeTicker linear infinite;
+            will-change: transform;
+            height: 100%;
+            align-items: center;
+        }
+        .notice-ticker-item {
+            font-size: .85rem;
+            border-right: 1px solid rgba(255,255,255,.15);
+            height: 100%;
+        }
+        .notice-ticker-item:hover { background: rgba(255,255,255,.10); }
+        .notice-ticker-body { font-size: .82rem; }
+        .notice-ticker-all:hover { background: rgba(0,0,0,.15); }
+        @keyframes noticeTicker {
+            0%   { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        </style>
+        <script>
+        (function () {
+            var inner = document.getElementById('noticeTicker');
+            if (!inner) return;
+            var totalW = inner.scrollWidth / 2; // half because items are duplicated
+            var speed = 60; // pixels per second
+            var duration = totalW / speed;
+            inner.style.animationDuration = duration.toFixed(1) + 's';
+            // Pause on hover
+            inner.closest('.notice-ticker-track').addEventListener('mouseenter', function () {
+                inner.style.animationPlayState = 'paused';
+            });
+            inner.closest('.notice-ticker-track').addEventListener('mouseleave', function () {
+                inner.style.animationPlayState = 'running';
+            });
+        })();
+        </script>
+        @endif
 
         @if($mess->status === 'inactive')
         <div class="alert alert-warning d-flex align-items-center gap-2 mb-3" role="alert">

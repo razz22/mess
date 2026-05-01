@@ -207,10 +207,9 @@ class MemberController extends Controller
         // Only owner/super admin can change role and financial fields
         if ($isSuperAdmin || $isOwner) {
             $newRole = $request->role ?? $member->role;
-            if ($newRole === 'manager' && $member->role !== 'manager') {
-                MessMember::where('mess_id', $mess->id)
-                    ->where('role', 'manager')
-                    ->update(['role' => 'member']);
+            // Only super admin can assign manager role
+            if ($newRole === 'manager' && !$isSuperAdmin) {
+                $newRole = $member->role;
             }
             $member->update([
                 'role'           => $newRole,
@@ -223,13 +222,12 @@ class MemberController extends Controller
                 'notes'               => $request->notes ?? $member->notes,
             ]);
         } elseif ($isManager) {
-            // Manager can change role (except owner) and mess-specific fields
+            // Manager can change role (except owner and manager) and mess-specific fields
             $newRole = $request->role ?? $member->role;
             if ($member->role !== 'owner') {
-                if ($newRole === 'manager' && $member->role !== 'manager') {
-                    MessMember::where('mess_id', $mess->id)
-                        ->where('role', 'manager')
-                        ->update(['role' => 'member']);
+                // Managers cannot assign or remove manager role — only super admin can
+                if ($newRole === 'manager') {
+                    $newRole = $member->role;
                 }
                 $member->update([
                     'role'      => $newRole,
@@ -248,13 +246,13 @@ class MemberController extends Controller
         $this->authorizeOwner($mess);
         $request->validate(['role' => 'required|in:member,author,manager']);
 
-        if ($request->role === 'manager') {
-            MessMember::where('mess_id', $mess->id)
-                ->where('role', 'manager')
-                ->update(['role' => 'member']);
+        // Only super admin can assign manager role
+        $newRole = $request->role;
+        if ($newRole === 'manager' && !Auth::user()->is_super_admin) {
+            return back()->with('error', 'Only super admin can assign the manager role.');
         }
 
-        $member->update(['role' => $request->role]);
+        $member->update(['role' => $newRole]);
         return back()->with('success', 'Role updated.');
     }
 

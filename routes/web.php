@@ -135,6 +135,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/mess/{mess}/market/quick-expense',           [MarketController::class, 'addQuickExpense'])->name('mess.market.quick-expense');
     Route::post('/mess/{mess}/market/quick-add-items',         [MarketController::class, 'quickAddItems'])->name('mess.market.quick-add-items');
     Route::delete('/mess/{mess}/market/{routine}/unassign',    [MarketController::class, 'unassign'])->name('mess.market.unassign');
+    // Individual market purchases
+    Route::post('/mess/{mess}/market/individual-purchase',                                              [MarketController::class, 'storeIndividualPurchase'])->name('mess.market.individual.store');
+    Route::post('/mess/{mess}/market/individual-purchase/{individualMarketPurchase}/approve',          [MarketController::class, 'approveIndividualPurchase'])->name('mess.market.individual.approve');
+    Route::post('/mess/{mess}/market/individual-purchase/{individualMarketPurchase}/reject',           [MarketController::class, 'rejectIndividualPurchase'])->name('mess.market.individual.reject');
+    Route::delete('/mess/{mess}/market/individual-purchase/{individualMarketPurchase}',                [MarketController::class, 'deleteIndividualPurchase'])->name('mess.market.individual.delete');
 
     // Mess Rules
     Route::get('/mess/{mess}/rules',                    [\App\Http\Controllers\Mess\MessRuleController::class, 'index'])->name('mess.rules');
@@ -171,6 +176,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/mess/{mess}/manager',                    [ManagerController::class, 'index'])->name('mess.manager');
     Route::post('/mess/{mess}/manager/assign',            [ManagerController::class, 'assign'])->name('mess.manager.assign');
     Route::post('/mess/{mess}/manager/{rotation}/vote',   [ManagerController::class, 'vote'])->name('mess.manager.vote');
+    Route::delete('/mess/{mess}/manager/{rotation}/remove',           [ManagerController::class, 'remove'])->name('mess.manager.remove');
+    Route::post('/mess/{mess}/manager/nominate',                      [ManagerController::class, 'nominate'])->name('mess.manager.nominate');
+    Route::post('/mess/{mess}/manager/nomination/{nomination}/vote',  [ManagerController::class, 'voteNomination'])->name('mess.manager.nomination.vote');
+    Route::delete('/mess/{mess}/manager/nomination/{nomination}',     [ManagerController::class, 'removeNomination'])->name('mess.manager.nomination.remove');
 
     // Reports
     Route::get('/mess/{mess}/report/monthly',             [ReportController::class, 'monthly'])->name('mess.report.monthly')->middleware('mess.active');
@@ -220,8 +229,8 @@ Route::middleware(['auth'])->group(function () {
     // Support Tokens
     Route::get ('/mess/{mess}/support',                 [\App\Http\Controllers\Mess\SupportController::class, 'index'])->name('mess.support.index');
     Route::post('/mess/{mess}/support',                 [\App\Http\Controllers\Mess\SupportController::class, 'store'])->name('mess.support.store');
-    Route::get ('/mess/{mess}/support/{token}',         [\App\Http\Controllers\Mess\SupportController::class, 'show'])->name('mess.support.show');
-    Route::post('/mess/{mess}/support/{token}/message', [\App\Http\Controllers\Mess\SupportController::class, 'message'])->name('mess.support.message');
+    Route::get ('/mess/{mess}/support/{supportToken}',         [\App\Http\Controllers\Mess\SupportController::class, 'show'])->name('mess.support.show');
+    Route::post('/mess/{mess}/support/{supportToken}/message', [\App\Http\Controllers\Mess\SupportController::class, 'message'])->name('mess.support.message');
 
 });
 
@@ -273,9 +282,9 @@ Route::middleware(['auth', 'super_admin'])->prefix('admin')->name('admin.')->gro
 
     // Support Tickets (admin side)
     Route::get  ('/support',                  [\App\Http\Controllers\Admin\SupportController::class, 'index'])->name('support.index');
-    Route::get  ('/support/{token}',          [\App\Http\Controllers\Admin\SupportController::class, 'show'])->name('support.show');
-    Route::post ('/support/{token}/reply',    [\App\Http\Controllers\Admin\SupportController::class, 'reply'])->name('support.reply');
-    Route::patch('/support/{token}/close',    [\App\Http\Controllers\Admin\SupportController::class, 'close'])->name('support.close');
+    Route::get  ('/support/{supportToken}',          [\App\Http\Controllers\Admin\SupportController::class, 'show'])->name('support.show');
+    Route::post ('/support/{supportToken}/reply',    [\App\Http\Controllers\Admin\SupportController::class, 'reply'])->name('support.reply');
+    Route::patch('/support/{supportToken}/close',    [\App\Http\Controllers\Admin\SupportController::class, 'close'])->name('support.close');
 
     // Announcements
     Route::get   ('/announcements',                  [\App\Http\Controllers\Admin\AnnouncementController::class, 'index'])->name('announcements.index');

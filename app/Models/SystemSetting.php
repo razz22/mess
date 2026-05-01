@@ -12,6 +12,7 @@ class SystemSetting extends Model
         'google_client_id',
         'google_client_secret',
         'google_login_enabled',
+        'bkash_number',
     ];
 
     protected $casts = [

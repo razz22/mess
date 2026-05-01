@@ -30,7 +30,6 @@ class MessMealType extends Model
         $date = $date ?? now()->toDateString();
         $daysBefore = $this->close_days_before ?? 0;
 
-        // The deadline is: (meal date - close_days_before) at close_time
         $deadline = \Carbon\Carbon::parse($date)
             ->subDays($daysBefore)
             ->setTimeFromTimeString($this->close_time);

@@ -107,12 +107,12 @@
                                 default                => ucfirst($displayStatus ?? ''),
                             };
                             $firstName    = $routine ? explode(' ', $routine->assignedTo->name)[0] : null;
-                            $isAssignedToMe = $routine && $routine->assigned_to === Auth::id();
-                            $canAddItem   = $routine && !in_array($routine->status, ['approved','completed']) && ($isManager || $isAssignedToMe);
+                            $isAssignedToMe = $routine && (int) $routine->assigned_to === (int) Auth::id();
+                            $canAddItem   = $routine && ($isManager || $isAssignedToMe || $member);
                             $calCanSuperRemove  = Auth::user()->is_super_admin || $isOwner;
                             $calIsCompleted     = $routine && in_array($routine->status, ['approved','completed']);
                             $calHasItems        = $routine && $routine->listItems->isNotEmpty();
-                            $calIsAssignedToMe2 = $routine && $routine->assigned_to === Auth::id();
+                            $calIsAssignedToMe2 = $routine && (int) $routine->assigned_to === (int) Auth::id();
                             $calCanRemove       = $routine && ($calCanSuperRemove
                                 || ($isManager && !$calIsCompleted)
                                 || ($calIsAssignedToMe2 && !$calIsCompleted && !$calHasItems));
@@ -265,7 +265,7 @@
                                         $canSuperRemove  = Auth::user()->is_super_admin || $isOwner;
                                         $hasItems        = $routine->listItems->isNotEmpty();
                                         $isCompleted     = $routine->status === 'completed';
-                                        $isAssignedToMe2 = $routine->assigned_to === Auth::id();
+                                        $isAssignedToMe2 = (int) $routine->assigned_to === (int) Auth::id();
                                         // Manager/owner/super: can always remove (owner/super even if completed)
                                         // Assigned member: can remove own pending assignment only if no items
                                         $canRemove = $canSuperRemove
@@ -274,7 +274,7 @@
                                     @endphp
 
                                     @if($routine->status === 'pending')
-                                        @if($routine->assigned_to === Auth::id())
+                                        @if((int)$routine->assigned_to === (int)Auth::id())
                                         <button class="btn btn-xs btn-outline-warning" onclick="openExchangeModal({{ $routine->id }}, true)">
                                             <i class="ti ti-arrows-exchange me-1"></i>Exchange
                                         </button>
@@ -310,7 +310,7 @@
                                     @endif
                                     {{-- Pending exchange requests for this routine --}}
                                     @foreach($routine->exchanges->where('status','pending') as $exc)
-                                        @if($exc->to_user_id === Auth::id() || ($isManager && $routine->assigned_to === Auth::id()))
+                                        @if((int)$exc->to_user_id === (int)Auth::id() || ($isManager && (int)$routine->assigned_to === (int)Auth::id()))
                                         <form action="{{ route('mess.market.exchange.respond', [$mess->id, $exc->id]) }}" method="POST" class="d-inline">
                                             @csrf
                                             <input type="hidden" name="action" value="accept">
@@ -340,39 +340,106 @@
 
         <!-- Individual Market Expenses -->
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0"><i class="ti ti-receipt me-2"></i>Individual Market Expenses This Month</h6>
-                <button class="btn btn-sm btn-success" onclick="openMemberExpense('{{ now()->toDateString() }}')">
-                    <i class="ti ti-plus me-1"></i>Add
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h6 class="mb-0"><i class="ti ti-shopping-bag me-2"></i>Individual Market Expenses This Month</h6>
+                @if($member)
+                <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#individualPurchaseModal">
+                    <i class="ti ti-plus me-1"></i>Add Expense
                 </button>
+                @endif
             </div>
             <div class="table-responsive">
                 <table class="table table-sm align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th>{{ __('Date') }}</th>
-                            <th>Item</th>
+                            <th>Date</th>
+                            <th>Description / Items</th>
                             <th>Buyer</th>
                             <th class="text-end">Amount</th>
+                            <th class="text-center">Status</th>
+                            @if($isManager)<th class="text-center">Actions</th>@endif
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($quickExpenses as $qe)
+                        @forelse($individualPurchases as $ip)
+                        @php
+                            $ipColor = match($ip->status) {
+                                'approved' => 'success',
+                                'rejected' => 'danger',
+                                default    => 'warning',
+                            };
+                            $ipLabel = match($ip->status) {
+                                'approved' => 'Approved',
+                                'rejected' => 'Rejected',
+                                default    => 'Pending',
+                            };
+                            $canDeleteIp = $isManager || (int)$ip->added_by === (int)Auth::id();
+                        @endphp
                         <tr>
-                            <td>{{ $qe->expense_date->format('d M') }}</td>
-                            <td>{{ $qe->title }}</td>
-                            <td>{{ $qe->member?->name ?? '—' }}</td>
-                            <td class="text-end fw-semibold">৳{{ number_format($qe->amount, 2) }}</td>
+                            <td class="text-nowrap">{{ $ip->expense_date->format('d M Y') }}</td>
+                            <td>
+                                @if($ip->description)
+                                <div class="fw-semibold small">{{ $ip->description }}</div>
+                                @endif
+                                <div class="d-flex flex-wrap gap-1 mt-1">
+                                    @foreach($ip->items as $itm)
+                                    <span class="badge bg-light text-dark border" style="font-size:.72rem;">
+                                        {{ $itm['item_name'] }}
+                                        @if(!empty($itm['quantity'])){{ $itm['quantity'] }}{{ $itm['unit'] ?? '' }}@endif
+                                        — ৳{{ number_format($itm['actual_cost'], 2) }}
+                                    </span>
+                                    @endforeach
+                                </div>
+                                @if($ip->isRejected() && $ip->reject_reason)
+                                <div class="text-danger small mt-1"><i class="ti ti-x me-1"></i>{{ $ip->reject_reason }}</div>
+                                @endif
+                            </td>
+                            <td class="small">{{ $ip->member->name }}</td>
+                            <td class="text-end fw-semibold text-nowrap">৳{{ number_format($ip->total_amount, 2) }}</td>
+                            <td class="text-center">
+                                <span class="badge bg-{{ $ipColor }}">{{ $ipLabel }}</span>
+                                @if($ip->isApproved())
+                                <div class="text-muted" style="font-size:.68rem;">{{ $ip->approvedBy?->name }}</div>
+                                @endif
+                            </td>
+                            @if($isManager)
+                            <td class="text-center">
+                                <div class="d-flex gap-1 justify-content-center flex-wrap">
+                                    @if($ip->isPending())
+                                    <form action="{{ route('mess.market.individual.approve', [$mess->id, $ip->id]) }}" method="POST" class="d-inline">
+                                        @csrf
+                                        <button type="submit" class="btn btn-xs btn-success" title="Approve">
+                                            <i class="ti ti-check"></i>
+                                        </button>
+                                    </form>
+                                    <button class="btn btn-xs btn-outline-danger" title="Reject"
+                                        onclick="openRejectModal('{{ route('mess.market.individual.reject', [$mess->id, $ip->id]) }}','{{ addslashes($ip->member->name) }}')">
+                                        <i class="ti ti-x"></i>
+                                    </button>
+                                    @endif
+                                    @if($canDeleteIp)
+                                    <form action="{{ route('mess.market.individual.delete', [$mess->id, $ip->id]) }}" method="POST" class="d-inline"
+                                          onsubmit="return confirm('Delete this purchase?')">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="btn btn-xs btn-outline-secondary" title="Delete">
+                                            <i class="ti ti-trash"></i>
+                                        </button>
+                                    </form>
+                                    @endif
+                                </div>
+                            </td>
+                            @endif
                         </tr>
                         @empty
-                        <tr><td colspan="4" class="text-center text-muted py-2 small">No individual expenses this month.</td></tr>
+                        <tr><td colspan="{{ $isManager ? 6 : 5 }}" class="text-center text-muted py-3 small">No individual market expenses this month.</td></tr>
                         @endforelse
                     </tbody>
-                    @if($quickExpenses->count() > 0)
-                    <tfoot>
+                    @if($individualPurchases->where('status','approved')->count() > 0)
+                    <tfoot class="table-light">
                         <tr class="fw-bold">
-                            <td colspan="3">Total</td>
-                            <td class="text-end">৳{{ number_format($quickExpenses->sum('amount'), 2) }}</td>
+                            <td colspan="{{ $isManager ? 3 : 3 }}">Approved Total</td>
+                            <td class="text-end">৳{{ number_format($individualPurchases->where('status','approved')->sum('total_amount'), 2) }}</td>
+                            <td colspan="{{ $isManager ? 2 : 1 }}"></td>
                         </tr>
                     </tfoot>
                     @endif
@@ -918,17 +985,13 @@ function qeCheckConflict() {
 }
 
 function openMemberExpense(dateStr) {
-    var routineId = qeRoutineMap[dateStr];
-    if (!routineId) {
-        alert('{{ __("No routine assigned for this date. Please assign a member first.") }}');
-        return;
+    // Pre-fill the date in the individual purchase modal and open it
+    var modal = document.getElementById('individualPurchaseModal');
+    if (dateStr) {
+        var dateInput = modal.querySelector('[name="expense_date"]');
+        if (dateInput) dateInput.value = dateStr;
     }
-    document.getElementById('quickExpenseForm').action = qeBaseUrl + '/' + routineId + '/list';
-    var d = new Date(dateStr + 'T00:00:00');
-    var label = d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
-    document.getElementById('qeModalSubtitle').textContent = '{{ __("Adding items for") }}: ' + label;
-    qeResetRows();
-    new bootstrap.Modal(document.getElementById('quickExpenseModal')).show();
+    new bootstrap.Modal(modal).show();
 }
 
 function qeResetRows() {
@@ -1186,5 +1249,189 @@ document.getElementById('quickExpenseModal').addEventListener('shown.bs.modal', 
         </div>
     </div>
 </div>
+
+{{-- Add Individual Market Purchase Modal --}}
+<div class="modal fade" id="individualPurchaseModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow" style="border-radius:16px;overflow:hidden;">
+            <div class="modal-header border-0 px-4 pt-4 pb-3" style="background:linear-gradient(135deg,#0d6efd 0%,#6610f2 100%);">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0"
+                         style="width:44px;height:44px;background:rgba(255,255,255,.2);">
+                        <i class="ti ti-shopping-bag text-white fs-4"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold text-white mb-0">Individual Market Expense</h5>
+                        <div class="small mt-1" style="color:rgba(255,255,255,.8);">Add items you bought — awaiting manager approval</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ route('mess.market.individual.store', $mess->id) }}" method="POST" id="indPurchaseForm">
+                @csrf
+                <div class="px-4 pt-3 pb-0">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-sm-4">
+                            <label class="form-label fw-semibold small mb-1">Date <span class="text-danger">*</span></label>
+                            <input type="date" name="expense_date" class="form-control form-control-sm" value="{{ now()->toDateString() }}" required>
+                        </div>
+                        <div class="col-sm-4">
+                            <label class="form-label fw-semibold small mb-1">Buyer <span class="text-danger">*</span></label>
+                            @if($isManager)
+                            <select name="member_id" class="form-select form-select-sm">
+                                @foreach($members as $m)
+                                <option value="{{ $m->user->id }}">{{ $m->user->name }}</option>
+                                @endforeach
+                            </select>
+                            @else
+                            <input type="hidden" name="member_id" value="{{ Auth::id() }}">
+                            <div class="form-control form-control-sm bg-light text-muted">{{ Auth::user()->name }}</div>
+                            @endif
+                        </div>
+                        <div class="col-sm-4">
+                            <label class="form-label fw-semibold small mb-1">Description (optional)</label>
+                            <input type="text" name="description" class="form-control form-control-sm" placeholder="e.g. Evening grocery run">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-body p-0">
+                    <div style="padding:16px 24px 0;">
+                        <div class="rounded-3 border overflow-hidden" style="box-shadow:0 2px 8px rgba(0,0,0,.06);">
+                            <table class="table mb-0" style="font-size:13.5px;table-layout:fixed;width:100%;">
+                                <colgroup>
+                                    <col style="width:auto;">
+                                    <col style="width:90px;">
+                                    <col style="width:80px;">
+                                    <col style="width:130px;">
+                                    <col style="width:44px;">
+                                </colgroup>
+                                <thead style="background:#f8f9fb;">
+                                    <tr>
+                                        <th class="px-3 py-2 fw-semibold text-muted small border-bottom">Item Name <span class="text-danger">*</span></th>
+                                        <th class="px-2 py-2 fw-semibold text-muted small border-bottom text-center">Qty</th>
+                                        <th class="px-2 py-2 fw-semibold text-muted small border-bottom text-center">Unit</th>
+                                        <th class="px-2 py-2 fw-semibold text-muted small border-bottom text-end">Cost (৳) <span class="text-danger">*</span></th>
+                                        <th class="px-2 py-2 border-bottom"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="indItemsBody">
+                                    <tr class="ind-item-row" style="background:#fff;">
+                                        <td class="px-3 py-2 border-bottom"><input type="text" name="items[0][item_name]" class="form-control form-control-sm border-0 bg-light" placeholder="e.g. Fish, Oil, Onion" required style="border-radius:8px;"></td>
+                                        <td class="px-2 py-2 border-bottom"><input type="text" name="items[0][quantity]" class="form-control form-control-sm border-0 bg-light text-center" placeholder="1" style="border-radius:8px;"></td>
+                                        <td class="px-2 py-2 border-bottom"><input type="text" name="items[0][unit]" class="form-control form-control-sm border-0 bg-light text-center" placeholder="kg" style="border-radius:8px;"></td>
+                                        <td class="px-2 py-2 border-bottom"><input type="number" name="items[0][actual_cost]" class="form-control form-control-sm border-0 bg-light text-end ind-cost" placeholder="0.00" step="0.01" min="0.01" required style="border-radius:8px;"></td>
+                                        <td class="px-2 py-2 border-bottom text-center"></td>
+                                    </tr>
+                                </tbody>
+                                <tfoot>
+                                    <tr style="background:#f8f9fb;">
+                                        <td colspan="3" class="px-3 py-2 text-end fw-semibold small text-muted border-top-0">Total</td>
+                                        <td class="px-2 py-2 text-end border-top-0"><span class="fw-bold text-primary" id="indTotal">৳0.00</span></td>
+                                        <td class="border-top-0"></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="px-4 py-3">
+                        <button type="button" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2 px-3" onclick="indAddRow()" style="border-radius:8px;border-style:dashed;">
+                            <i class="ti ti-plus"></i>Add Another Item
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-footer border-top px-4 py-3 bg-light d-flex align-items-center gap-2">
+                    <div class="flex-grow-1 small text-muted"><i class="ti ti-info-circle me-1"></i>After submission, a manager must approve before it appears in expenses.</div>
+                    <button type="button" class="btn btn-outline-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary d-inline-flex align-items-center gap-2 px-4">
+                        <i class="ti ti-send"></i>Submit for Approval
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Reject Individual Purchase Modal --}}
+<div class="modal fade" id="rejectPurchaseModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title d-flex align-items-center gap-2">
+                    <span class="rounded-circle d-flex align-items-center justify-content-center bg-danger text-white" style="width:32px;height:32px;flex-shrink:0;">
+                        <i class="ti ti-x fs-6"></i>
+                    </span>
+                    Reject Purchase
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="rejectPurchaseForm" method="POST">
+                @csrf
+                <div class="modal-body py-3">
+                    <p class="small text-muted mb-2">Rejecting purchase by <strong id="rejectBuyerName"></strong>.</p>
+                    <div class="mb-0">
+                        <label class="form-label fw-semibold small">Reason (optional)</label>
+                        <textarea name="reject_reason" class="form-control form-control-sm" rows="2" placeholder="Why is this rejected?"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0 justify-content-center gap-2">
+                    <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger px-4"><i class="ti ti-x me-1"></i>Reject</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function openRejectModal(action, buyerName) {
+    document.getElementById('rejectPurchaseForm').action = action;
+    document.getElementById('rejectBuyerName').textContent = buyerName;
+    new bootstrap.Modal(document.getElementById('rejectPurchaseModal')).show();
+}
+
+// Individual purchase item rows
+function indRowHtml(idx) {
+    var rmBtn = idx > 0
+        ? '<button type="button" class="btn btn-xs btn-outline-danger py-0 px-1 d-flex align-items-center justify-content-center" onclick="indRemoveRow(this)" style="width:28px;height:28px;border-radius:6px;"><i class="ti ti-x" style="font-size:12px;"></i></button>'
+        : '';
+    return '<tr class="ind-item-row" style="background:#fff;">' +
+        '<td class="px-3 py-2 border-bottom"><input type="text" name="items['+idx+'][item_name]" class="form-control form-control-sm border-0 bg-light" placeholder="e.g. Fish, Oil" required style="border-radius:8px;"></td>' +
+        '<td class="px-2 py-2 border-bottom"><input type="text" name="items['+idx+'][quantity]" class="form-control form-control-sm border-0 bg-light text-center" placeholder="1" style="border-radius:8px;"></td>' +
+        '<td class="px-2 py-2 border-bottom"><input type="text" name="items['+idx+'][unit]" class="form-control form-control-sm border-0 bg-light text-center" placeholder="kg" style="border-radius:8px;"></td>' +
+        '<td class="px-2 py-2 border-bottom"><input type="number" name="items['+idx+'][actual_cost]" class="form-control form-control-sm border-0 bg-light text-end ind-cost" placeholder="0.00" step="0.01" min="0.01" required style="border-radius:8px;"></td>' +
+        '<td class="px-2 py-2 border-bottom text-center">' + rmBtn + '</td>' +
+    '</tr>';
+}
+function indAddRow() {
+    var tbody = document.getElementById('indItemsBody');
+    var idx = tbody.querySelectorAll('tr').length;
+    tbody.insertAdjacentHTML('beforeend', indRowHtml(idx));
+    indBindCosts();
+}
+function indRemoveRow(btn) {
+    btn.closest('tr').remove();
+    document.querySelectorAll('#indItemsBody tr').forEach(function(tr, i) {
+        tr.querySelectorAll('input').forEach(function(inp) {
+            inp.name = inp.name.replace(/items\[\d+\]/, 'items[' + i + ']');
+        });
+    });
+    indCalcTotal();
+}
+function indBindCosts() {
+    document.querySelectorAll('#indItemsBody .ind-cost').forEach(function(inp) {
+        inp.oninput = indCalcTotal;
+    });
+}
+function indCalcTotal() {
+    var total = 0;
+    document.querySelectorAll('#indItemsBody .ind-cost').forEach(function(inp) {
+        total += parseFloat(inp.value) || 0;
+    });
+    document.getElementById('indTotal').textContent = '৳' + total.toFixed(2);
+}
+document.getElementById('individualPurchaseModal').addEventListener('shown.bs.modal', function () {
+    indBindCosts(); indCalcTotal();
+});
+</script>
 
 @endsection

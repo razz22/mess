@@ -80,6 +80,7 @@
                                     <th>{{ __('Remarks') }}</th>
                                     <th>{{ __('Category') }}</th>
                                     <th>{{ __('Amount') }}</th>
+                                    <th>{{ __('Assigned To') }}</th>
                                     <th>{{ __('Added By') }}</th>
                                     <th>{{ __('Actions') }}</th>
                                 </tr>
@@ -92,6 +93,22 @@
                                         {{ $expense->title }}
                                         @if($expense->is_market_expense)
                                         <span class="badge bg-success-subtle text-success ms-1" style="font-size:10px">{{ __('Market') }}</span>
+                                        @endif
+                                        @if($expense->is_market_expense && $expense->individualPurchase)
+                                        @php $ip = $expense->individualPurchase; @endphp
+                                        <button class="btn btn-xs btn-outline-info ms-1 py-0 px-1"
+                                            onclick="openExpenseDetail({{ json_encode([
+                                                'title'   => $expense->title,
+                                                'date'    => $expense->expense_date->format('d M Y'),
+                                                'buyer'   => $expense->member?->name ?? '—',
+                                                'addedBy' => $expense->addedBy->name,
+                                                'total'   => number_format($expense->amount, 2),
+                                                'items'   => $ip->items,
+                                                'desc'    => $ip->description,
+                                            ]) }})"
+                                            title="View Items">
+                                            <i class="ti ti-eye" style="font-size:12px"></i>
+                                        </button>
                                         @endif
                                         @if($expense->is_recurring_entry)
                                         <span class="badge bg-info-subtle text-info ms-1" style="font-size:10px"><i class="ti ti-refresh me-1"></i>{{ __('Auto') }}</span>
@@ -107,6 +124,20 @@
                                         @endif
                                     </td>
                                     <td class="fw-bold text-danger">৳{{ number_format($expense->amount, 2) }}</td>
+                                    <td class="small">
+                                        @if($expense->member)
+                                        <div class="d-flex align-items-center gap-1">
+                                            @if($expense->member->avatar)
+                                            <img src="{{ asset('storage/'.$expense->member->avatar) }}" class="rounded-circle" style="width:22px;height:22px;object-fit:cover;" alt="">
+                                            @else
+                                            <span class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center fw-semibold" style="width:22px;height:22px;font-size:10px;flex-shrink:0;">{{ strtoupper(substr($expense->member->name,0,1)) }}</span>
+                                            @endif
+                                            <span>{{ $expense->member->name }}</span>
+                                        </div>
+                                        @else
+                                        <span class="text-muted">—</span>
+                                        @endif
+                                    </td>
                                     <td class="text-muted small">{{ $expense->addedBy->name }}</td>
                                     @php
                                         $isOwnerOrManager = in_array($member->role, ['owner', 'manager']) || Auth::user()->is_super_admin;
@@ -117,8 +148,27 @@
                                     <td>
                                         <div class="d-flex gap-1">
                                             @if($canEditExpense)
+                                            @php
+                                                $ipEdit = $expense->individualPurchase;
+                                                $routineItems = $expense->routineItems ?? collect();
+                                                // Build items array for routine expenses
+                                                $routineItemsArr = $routineItems->map(fn($i) => [
+                                                    'id'   => $i->id,
+                                                    'name' => $i->item_name,
+                                                    'cost' => (float)$i->actual_cost,
+                                                ])->values()->toArray();
+                                            @endphp
                                             <button class="btn btn-xs btn-outline-primary"
-                                                onclick="openEditModal({{ $expense->id }}, '{{ addslashes($expense->title) }}', {{ $expense->amount }}, '{{ $expense->expense_date->format('Y-m-d') }}', {{ $expense->category_id ?? 'null' }})"
+                                                onclick="openEditModal(
+                                                    {{ $expense->id }},
+                                                    '{{ addslashes($expense->title) }}',
+                                                    {{ $expense->amount }},
+                                                    '{{ $expense->expense_date->format('Y-m-d') }}',
+                                                    {{ $expense->category_id ?? 'null' }},
+                                                    {{ $ipEdit ? json_encode($ipEdit->items) : 'null' }},
+                                                    {{ $ipEdit ? $ipEdit->id : 'null' }},
+                                                    {{ count($routineItemsArr) ? json_encode($routineItemsArr) : 'null' }}
+                                                )"
                                                 title="Edit">
                                                 <i class="ti ti-pencil"></i>
                                             </button>
@@ -138,13 +188,13 @@
                                     @endif
                                 </tr>
                                 @empty
-                                <tr><td colspan="6" class="text-center text-muted py-3">{{ __('No expenses this month.') }}</td></tr>
+                                <tr><td colspan="7" class="text-center text-muted py-3">{{ __('No expenses this month.') }}</td></tr>
                                 @endforelse
                             </tbody>
                             @if($expenses->count() > 0)
                             <tfoot>
                                 <tr class="table-danger">
-                                    <td colspan="3" class="fw-bold text-end">{{ __('Total') }}</td>
+                                    <td colspan="4" class="fw-bold text-end">{{ __('Total') }}</td>
                                     <td class="fw-bold">৳{{ number_format($totalExpense, 2) }}</td>
                                     <td colspan="2"></td>
                                 </tr>
@@ -245,10 +295,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Remarks <span class="text-danger">*</span></label>
-                        <input type="text" name="title" class="form-control" required placeholder="e.g. Monthly electricity bill">
-                    </div>
+                    <input type="hidden" name="title" value="Expense">
                     <div class="mb-3">
                         <label class="form-label">Amount (৳) <span class="text-danger">*</span></label>
                         <input type="number" name="amount" class="form-control" required step="0.01" min="0.01">
@@ -273,40 +320,102 @@
 
 <!-- Edit Expense Modal -->
 <div class="modal fade" id="editExpenseModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">{{ __('Edit Expense') }}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius:16px;overflow:hidden;">
+
+            {{-- Gradient header --}}
+            <div style="background:linear-gradient(135deg,#4361ee,#7b8cde);padding:20px 24px 18px;">
+                <div class="d-flex align-items-center gap-3">
+                    <div style="width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="ti ti-pencil" style="font-size:20px;color:#fff;"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-0 fw-bold text-white">{{ __('Edit Expense') }}</h5>
+                        <div id="editModalSubtitle" style="color:rgba(255,255,255,.75);font-size:12px;margin-top:2px;"></div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal"></button>
+                </div>
             </div>
+
             <form id="editExpenseForm" method="POST">
                 @csrf @method('PUT')
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Remarks <span class="text-danger">*</span></label>
-                        <input type="text" name="title" id="editTitle" class="form-control" required>
+                <input type="hidden" name="individual_purchase_id" id="editIpId">
+                <input type="hidden" name="title" id="editTitle" value="Expense">
+
+                <div class="modal-body p-4">
+
+                    {{-- Date + Category row --}}
+                    <div class="row g-3 mb-4">
+                        <div class="col-sm-6">
+                            <label class="form-label fw-semibold small text-muted text-uppercase" style="letter-spacing:.5px;">
+                                <i class="ti ti-calendar me-1"></i>{{ __('Date') }}
+                            </label>
+                            <input type="date" name="expense_date" id="editDate" class="form-control">
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label fw-semibold small text-muted text-uppercase" style="letter-spacing:.5px;">
+                                <i class="ti ti-tag me-1"></i>{{ __('Category') }}
+                            </label>
+                            <select name="category_id" id="editCategory" class="form-select">
+                                <option value="">— No Category —</option>
+                                @foreach($categories as $cat)
+                                <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Amount (৳) <span class="text-danger">*</span></label>
-                        <input type="number" name="amount" id="editAmount" class="form-control" required step="0.01" min="0.01">
+
+                    {{-- Items section (market expenses) --}}
+                    <div id="editItemsSection" style="display:none;">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <label class="form-label fw-semibold small text-muted text-uppercase mb-0" style="letter-spacing:.5px;">
+                                <i class="ti ti-list me-1"></i>{{ __('Items') }}
+                            </label>
+                            <button type="button" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1" onclick="addEditItem()" style="font-size:12px;">
+                                <i class="ti ti-plus"></i>Add Item
+                            </button>
+                        </div>
+
+                        {{-- Column headers --}}
+                        <div class="d-flex gap-2 mb-2 px-1" style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;">
+                            <div style="flex:1;">Item Name</div>
+                            <div style="width:110px;text-align:right;">Cost (৳)</div>
+                            <div style="width:36px;"></div>
+                        </div>
+
+                        <div id="editItemsList" class="d-flex flex-column gap-2 mb-3"></div>
+
+                        {{-- Total bar --}}
+                        <div class="d-flex align-items-center justify-content-between rounded-3 px-4 py-3"
+                             style="background:linear-gradient(135deg,#f0f4ff,#e8f0fe);border:1px solid #c7d2fe;">
+                            <span class="fw-semibold text-primary small">
+                                <i class="ti ti-calculator me-1"></i>Total
+                            </span>
+                            <span class="fw-bold text-primary fs-5">৳<span id="editItemsTotal">0.00</span></span>
+                        </div>
+                        <input type="hidden" name="amount" id="editAmountHidden">
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">{{ __('Date') }}</label>
-                        <input type="date" name="expense_date" id="editDate" class="form-control">
+
+                    {{-- Plain amount (non-market) --}}
+                    <div id="editAmountSection">
+                        <label class="form-label fw-semibold small text-muted text-uppercase" style="letter-spacing:.5px;">
+                            <i class="ti ti-coins me-1"></i>Amount (৳) <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text fw-bold">৳</span>
+                            <input type="number" name="amount" id="editAmount" class="form-control form-control-lg" step="0.01" min="0.01" style="font-size:1.1rem;font-weight:600;">
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">{{ __('Category') }}</label>
-                        <select name="category_id" id="editCategory" class="form-select">
-                            <option value="">-- No Category --</option>
-                            @foreach($categories as $cat)
-                            <option value="{{ $cat->id }}">{{ $cat->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
-                    <button type="submit" class="btn btn-primary">{{ __('Save Changes') }}</button>
+
+                <div class="modal-footer border-0 px-4 pb-4 pt-0 gap-2">
+                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">
+                        <i class="ti ti-x me-1"></i>{{ __('Cancel') }}
+                    </button>
+                    <button type="submit" class="btn btn-primary px-5 fw-semibold">
+                        <i class="ti ti-device-floppy me-1"></i>{{ __('Save Changes') }}
+                    </button>
                 </div>
             </form>
         </div>
@@ -314,17 +423,117 @@
 </div>
 
 <script>
-function openEditModal(id, title, amount, date, categoryId) {
+var _editMode = null;
+
+function openEditModal(id, title, amount, date, categoryId, ipItems, ipId, routineItems) {
     var baseUrl = '{{ route('mess.expenses.update', [$mess->id, '__ID__']) }}';
     document.getElementById('editExpenseForm').action = baseUrl.replace('__ID__', id);
-    document.getElementById('editTitle').value   = title;
-    document.getElementById('editAmount').value  = amount;
-    document.getElementById('editDate').value    = date;
-    var sel = document.getElementById('editCategory');
-    sel.value = categoryId !== null ? categoryId : '';
-    var modal = new bootstrap.Modal(document.getElementById('editExpenseModal'));
-    modal.show();
+    document.getElementById('editTitle').value = title;
+    document.getElementById('editDate').value  = date;
+    document.getElementById('editIpId').value  = ipId || '';
+    document.getElementById('editCategory').value = categoryId !== null ? categoryId : '';
+
+    var hasIpItems      = ipItems && ipItems.length > 0;
+    var hasRoutineItems = routineItems && routineItems.length > 0;
+
+    if (hasIpItems || hasRoutineItems) {
+        _editMode = hasRoutineItems ? 'routine' : 'ip';
+        document.getElementById('editItemsSection').style.display = '';
+        document.getElementById('editAmountSection').style.display = 'none';
+        document.getElementById('editAmount').removeAttribute('required');
+        document.getElementById('editModalSubtitle').innerHTML =
+            '<i class="ti ti-shopping-cart me-1"></i>Market Expense — edit items below';
+        renderEditItems(hasRoutineItems ? routineItems : ipItems);
+    } else {
+        _editMode = null;
+        document.getElementById('editItemsSection').style.display = 'none';
+        document.getElementById('editAmountSection').style.display = '';
+        document.getElementById('editAmount').setAttribute('required', 'required');
+        document.getElementById('editAmount').value = amount;
+        document.getElementById('editModalSubtitle').innerHTML =
+            '<i class="ti ti-coins me-1"></i>General Expense';
+    }
+
+    new bootstrap.Modal(document.getElementById('editExpenseModal')).show();
 }
+
+function renderEditItems(items) {
+    var container = document.getElementById('editItemsList');
+    container.innerHTML = '';
+    items.forEach(function(item) {
+        container.appendChild(buildItemRow(
+            item.name || item.item_name || '',
+            item.cost ?? item.actual_cost ?? 0,
+            item.id || null
+        ));
+    });
+    recalcEditTotal();
+}
+
+function buildItemRow(name, cost, itemId) {
+    var row = document.createElement('div');
+    row.className = 'edit-item-row d-flex gap-2 align-items-center p-2 rounded-3 border bg-white';
+    row.style.cssText = 'background:#f8faff!important;border-color:#e0e7ff!important;';
+    row.dataset.itemId = itemId || '';
+    row.innerHTML =
+        '<div style="flex:1;">' +
+            '<input type="text" class="form-control form-control-sm edit-item-name" placeholder="Item name" value="' + escHtml(name) + '" required>' +
+        '</div>' +
+        '<div style="width:110px;" class="input-group input-group-sm">' +
+            '<span class="input-group-text px-2" style="font-size:12px;">৳</span>' +
+            '<input type="number" class="form-control edit-item-cost" placeholder="0.00" value="' + parseFloat(cost||0).toFixed(2) + '" step="0.01" min="0" required oninput="recalcEditTotal()">' +
+        '</div>' +
+        '<button type="button" class="btn btn-sm btn-outline-danger px-2" onclick="removeEditItem(this)" title="Remove" style="flex-shrink:0;">' +
+            '<i class="ti ti-trash" style="font-size:13px;"></i>' +
+        '</button>';
+    return row;
+}
+
+function addEditItem() {
+    document.getElementById('editItemsList').appendChild(buildItemRow('', 0, null));
+    recalcEditTotal();
+}
+
+function removeEditItem(btn) {
+    btn.closest('.edit-item-row').remove();
+    recalcEditTotal();
+}
+
+function recalcEditTotal() {
+    var total = 0;
+    document.querySelectorAll('.edit-item-cost').forEach(function(inp) {
+        total += parseFloat(inp.value) || 0;
+    });
+    document.getElementById('editItemsTotal').textContent = total.toFixed(2);
+    document.getElementById('editAmountHidden').value = total.toFixed(2);
+}
+
+function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+document.getElementById('editExpenseForm').addEventListener('submit', function(e) {
+    if (document.getElementById('editItemsSection').style.display === 'none') return;
+
+    var items = [];
+    document.querySelectorAll('.edit-item-row').forEach(function(row) {
+        var name = row.querySelector('.edit-item-name').value.trim();
+        var cost = parseFloat(row.querySelector('.edit-item-cost').value) || 0;
+        if (name) items.push({ id: row.dataset.itemId || null, name: name, cost: cost });
+    });
+
+    if (items.length === 0) { e.preventDefault(); alert('Please add at least one item.'); return; }
+
+    var inp = document.getElementById('editItemsJson') || document.createElement('input');
+    inp.type = 'hidden'; inp.id = 'editItemsJson'; inp.name = 'items_json';
+    this.appendChild(inp);
+    inp.value = JSON.stringify(items);
+
+    var modeInp = document.getElementById('editItemsMode') || document.createElement('input');
+    modeInp.type = 'hidden'; modeInp.id = 'editItemsMode'; modeInp.name = 'items_mode';
+    this.appendChild(modeInp);
+    modeInp.value = _editMode;
+});
 </script>
 
 <!-- Add Category Modal -->
@@ -504,5 +713,94 @@ function openEditCategoryModal(id, name, icon, color, isRecurring, recurringAmou
 
     new bootstrap.Modal(document.getElementById('editCategoryModal')).show();
 }
+
+function openExpenseDetail(data) {
+    document.getElementById('edTitle').textContent   = data.title;
+    document.getElementById('edDate').textContent    = data.date;
+    document.getElementById('edBuyer').textContent   = data.buyer;
+    document.getElementById('edAddedBy').textContent = data.addedBy;
+    document.getElementById('edTotal').textContent   = '৳' + data.total;
+    document.getElementById('edDesc').textContent    = data.desc || '';
+    document.getElementById('edDescRow').style.display = data.desc ? '' : 'none';
+
+    var tbody = document.getElementById('edItemsBody');
+    tbody.innerHTML = '';
+    var grandTotal = 0;
+    (data.items || []).forEach(function(it) {
+        grandTotal += parseFloat(it.actual_cost) || 0;
+        var qty = it.quantity ? (it.quantity + (it.unit ? ' ' + it.unit : '')) : '—';
+        tbody.insertAdjacentHTML('beforeend',
+            '<tr>' +
+            '<td class="py-2 ps-3">' + it.item_name + '</td>' +
+            '<td class="py-2 text-center text-muted small">' + qty + '</td>' +
+            '<td class="py-2 pe-3 text-end fw-semibold">৳' + parseFloat(it.actual_cost).toFixed(2) + '</td>' +
+            '</tr>'
+        );
+    });
+    document.getElementById('edGrandTotal').textContent = '৳' + grandTotal.toFixed(2);
+    new bootstrap.Modal(document.getElementById('expenseDetailModal')).show();
+}
 </script>
+
+{{-- Individual Market Expense Detail Modal --}}
+<div class="modal fade" id="expenseDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-0 px-4 pt-4 pb-2" style="background:linear-gradient(135deg,#198754 0%,#20c997 100%);">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0"
+                         style="width:40px;height:40px;background:rgba(255,255,255,.2);">
+                        <i class="ti ti-receipt text-white fs-5"></i>
+                    </div>
+                    <div>
+                        <h6 class="modal-title fw-bold text-white mb-0" id="edTitle"></h6>
+                        <div class="small mt-1" style="color:rgba(255,255,255,.8);" id="edDate"></div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body px-4 py-3">
+                {{-- Meta info --}}
+                <div class="rounded-3 bg-light border p-3 mb-3">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="text-muted small">Buyer</div>
+                            <div class="fw-semibold" id="edBuyer"></div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-muted small">Added By</div>
+                            <div class="fw-semibold" id="edAddedBy"></div>
+                        </div>
+                        <div class="col-12" id="edDescRow">
+                            <div class="text-muted small">Description</div>
+                            <div class="fw-semibold" id="edDesc"></div>
+                        </div>
+                    </div>
+                </div>
+                {{-- Items table --}}
+                <table class="table table-sm mb-0" style="font-size:.85rem;">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3">Item</th>
+                            <th class="text-center">Qty</th>
+                            <th class="text-end pe-3">Cost</th>
+                        </tr>
+                    </thead>
+                    <tbody id="edItemsBody"></tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <td colspan="2" class="ps-3 fw-bold">Total</td>
+                            <td class="text-end pe-3 fw-bold text-success" id="edGrandTotal"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <div class="modal-footer border-0 pt-0 justify-content-between align-items-center px-4 pb-3">
+                <span class="fw-bold text-success fs-6"><i class="ti ti-coin me-1"></i><span id="edTotal"></span></span>
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection

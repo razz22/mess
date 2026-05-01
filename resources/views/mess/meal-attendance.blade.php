@@ -144,19 +144,40 @@
                                             <i class="ti {{ !empty($itemList) ? 'ti-list-details' : 'ti-circle-plus' }}" style="font-size:16px;"></i>
                                         </button>
                                     </div>
+                                    @if($mt->close_time)
+                                    <div class="mb-1" style="font-size:11px;color:#6b7280;">
+                                        <i class="ti ti-clock me-1" style="font-size:10px;"></i>closes {{ $mt->closeLabel() }}
+                                    </div>
+                                    @endif
                                     {{-- Meal items in bordered div (updated live via JS) --}}
-                                    <div class="hdr-items-{{ Str::slug($mt->name) }} text-muted mx-1 mb-1" style="font-size:10px;border:1px solid #dee2e6;border-radius:5px;padding:3px 6px;{{ empty($itemList) ? 'display:none;' : '' }}">{{ implode(', ', $itemList) }}</div>
+                                    <div class="hdr-items-{{ Str::slug($mt->name) }} text-muted mx-1 mb-1" style="font-size:16px;border:1px solid #dee2e6;border-radius:5px;padding:3px 6px;{{ empty($itemList) ? 'display:none;' : '' }}">{{ implode(', ', $itemList) }}</div>
                                     {{-- Status / counts --}}
+                                    @php
+                                        $deadlineTs = null;
+                                        if (!$isPast && !$closed && $mt->close_time) {
+                                            $dl = \Carbon\Carbon::parse($date)
+                                                ->subDays($mt->close_days_before ?? 0)
+                                                ->setTimeFromTimeString($mt->close_time);
+                                            $deadlineTs = $dl->timestamp;
+                                        }
+                                    @endphp
                                     @if($closed)
-                                        <span class="badge bg-secondary" style="font-size:10px">{{ __('Closed') }}</span>
+                                        <span class="badge bg-secondary" style="font-size:11px">{{ __('Closed') }}</span>
                                     @elseif($expired)
-                                        <span class="badge bg-warning text-dark" style="font-size:10px">{{ __('Expired') }}</span>
-                                    @elseif($sch)
-                                        <div class="d-flex justify-content-center gap-2 mt-1" id="hdr-qty-{{ $sch->id }}" style="font-size:10px;">
-                                            <span class="badge rounded-pill bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2">
+                                        <span class="badge bg-warning text-dark" style="font-size:11px">{{ __('Expired') }}</span>
+                                    @elseif($sch && $deadlineTs)
+                                        <div class="meal-countdown mt-1" data-deadline="{{ $deadlineTs }}" data-sch="{{ $sch->id }}" style="display:none;">
+                                            <span class="badge bg-danger text-white px-2 py-1" style="font-size:11px;">
+                                                <i class="ti ti-clock me-1"></i><span class="countdown-text"></span>
+                                            </span>
+                                        </div>
+                                    @endif
+                                    @if($sch)
+                                        <div class="d-flex justify-content-center gap-2 mt-1" id="hdr-qty-{{ $sch->id }}">
+                                            <span class="badge rounded-pill bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1" style="font-size:12px;">
                                                 Full <strong>{{ $sumFull }}</strong>
                                             </span>
-                                            <span class="badge rounded-pill bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-2" style="color:#9a6700 !important;">
+                                            <span class="badge rounded-pill bg-warning bg-opacity-10 border border-warning border-opacity-25 px-2 py-1" style="font-size:12px;color:#9a6700;">
                                                 ½ <strong>{{ $sumHalf }}</strong>
                                             </span>
                                         </div>
@@ -173,9 +194,9 @@
                                 $canEdit  = $isManager || $isMe;
                                 $totalQty = 0;
                             @endphp
-                            <tr class="{{ $isMe ? 'table-primary bg-opacity-25' : '' }}">
+                            <tr style="{{ $isMe ? 'background:#e8f4fd;outline:2px solid #0d6efd;outline-offset:-1px;' : '' }}">
                                 {{-- Member name sticky --}}
-                                <td class="align-middle {{ $isMe ? 'bg-primary bg-opacity-10' : 'bg-white' }}" style="position:sticky;left:0;z-index:1;">
+                                <td class="align-middle" style="position:sticky;left:0;z-index:1;background:{{ $isMe ? '#d0e9fb' : '#fff' }};{{ $isMe ? 'border-left:4px solid #0d6efd;' : '' }}">
                                     <div class="d-flex align-items-center gap-2">
                                         @if($mem->user->avatar)
                                         <img src="{{ asset('storage/'.$mem->user->avatar) }}" class="rounded-circle" style="width:30px;height:30px;object-fit:cover;" alt="">
@@ -195,18 +216,22 @@
                                     $sch       = $schedules[$mt->name] ?? null;
                                     $key       = $sch ? ($sch->id . '_' . $mem->user_id) : null;
                                     $att       = $key ? ($allAttendances[$key]->first() ?? null) : null;
-                                    $fullQty   = $att ? (int)$att->full_qty : 0;
+                                    $locked    = $isPast || !$sch || $sch->status === 'closed'
+                                                 || (!$isManager && $mt->isExpired($date))
+                                                 || (!$isManager && !$isMe);
+                                    $canChange = $canEdit && !$locked;
+                                    $isUnset   = $att === null;
+                                    $fullQty   = $att ? (int)$att->full_qty : ($canChange ? 1 : 0);
                                     $halfQty   = $att ? (int)$att->half_qty : 0;
                                     $qty       = $fullQty + $halfQty * 0.5;
-                                    $locked    = $isPast || !$sch || $sch->status === 'closed'
-                                                 || (!$isManager && $mt->isExpired($date));
-                                    $canChange = $canEdit && !$locked;
                                     $lockTitle = $locked ? ($isPast ? 'Past date' : ($sch && $sch->status==='closed' ? 'Meal closed' : 'Time expired')) : '';
                                 @endphp
-                                <td class="text-center align-middle p-1 {{ $locked ? 'bg-light' : '' }}">
+                                <td class="text-center align-middle p-1" style="{{ $isMe ? 'background:#e8f4fd;' : ($locked ? 'background:#f8f9fa;' : '') }}">
                                     @if($sch)
                                     @php
-                                        $cellBg = $qty == 0 ? '#fff5f5' : ($fullQty > 0 && $halfQty > 0 ? '#f5f0ff' : ($halfQty > 0 ? '#fff8e1' : '#f0fff4'));
+                                        $cellBg = $isMe
+                                            ? ($qty == 0 ? '#cfe2f3' : ($fullQty > 0 && $halfQty > 0 ? '#b8d4ee' : ($halfQty > 0 ? '#c8e6fb' : '#d0eaf8')))
+                                            : ($qty == 0 ? '#fff5f5' : ($isUnset ? '#f9fffe' : ($fullQty > 0 && $halfQty > 0 ? '#f5f0ff' : ($halfQty > 0 ? '#fff8e1' : '#f0fff4'))));
                                     @endphp
                                     <div class="meal-cell d-flex flex-column align-items-center gap-1"
                                          data-schedule="{{ $sch->id }}" data-user="{{ $mem->user_id }}"
@@ -263,6 +288,8 @@
                                         <div class="meal-summary-badge" data-schedule="{{ $sch->id }}" data-user="{{ $mem->user_id }}">
                                             @if($qty == 0)
                                             <span class="badge bg-danger-subtle text-danger" style="font-size:10px;">Off</span>
+                                            @elseif($isUnset)
+                                            <span class="badge bg-secondary-subtle text-secondary border" style="font-size:10px;" title="Not confirmed yet">{{ $fullQty }}F default</span>
                                             @else
                                             <span class="badge bg-success-subtle text-success" style="font-size:10px;">
                                                 {{ $fullQty > 0 ? $fullQty.'F' : '' }}{{ $fullQty > 0 && $halfQty > 0 ? '+' : '' }}{{ $halfQty > 0 ? $halfQty.'H' : '' }}
@@ -699,6 +726,10 @@
 .meal-sheet tbody tr:hover td { background-color: rgba(0,0,0,0.02); }
 .meal-sheet tbody tr:hover td:first-child { background-color: inherit; }
 .meal-toggle { transition: all .15s ease; }
+@keyframes cdPulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50%      { opacity:.7; transform:scale(1.07); }
+}
 .meal-toggle.loading { opacity: 0.5; pointer-events: none; }
 @keyframes toastProgress { from { width: 100%; } to { width: 0%; } }
 </style>
@@ -714,6 +745,64 @@ var myChanges   = {{ $myChangesToday }};
 var attendanceUrl   = '{{ route("mess.meals.attendance", $mess->id) }}';
 var mealCloseBase    = '{{ url("mess/" . $mess->id . "/meals") }}';
 var mealTypeBase     = '{{ url("mess/" . $mess->id . "/meal-types") }}';
+
+// Meal type countdown
+(function() {
+    var WARN_SECONDS = 30 * 60; // show countdown if ≤ 30 min remaining
+
+    function pad(n) { return n < 10 ? '0' + n : n; }
+
+    function tick() {
+        var now = Math.floor(Date.now() / 1000);
+        document.querySelectorAll('.meal-countdown').forEach(function(el) {
+            var deadline = parseInt(el.dataset.deadline, 10);
+            var diff = deadline - now;
+
+            if (diff <= 0) {
+                // expired — hide only the countdown, keep qty counts visible
+                el.style.display = 'none';
+                var badge = el.closest('th').querySelector('.badge.bg-warning.cd-expired');
+                if (!badge) {
+                    var b = document.createElement('span');
+                    b.className = 'badge bg-warning text-dark mt-1 cd-expired';
+                    b.style.fontSize = '10px';
+                    b.textContent = 'Expired';
+                    el.closest('th').appendChild(b);
+                }
+                return;
+            }
+
+            if (diff <= WARN_SECONDS) {
+                el.style.display = 'flex';
+                el.style.justifyContent = 'center';
+                var mins = Math.floor(diff / 60);
+                var secs = diff % 60;
+                el.querySelector('.countdown-text').textContent = pad(mins) + ':' + pad(secs) + ' left';
+
+                // pulse red when under 5 min
+                var badge = el.querySelector('.badge');
+                if (diff <= 300) {
+                    badge.classList.add('bg-danger');
+                    badge.classList.remove('bg-warning');
+                    badge.style.animation = 'cdPulse .9s ease-in-out infinite';
+                } else {
+                    badge.classList.remove('bg-danger');
+                    badge.classList.add('bg-warning');
+                    badge.style.color = '#000';
+                    badge.style.animation = '';
+                    badge.querySelector
+                        ? (badge.querySelector('.countdown-text') || badge).style.color = '#000'
+                        : null;
+                }
+            } else {
+                el.style.display = 'none';
+            }
+        });
+    }
+
+    tick();
+    setInterval(tick, 1000);
+})();
 
 // ── Bootstrap Toast helper ───────────────────────────────────
 function showToast(message, type) {
@@ -1302,11 +1391,11 @@ document.addEventListener('DOMContentLoaded', function() {
 }());
 </script>
 
-@if($isManager)
 {{-- ===================== WHATSAPP MODAL ===================== --}}
 @php
-    $dateLabel = \Carbon\Carbon::parse($date)->format('l, d M Y');
-    $messName  = $mess->name;
+    $dateLabel       = \Carbon\Carbon::parse($date)->format('l, d M Y');
+    $messName        = $mess->name;
+    $routineItemsMap = $routineItems->toArray(); // meal_type => "item1, item2, ..."
 @endphp
 <div class="modal fade" id="whatsappModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -1344,35 +1433,38 @@ document.addEventListener('DOMContentLoaded', function() {
                 {{-- Meal checkboxes with totals --}}
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Include Meals</label>
-                    <div class="row g-2">
+                    <div class="d-flex flex-column gap-2">
                         @foreach($mealTypes as $mt)
                         @php
-                            $tot     = $mealTotals[$mt->name] ?? ['full' => 0, 'half' => 0];
-                            $hasData = ($tot['full'] + $tot['half']) > 0;
+                            $tot      = $mealTotals[$mt->name] ?? ['full' => 0, 'half' => 0];
+                            $total    = $tot['full'] + $tot['half'];
+                            $hasData  = $total > 0;
+                            $items    = $routineItemsMap[$mt->name] ?? '';
                         @endphp
-                        <div class="col-auto">
-                            <div class="form-check form-check-inline border rounded px-3 py-2">
-                                <input class="form-check-input wa-meal-check" type="checkbox"
+                        <div class="border rounded p-2" style="background:#f8f9fa;">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <input class="form-check-input wa-meal-check flex-shrink-0" type="checkbox"
                                     id="waMeal_{{ $loop->index }}"
                                     data-name="{{ $mt->name }}"
                                     data-schedule="{{ ($schedules[$mt->name] ?? null)?->id ?? '' }}"
                                     data-full="{{ $tot['full'] }}"
                                     data-half="{{ $tot['half'] }}"
+                                    data-items="{{ $items }}"
                                     {{ $hasData ? 'checked' : '' }}
                                     onchange="buildWaMessage()">
-                                <label class="form-check-label" for="waMeal_{{ $loop->index }}">
-                                    <span class="fw-semibold">{{ $mt->name }}</span>
-                                    <span class="ms-1" style="font-size:11px;">
-                                        <span class="badge bg-success bg-opacity-75">{{ $tot['full'] }}F</span>
-                                        <span class="badge bg-warning text-dark bg-opacity-75">{{ $tot['half'] }}H</span>
-                                    </span>
-                                </label>
+                                <label class="form-check-label fw-semibold mb-0" for="waMeal_{{ $loop->index }}">{{ $mt->name }}</label>
+                                <span class="badge bg-success bg-opacity-75">Full: {{ $tot['full'] }}</span>
+                                <span class="badge bg-warning text-dark bg-opacity-75">Half: {{ $tot['half'] }}</span>
+                                <span class="badge bg-primary bg-opacity-75">Total: {{ $total }}</span>
                             </div>
+                            @if($items)
+                            <div class="mt-1 ms-4 small text-muted"><i class="ti ti-tools-kitchen-2 me-1"></i>{{ $items }}</div>
+                            @endif
                         </div>
                         @endforeach
                     </div>
                     <div class="mt-2 small text-muted">
-                        Total selected: <strong id="waTotalSel">0F + 0H</strong>
+                        Grand total selected: <strong id="waTotalSel">Full: 0 | Half: 0 | Total: 0</strong>
                     </div>
                 </div>
 
@@ -1414,12 +1506,14 @@ document.addEventListener('DOMContentLoaded', function() {
     function buildWaMessage() {
         const checks = document.querySelectorAll('.wa-meal-check:checked');
         let lines = [], grandFull = 0, grandHalf = 0;
+
         checks.forEach(c => {
-            const n      = c.dataset.name;
+            const name    = c.dataset.name;
             const schedId = c.dataset.schedule;
             let f = parseInt(c.dataset.full) || 0;
             let h = parseInt(c.dataset.half) || 0;
-            // Read live totals from footer Full/Half badges if available
+
+            // Read live totals from footer badges if available
             if (schedId) {
                 const footCell = document.getElementById('foot-' + schedId);
                 if (footCell) {
@@ -1430,29 +1524,38 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             }
-            // Also update data attributes for future reads
             c.dataset.full = f;
             c.dataset.half = h;
-            const parts = [];
-            if (f > 0) parts.push(f + ' Full');
-            if (h > 0) parts.push(h + ' Half');
-            lines.push(n + ': ' + (parts.length ? parts.join(' + ') : '0'));
+
+            const t     = f + h;
+            const items = (c.dataset.items || '').trim();
+            lines.push({ name, f, h, t, items });
             grandFull += f;
             grandHalf += h;
         });
-        document.getElementById('waTotalSel').textContent = grandFull + 'F + ' + grandHalf + 'H';
+
+        const grandTotal = grandFull + grandHalf;
+        document.getElementById('waTotalSel').textContent =
+            'Full: ' + grandFull + ' | Half: ' + grandHalf + ' | Total: ' + grandTotal;
 
         let msg = '🍽️ *' + messName + '* — Meal Count\n';
-        msg += '📅 ' + dateLabel + '\n\n';
+        msg += '📅 ' + dateLabel + '\n';
+        msg += '─────────────────────\n';
+
         if (lines.length === 0) {
             msg += '(No meals selected)';
         } else {
-            lines.forEach(l => { msg += '• ' + l + '\n'; });
-            const totalParts = [];
-            if (grandFull > 0) totalParts.push(grandFull + ' Full');
-            if (grandHalf > 0) totalParts.push(grandHalf + ' Half');
-            msg += '\n*Total: ' + (totalParts.length ? totalParts.join(' + ') : '0') + '*';
+            lines.forEach(l => {
+                msg += '\n*' + l.name + '* (Total: ' + l.t + ')\n';
+                msg += '  Full: ' + l.f + '  |  Half: ' + l.h + '\n';
+                if (l.items) {
+                    msg += '  🥘 ' + l.items + '\n';
+                }
+            });
+            msg += '\n─────────────────────\n';
+            msg += '*Grand Total: ' + grandTotal + '*  (Full: ' + grandFull + ' | Half: ' + grandHalf + ')';
         }
+
         const note = document.getElementById('waNote').value.trim();
         if (note) msg += '\n\n📝 ' + note;
 
@@ -1512,7 +1615,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 }());
 </script>
-@endif
 {{-- Routine Items Viewer Modal --}}
 <div class="modal fade" id="routineItemsModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">

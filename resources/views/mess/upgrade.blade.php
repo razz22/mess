@@ -335,11 +335,31 @@
             <div class="modal-body p-0">
                 {{-- How to pay steps --}}
                 <div style="background:#f8f9ff;padding:14px 22px;border-bottom:1px solid #f0f0f0;">
+                    @if($bkashNumber)
+                    <div style="background:linear-gradient(135deg,#e2136e,#f95c8a);border-radius:12px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;">
+                        <div style="background:rgba(255,255,255,.2);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="ti ti-brand-cashapp" style="color:#fff;font-size:18px;"></i>
+                        </div>
+                        <div>
+                            <div style="color:rgba(255,255,255,.8);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Send bKash Payment To</div>
+                            <div style="color:#fff;font-size:20px;font-weight:800;letter-spacing:1px;">{{ $bkashNumber }}</div>
+                        </div>
+                        <button type="button" onclick="navigator.clipboard.writeText('{{ $bkashNumber }}');this.innerHTML='<i class=\'ti ti-check\'></i>';setTimeout(()=>this.innerHTML='<i class=\'ti ti-copy\'></i>',1500);"
+                            style="margin-left:auto;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:14px;">
+                            <i class="ti ti-copy"></i>
+                        </button>
+                    </div>
+                    @endif
                     <div style="font-size:12px;color:#6b7280;font-weight:600;margin-bottom:8px;letter-spacing:.5px;text-transform:uppercase;">
                         <i class="ti ti-info-circle me-1"></i>How to Pay
                     </div>
                     <div class="d-flex gap-2">
-                        @foreach(['Send bKash to <strong>01XXXXXXXXXX</strong>','Copy the Transaction ID','Fill the form & submit'] as $si => $step)
+                        @php $steps = [
+                            'Send bKash to ' . ($bkashNumber ? '<strong>'.$bkashNumber.'</strong>' : '<strong>the number above</strong>'),
+                            'Copy the Transaction ID',
+                            'Fill the form &amp; submit'
+                        ]; @endphp
+                        @foreach($steps as $si => $step)
                         <div style="flex:1;background:#fff;border-radius:10px;padding:10px 8px;text-align:center;border:1px solid #e8eaf0;">
                             <div style="width:22px;height:22px;border-radius:50%;background:#4361ee;color:#fff;
                                         font-size:11px;font-weight:700;display:flex;align-items:center;

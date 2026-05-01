@@ -5,7 +5,7 @@
     $isOwner      = $member && $member->role === 'owner';
     $isSuperAdmin = Auth::user()->is_super_admin;
     $isManager    = $member && in_array($member->role, ['owner', 'manager']);
-    $isAssigned   = $routine->assigned_to === Auth::id();
+    $isAssigned   = (int) $routine->assigned_to === (int) Auth::id();
     $status       = $routine->status; // pending | approved | pending_reapproval | completed(legacy)
     $isApproved   = in_array($status, ['approved', 'completed']);
     $needsReapproval = $status === 'pending_reapproval';
@@ -16,8 +16,8 @@
         ? ($isSuperAdmin || $isOwner)
         : ($isManager || $isAssigned);
 
-    // Add items: assigned member or manager always can; adding to approved triggers re-approval
-    $canAdd = $isManager || $isAssigned || $isSuperAdmin;
+    // Add items: any member can add; adding to approved triggers re-approval
+    $canAdd = $member !== null || $isSuperAdmin;
 
     // Approve button: only manager/owner, when status needs approval AND list has items
     $canApprove = ($isManager || $isSuperAdmin) && $needsApproval && $items->isNotEmpty();
@@ -81,6 +81,33 @@
                             <strong id="itemCount">{{ $items->count() }}</strong> items
                         </span>
                     </div>
+                    @if($canAdd)
+                    <div class="p-3 border-bottom bg-primary-subtle">
+                        <div class="row g-2 align-items-end">
+                            <div class="col">
+                                <input type="text" id="new_name" class="form-control form-control-sm" placeholder="Item name *">
+                            </div>
+                            <div class="col-auto d-flex gap-1">
+                                <input type="text" id="new_qty" class="form-control form-control-sm" placeholder="Qty" style="width:55px">
+                                <input type="text" id="new_unit" class="form-control form-control-sm" placeholder="Unit" style="width:55px">
+                            </div>
+                            <div class="col-auto">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">৳</span>
+                                    <input type="number" id="new_cost" class="form-control text-end" placeholder="Cost *" step="0.01" min="0.01" style="width:90px">
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <button type="button" class="btn btn-primary btn-sm" id="addBtn" onclick="submitAddItem(event)">
+                                    <i class="ti ti-plus me-1"></i>Add
+                                </button>
+                            </div>
+                        </div>
+                        @if($isApproved)
+                        <div class="mt-1 small text-primary"><i class="ti ti-info-circle me-1"></i>Adding items will require re-approval from the manager.</div>
+                        @endif
+                    </div>
+                    @endif
                     <div class="table-responsive">
                         <table class="table align-middle mb-0" id="itemsTable">
                             <thead class="table-light">
@@ -90,33 +117,12 @@
                                     <th class="text-end" style="width:110px">Cost (৳)</th>
                                     <th style="width:70px"></th>
                                 </tr>
-                                @if($canAdd)
-                                <tr class="bg-primary-subtle">
-                                    <td class="py-2 px-2">
-                                        <input type="text" id="new_name" class="form-control form-control-sm" placeholder="Item name *" required>
-                                    </td>
-                                    <td class="py-2 px-1">
-                                        <div class="d-flex gap-1">
-                                            <input type="text" id="new_qty" class="form-control form-control-sm" placeholder="Qty" style="width:48px">
-                                            <input type="text" id="new_unit" class="form-control form-control-sm" placeholder="Unit" style="width:48px">
-                                        </div>
-                                    </td>
-                                    <td class="py-2 px-1 text-end">
-                                        <input type="number" id="new_cost" class="form-control form-control-sm text-end" placeholder="0.00 *" step="0.01" min="0.01" required>
-                                    </td>
-                                    <td class="py-2 px-1 text-center">
-                                        <button type="button" class="btn btn-primary btn-sm px-2" id="addBtn" onclick="submitAddItem(event)">
-                                            <i class="ti ti-plus"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                                @endif
                             </thead>
                             <tbody id="itemsTbody">
                                 @forelse($items as $item)
                                 @php
                                     $itemCanEdit = $isManager || $isSuperAdmin || (!$item->is_approved);
-                                    $itemCanDelete = $isManager || $isSuperAdmin || (!$item->is_approved && ($item->added_by === Auth::id() || $isAssigned));
+                                    $itemCanDelete = $isManager || $isSuperAdmin || !$item->is_approved;
                                 @endphp
                                 <tr id="row-{{ $item->id }}">
                                     {{-- View mode --}}

@@ -105,7 +105,7 @@ class NoticeController extends Controller
         ]);
 
         if ($notice->status === 'published') {
-            NoticePublished::dispatch($notice->load('author'));
+            try { NoticePublished::dispatch($notice->load('author')); } catch (\Throwable) {}
         }
 
         return redirect()->route('mess.notices.index', $mess->id)
@@ -136,7 +136,7 @@ class NoticeController extends Controller
         ]);
 
         if (! $wasPublished && $becomesPublished) {
-            NoticePublished::dispatch($notice->fresh()->load('author'));
+            try { NoticePublished::dispatch($notice->fresh()->load('author')); } catch (\Throwable) {}
         }
 
         return redirect()->route('mess.notices.index', $mess->id)
