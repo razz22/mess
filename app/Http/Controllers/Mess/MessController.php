@@ -32,15 +32,19 @@ class MessController extends Controller
             ->where('is_active', true)
             ->get();
 
-        // Pure members (no owner/manager role anywhere) go straight to their mess dashboard
-        $hasOwnerOrManager = $memberships->whereIn('role', ['owner', 'manager', 'author'])->isNotEmpty();
-        if (!$hasOwnerOrManager && $memberships->isNotEmpty()) {
-            $activeMess = $user->getActiveMess();
-            if (!$activeMess) {
-                $activeMess = $memberships->first()->mess;
-                session(['active_mess_id' => $activeMess->id]);
-            }
+        // Any user with only one mess goes directly to their mess dashboard
+        if ($memberships->count() === 1) {
+            $activeMess = $memberships->first()->mess;
+            session(['active_mess_id' => $activeMess->id]);
             return redirect()->route('mess.dashboard', $activeMess->id);
+        }
+
+        // Multi-mess users: redirect to active mess if set, otherwise show list
+        if ($memberships->count() > 1) {
+            $activeMess = $user->getActiveMess();
+            if ($activeMess) {
+                return redirect()->route('mess.dashboard', $activeMess->id);
+            }
         }
 
         return view('mess.list', compact('memberships'));
@@ -414,7 +418,7 @@ class MessController extends Controller
 
         if ($user->is_super_admin) return;
 
-        if (! $member || ! in_array($member->role, ['owner', 'manager'])) {
+        if (! $member || ! $user->isManagerOf($mess->id)) {
             abort(redirect()->route('mess.index')->with('error', 'Only the mess owner or manager can access settings.'));
         }
     }

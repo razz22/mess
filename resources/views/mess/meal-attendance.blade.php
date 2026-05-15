@@ -9,7 +9,8 @@
             <div class="page-title">
                 <h4 class="fw-bold">{{ __('Meal Attendance') }} — {{ $mess->name }}</h4>
                 <h6 class="text-muted">{{ \Carbon\Carbon::parse($date)->format('l, d F Y') }}
-                    @if($isPast) <span class="badge bg-secondary ms-2">{{ __('Past — Read Only') }}</span> @endif
+                    @if($isPast && !$isOwner && !$isSuperAdmin) <span class="badge bg-secondary ms-2">{{ __('Past — Read Only') }}</span> @endif
+                    @if($isPast && ($isOwner || $isSuperAdmin)) <span class="badge bg-warning text-dark ms-2"><i class="ti ti-pencil me-1"></i>{{ __('Past — Editable') }}</span> @endif
                     @if($date === $today) <span class="badge bg-success ms-2">{{ __('Today') }}</span> @endif
                 </h6>
             </div>
@@ -216,7 +217,8 @@
                                     $sch       = $schedules[$mt->name] ?? null;
                                     $key       = $sch ? ($sch->id . '_' . $mem->user_id) : null;
                                     $att       = $key ? ($allAttendances[$key]->first() ?? null) : null;
-                                    $locked    = $isPast || !$sch || $sch->status === 'closed'
+                                    $canEditPast = $isOwner || $isSuperAdmin;
+                                    $locked    = ($isPast && !$canEditPast) || !$sch || $sch->status === 'closed'
                                                  || (!$isManager && $mt->isExpired($date))
                                                  || (!$isManager && !$isMe);
                                     $canChange = $canEdit && !$locked;
@@ -224,7 +226,7 @@
                                     $fullQty   = $att ? (int)$att->full_qty : ($canChange ? 1 : 0);
                                     $halfQty   = $att ? (int)$att->half_qty : 0;
                                     $qty       = $fullQty + $halfQty * 0.5;
-                                    $lockTitle = $locked ? ($isPast ? 'Past date' : ($sch && $sch->status==='closed' ? 'Meal closed' : 'Time expired')) : '';
+                                    $lockTitle = $locked ? (($isPast && !$canEditPast) ? 'Past date' : ($sch && $sch->status==='closed' ? 'Meal closed' : 'Time expired')) : '';
                                 @endphp
                                 <td class="text-center align-middle p-1" style="{{ $isMe ? 'background:#e8f4fd;' : ($locked ? 'background:#f8f9fa;' : '') }}">
                                     @if($sch)

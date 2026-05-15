@@ -133,7 +133,12 @@ class MealController extends Controller
             return response()->json(['error' => 'You can only manage your own attendance.'], 403);
         }
 
-        if ($schedule->date->toDateString() < now()->toDateString()) {
+        $user     = Auth::user();
+        $member   = $user->getMembershipIn($mess->id);
+        $isOwner  = $member && $member->role === 'owner';
+        $canEditPast = $user->is_super_admin || $isOwner;
+
+        if (!$canEditPast && $schedule->date->toDateString() < now()->toDateString()) {
             return response()->json(['error' => 'Cannot modify attendance for past dates.'], 422);
         }
 

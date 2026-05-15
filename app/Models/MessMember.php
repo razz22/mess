@@ -41,11 +41,19 @@ class MessMember extends Model
 
     public function isManager(): bool
     {
-        return in_array($this->role, ['owner', 'manager', 'author']);
+        if ($this->role === 'owner') return true;
+        if (!in_array($this->role, ['manager', 'author'])) return false;
+
+        return ManagerRotation::where('mess_id', $this->mess_id)
+            ->where('user_id', $this->user_id)
+            ->where('month', now()->month)
+            ->where('year', now()->year)
+            ->where('is_current', true)
+            ->exists();
     }
 
     public function canManage(): bool
     {
-        return in_array($this->role, ['owner', 'manager', 'author']);
+        return $this->isManager();
     }
 }

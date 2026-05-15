@@ -31,7 +31,7 @@ trait AuthorizesMessAccess
         if (!$user) return null;
         if ($user->is_super_admin) return $user->getMembershipIn($mess->id);
         $member = $user->getMembershipIn($mess->id);
-        if (!$member || !in_array($member->role, ['owner', 'manager', 'author'])) {
+        if (!$member || !$user->isManagerOf($mess->id)) {
             Log::warning('Mess 403: user is not a manager', [
                 'user_id' => $user->id,
                 'mess_id' => $mess->id,

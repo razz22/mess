@@ -174,8 +174,8 @@
     <h6 class="submenu-hdr">{{ __('My Account') }}</h6>
     <ul>
         @if($myMember)
-        <li class="{{ Request::routeIs('mess.members.profile') && Request::segment(4) == $myMember->id ? 'active' : '' }}">
-            <a href="{{ route('mess.members.profile', [$sma->id, $myMember->id]) }}"><i class="ti ti-id-badge fs-16 me-2"></i><span>{{ __('Profile Details') }}</span></a>
+        <li class="{{ Request::routeIs('profile') ? 'active' : '' }}">
+            <a href="{{ route('profile') }}"><i class="ti ti-id-badge fs-16 me-2"></i><span>{{ __('Profile Details') }}</span></a>
         </li>
         @endif
         <li class="{{ Request::routeIs('mess.leave.my') ? 'active' : '' }}">

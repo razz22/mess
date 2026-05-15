@@ -54,20 +54,13 @@
                     <!-- Change Password -->
                     <div class="card">
                         <div class="card-header">
-                            <h6 class="mb-0"><i class="ti ti-lock me-2 text-warning"></i>Change Password</h6>
+                            <h6 class="mb-0"><i class="ti ti-lock me-2 text-warning"></i>Security</h6>
                         </div>
-                        <div class="card-body">
-                            <div class="mb-3">
-                                <label class="form-label">New Password</label>
-                                <input type="password" name="password" class="form-control @error('password') is-invalid @enderror"
-                                       placeholder="Leave blank to keep current">
-                                @error('password')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                            </div>
-                            <div class="mb-0">
-                                <label class="form-label">Confirm Password</label>
-                                <input type="password" name="password_confirmation" class="form-control"
-                                       placeholder="Repeat new password">
-                            </div>
+                        <div class="card-body text-center">
+                            <p class="text-muted small mb-3">Keep your account secure by updating your password regularly.</p>
+                            <button type="button" class="btn btn-warning w-100" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                                <i class="ti ti-key me-2"></i>Change Password
+                            </button>
                         </div>
                     </div>
 
@@ -205,6 +198,68 @@
     </div>
 </div>
 
+<!-- Change Password Modal -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff">
+                <h5 class="modal-title" id="changePasswordModalLabel">
+                    <i class="ti ti-key me-2"></i>Change Password
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Step 1: Confirmation -->
+                <div id="pwStep1">
+                    <div class="text-center py-2">
+                        <div class="mb-3" style="font-size:48px;color:#f59e0b"><i class="ti ti-shield-lock"></i></div>
+                        <h6 class="fw-semibold mb-2">Are you sure you want to change your password?</h6>
+                        <p class="text-muted small mb-4">You will need to use your new password the next time you log in.</p>
+                        <div class="d-flex gap-2 justify-content-center">
+                            <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">
+                                <i class="ti ti-x me-1"></i>No, Cancel
+                            </button>
+                            <button type="button" class="btn btn-warning px-4" id="pwConfirmYes">
+                                <i class="ti ti-check me-1"></i>Yes, Continue
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Password Form -->
+                <div id="pwStep2" class="d-none">
+                    <form id="pwForm" action="{{ route('profile.password') }}" method="POST">
+                        @csrf
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">New Password <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="password" name="password" id="pwNew" class="form-control" placeholder="Min 8 characters" minlength="8" required>
+                                <button class="btn btn-outline-secondary" type="button" onclick="togglePw('pwNew',this)"><i class="ti ti-eye"></i></button>
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Confirm New Password <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="password" name="password_confirmation" id="pwConfirm" class="form-control" placeholder="Repeat new password" minlength="8" required>
+                                <button class="btn btn-outline-secondary" type="button" onclick="togglePw('pwConfirm',this)"><i class="ti ti-eye"></i></button>
+                            </div>
+                            <div id="pwMismatch" class="text-danger small mt-1 d-none">Passwords do not match.</div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-secondary" id="pwBack">
+                                <i class="ti ti-arrow-left me-1"></i>Back
+                            </button>
+                            <button type="submit" class="btn btn-warning flex-grow-1" id="pwSubmit">
+                                <i class="ti ti-device-floppy me-1"></i>Save New Password
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 document.getElementById('avatarInput').addEventListener('change', function () {
     const file = this.files[0];
@@ -214,5 +269,40 @@ document.getElementById('avatarInput').addEventListener('change', function () {
         reader.readAsDataURL(file);
     }
 });
+
+document.getElementById('pwConfirmYes').addEventListener('click', function () {
+    document.getElementById('pwStep1').classList.add('d-none');
+    document.getElementById('pwStep2').classList.remove('d-none');
+    document.getElementById('pwNew').focus();
+});
+
+document.getElementById('pwBack').addEventListener('click', function () {
+    document.getElementById('pwStep2').classList.add('d-none');
+    document.getElementById('pwStep1').classList.remove('d-none');
+});
+
+document.getElementById('changePasswordModal').addEventListener('hidden.bs.modal', function () {
+    document.getElementById('pwStep2').classList.add('d-none');
+    document.getElementById('pwStep1').classList.remove('d-none');
+    document.getElementById('pwForm').reset();
+    document.getElementById('pwMismatch').classList.add('d-none');
+});
+
+document.getElementById('pwForm').addEventListener('submit', function (e) {
+    const pw = document.getElementById('pwNew').value;
+    const pc = document.getElementById('pwConfirm').value;
+    if (pw !== pc) {
+        e.preventDefault();
+        document.getElementById('pwMismatch').classList.remove('d-none');
+    } else {
+        document.getElementById('pwMismatch').classList.add('d-none');
+    }
+});
+
+function togglePw(id, btn) {
+    const inp = document.getElementById(id);
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+    btn.querySelector('i').className = inp.type === 'password' ? 'ti ti-eye' : 'ti ti-eye-off';
+}
 </script>
 @endsection

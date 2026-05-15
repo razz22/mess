@@ -99,7 +99,21 @@ class User extends Authenticatable
         if ($this->is_super_admin) return true;
 
         $member = $this->getMembershipIn($messId);
-        return $member && in_array($member->role, ['owner', 'manager', 'author']);
+        if (!$member) return false;
+
+        if ($member->role === 'owner') return true;
+
+        // manager/author: only active if assigned for the current month
+        if (in_array($member->role, ['manager', 'author'])) {
+            return ManagerRotation::where('mess_id', $messId)
+                ->where('user_id', $this->id)
+                ->where('month', now()->month)
+                ->where('year', now()->year)
+                ->where('is_current', true)
+                ->exists();
+        }
+
+        return false;
     }
 
     public function isOwnerOf(int $messId): bool

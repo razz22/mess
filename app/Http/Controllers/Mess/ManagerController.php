@@ -33,6 +33,8 @@ class ManagerController extends Controller
 
         $currentRotations = ManagerRotation::where('mess_id', $mess->id)
             ->where('is_current', true)
+            ->where('month', now()->month)
+            ->where('year', now()->year)
             ->with(['user', 'votes'])
             ->get();
 
