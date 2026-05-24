@@ -30,11 +30,34 @@ use App\Http\Controllers\LanguageController;
 // Language Switch (prefix avoids conflict with the lang/ directory on disk)
 Route::get('/locale/{locale}', [LanguageController::class, 'switch'])->name('lang.switch');
 
-// Landing Page
-Route::get('/', function () {
-    $plans = \App\Models\SubscriptionPlan::active()->get();
-    return view('landing', compact('plans'));
-})->name('landing');
+// ── Public pages ──────────────────────────────────────────────
+Route::get('/about',    [App\Http\Controllers\PublicController::class, 'about'])->name('public.about');
+Route::get('/contact',  [App\Http\Controllers\PublicController::class, 'contact'])->name('public.contact');
+Route::post('/contact', [App\Http\Controllers\PublicController::class, 'contactStore'])->name('public.contact.store');
+Route::get('/features-page', [App\Http\Controllers\PublicController::class, 'features'])->name('public.features');
+Route::get('/privacy',  [App\Http\Controllers\PublicController::class, 'privacy'])->name('public.privacy');
+Route::get('/faq-page', [App\Http\Controllers\PublicController::class, 'faq'])->name('public.faq');
+
+// ── Public Blog ───────────────────────────────────────────────
+Route::get('/blog',           [App\Http\Controllers\BlogController::class, 'index'])->name('blog.index');
+Route::get('/blog/{slug}',    [App\Http\Controllers\BlogController::class, 'show'])->name('blog.show');
+Route::middleware('auth')->group(function () {
+    Route::post('/blog/{blog}/like', [App\Http\Controllers\BlogController::class, 'like'])->name('blog.like');
+});
+Route::post('/blog/{blog}/comment', [App\Http\Controllers\BlogController::class, 'comment'])->name('blog.comment');
+
+// ── Member Blog ───────────────────────────────────────────────
+Route::middleware('auth')->prefix('my-blog')->name('member.blog.')->group(function () {
+    Route::get('/',              [App\Http\Controllers\Mess\MemberBlogController::class, 'myBlogs'])->name('index');
+    Route::get('/create',        [App\Http\Controllers\Mess\MemberBlogController::class, 'create'])->name('create');
+    Route::post('/',             [App\Http\Controllers\Mess\MemberBlogController::class, 'store'])->name('store');
+    Route::get('/{blog}/edit',   [App\Http\Controllers\Mess\MemberBlogController::class, 'edit'])->name('edit');
+    Route::put('/{blog}',        [App\Http\Controllers\Mess\MemberBlogController::class, 'update'])->name('update');
+    Route::post('/upload-image', [App\Http\Controllers\Mess\MemberBlogController::class, 'uploadImage'])->name('upload-image');
+});
+
+// Landing Page — guests see the public landing, authenticated users go to their dashboard
+Route::get('/', [App\Http\Controllers\PublicController::class, 'landing'])->name('landing');
 
 // Auth Routes
 Route::get('signin',          [CustomAuthController::class, 'index'])->name('signin');
@@ -297,6 +320,18 @@ Route::middleware(['auth', 'super_admin'])->prefix('admin')->name('admin.')->gro
     Route::post  ('/custom-subscriptions',                              [\App\Http\Controllers\Admin\CustomSubscriptionController::class, 'store'])->name('custom-subscriptions.store');
     Route::put   ('/custom-subscriptions/{customSubscription}',         [\App\Http\Controllers\Admin\CustomSubscriptionController::class, 'update'])->name('custom-subscriptions.update');
     Route::delete('/custom-subscriptions/{customSubscription}',         [\App\Http\Controllers\Admin\CustomSubscriptionController::class, 'destroy'])->name('custom-subscriptions.destroy');
+
+    // ── Admin Blog Management ─────────────────────────────────
+    Route::resource('blog', \App\Http\Controllers\Admin\BlogAdminController::class)->except(['show']);
+    Route::post('blog/{blog}/approve',                              [\App\Http\Controllers\Admin\BlogAdminController::class, 'approve'])->name('blog.approve');
+    Route::post('blog/{blog}/reject',                               [\App\Http\Controllers\Admin\BlogAdminController::class, 'reject'])->name('blog.reject');
+    Route::get ('blog-categories',                                  [\App\Http\Controllers\Admin\BlogAdminController::class, 'categories'])->name('blog.categories');
+    Route::post('blog-categories',                                  [\App\Http\Controllers\Admin\BlogAdminController::class, 'storeCategory'])->name('blog.categories.store');
+    Route::delete('blog-categories/{category}',                     [\App\Http\Controllers\Admin\BlogAdminController::class, 'destroyCategory'])->name('blog.categories.destroy');
+    Route::get ('blog-tags',                                        [\App\Http\Controllers\Admin\BlogAdminController::class, 'tags'])->name('blog.tags');
+    Route::post('blog-tags',                                        [\App\Http\Controllers\Admin\BlogAdminController::class, 'storeTag'])->name('blog.tags.store');
+    Route::delete('blog-tags/{tag}',                                [\App\Http\Controllers\Admin\BlogAdminController::class, 'destroyTag'])->name('blog.tags.destroy');
+    Route::post('blog-upload-image',                                [\App\Http\Controllers\Admin\BlogAdminController::class, 'uploadImage'])->name('blog.upload-image');
 });
 
 // Exit impersonation (accessible while impersonating, auth only)
@@ -1062,9 +1097,6 @@ Route::get('/signin-2', function () {
     return view('signin-2');
 })->name('signin-2');
 
-Route::get('/signin', function () {
-    return view('signin');
-})->name('signin');
 
 Route::get('/success-3', function () {
     return view('success-3');

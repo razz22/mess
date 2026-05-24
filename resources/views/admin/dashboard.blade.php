@@ -105,6 +105,8 @@
                         <div class="mt-3 d-flex gap-2">
                             <a href="{{ route('admin.users') }}" class="btn btn-sm btn-outline-primary w-50">Manage Users</a>
                             <a href="{{ route('admin.messes') }}" class="btn btn-sm btn-outline-success w-50">Manage Messes</a>
+                            <a href="{{ route('admin.blog.index') }}" class="btn btn-sm btn-outline-warning w-50">Blog Posts</a>
+                            <a href="{{ route('admin.blog.index', ['status'=>'pending']) }}" class="btn btn-sm btn-outline-danger w-50">Pending Posts</a>
                         </div>
                     </div>
                 </div>

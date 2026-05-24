@@ -161,4 +161,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(MemberReport::class, 'reporter_id');
     }
+
+    public function blogs(): HasMany
+    {
+        return $this->hasMany(Blog::class);
+    }
 }

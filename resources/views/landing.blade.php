@@ -148,12 +148,12 @@ img { max-width: 100%; }
 /* Mobile */
 .lnav-toggle { display: none; border: none; background: none; width: 38px; height: 38px; border-radius: 8px; align-items: center; justify-content: center; cursor: pointer; color: rgba(255,255,255,.8); font-size: 1.3rem; transition: background .2s; }
 .lnav-toggle:hover { background: rgba(255,255,255,.08); }
-.lnav-mobile { display: none; background: rgba(20,20,50,.98); border-top: 1px solid rgba(255,255,255,.06); padding: 10px 0; }
-.lnav-mobile.show { display: block; }
+.lnav-mobile { display: none !important; background: rgba(20,20,50,.98); border-top: 1px solid rgba(255,255,255,.06); padding: 10px 0; }
+.lnav-mobile.open { display: block !important; }
 .lnav-mobile a { display: flex; align-items: center; gap: 10px; padding: 11px 20px; font-size: .9rem; color: rgba(255,255,255,.75); font-weight: 500; transition: all .2s; }
 .lnav-mobile a:hover { color: var(--orange); background: rgba(254,159,67,.08); }
 .lnav-mobile .mob-divider { height: 1px; background: rgba(255,255,255,.07); margin: 6px 0; }
-@media(max-width:767px) {
+@media(max-width:991px) {
   .lnav-links, .lnav-auth-desktop { display: none !important; }
   .lnav-toggle { display: flex !important; }
 }
@@ -431,17 +431,19 @@ img { max-width: 100%; }
     <div class="lnav-inner">
 
       <a href="{{ url('/') }}" class="lnav-logo me-5">
-        <div class="logo-box"><i class="ti ti-building-community"></i></div>
-        Mess<em>Manager</em>
+        <img src="{{URL::asset('build/img/logo.svg')}}" alt="Mess Manager" style="height: 44px; max-width: 200px;">
       </a>
 
-      <ul class="lnav-links d-none d-md-flex">
+      <ul class="lnav-links d-none d-lg-flex">
         <li><a href="#features">{{ __('Features') }}</a></li>
         <li><a href="#how">{{ __('How it Works') }}</a></li>
         <li><a href="#pricing">{{ __('Pricing') }}</a></li>
+        <li><a href="{{ route('blog.index') }}">{{ __('Blog') }}</a></li>
+        <li><a href="{{ route('public.about') }}">{{ __('About') }}</a></li>
+        <li><a href="{{ route('public.contact') }}">{{ __('Contact') }}</a></li>
       </ul>
 
-      <div class="lnav-auth lnav-auth-desktop ms-auto d-none d-md-flex align-items-center gap-2">
+      <div class="lnav-auth lnav-auth-desktop ms-auto d-none d-lg-flex align-items-center gap-2">
         {{-- Language switcher --}}
         @php $llocale = app()->getLocale(); @endphp
         <div class="dropdown">
@@ -487,6 +489,10 @@ img { max-width: 100%; }
       <a href="#features"><i class="ti ti-layout-grid me-2"></i>{{ __('Features') }}</a>
       <a href="#how"><i class="ti ti-route me-2"></i>{{ __('How it Works') }}</a>
       <a href="#pricing"><i class="ti ti-tag me-2"></i>{{ __('Pricing') }}</a>
+      <a href="{{ route('blog.index') }}"><i class="ti ti-news me-2"></i>{{ __('Blog') }}</a>
+      <a href="{{ route('public.about') }}"><i class="ti ti-info-circle me-2"></i>{{ __('About') }}</a>
+      <a href="{{ route('public.contact') }}"><i class="ti ti-mail me-2"></i>{{ __('Contact') }}</a>
+      <a href="{{ route('public.faq') }}"><i class="ti ti-help me-2"></i>{{ __('FAQ') }}</a>
       <div class="mob-divider"></div>
       <a href="{{ route('lang.switch','en') }}" style="{{ app()->getLocale()==='en'?'color:var(--orange);font-weight:700':'' }}"><i class="ti ti-language me-2"></i>English</a>
       <a href="{{ route('lang.switch','bn') }}" style="{{ app()->getLocale()==='bn'?'color:var(--orange);font-weight:700':'' }}"><i class="ti ti-language me-2"></i>বাংলা</a>
@@ -851,11 +857,10 @@ img { max-width: 100%; }
 {{-- ═══════════════════ FOOTER ═══════════════════ --}}
 <footer class="lfoot">
   <div class="container">
-    <div class="row g-5">
-      <div class="col-lg-4">
+    <div class="row g-4 g-lg-5">
+      <div class="col-12 col-lg-4">
         <div class="lfoot-logo">
-          <div class="logo-box"><i class="ti ti-building-community"></i></div>
-          MessManager
+          <img src="{{URL::asset('build/img/logo.svg')}}" alt="Mess Manager" style="height: 40px; max-width: 190px;">
         </div>
         <p style="font-size:.875rem;line-height:1.7;max-width:300px">
           {{ __('Smart mess management for shared living. Track meals, expenses, and more — all in one beautiful platform.') }}
@@ -867,33 +872,26 @@ img { max-width: 100%; }
             <i class="ti ti-brand-twitter"></i></a>
         </div>
       </div>
-      <div class="col-6 col-md-4 col-lg-2">
+      <div class="col-6 col-md-3 col-lg-2">
         <div class="lfoot-heading">{{ __('Product') }}</div>
-        <a href="#features">{{ __('Features') }}</a>
-        <a href="#how">{{ __('How it Works') }}</a>
+        <a href="{{ route('public.features') }}">{{ __('Features') }}</a>
+        <a href="{{ route('blog.index') }}">{{ __('Blog') }}</a>
         <a href="#pricing">{{ __('Pricing') }}</a>
       </div>
-      <div class="col-6 col-md-4 col-lg-2">
+      <div class="col-6 col-md-3 col-lg-2">
+        <div class="lfoot-heading">{{ __('Company') }}</div>
+        <a href="{{ route('public.about') }}">{{ __('About Us') }}</a>
+        <a href="{{ route('public.contact') }}">{{ __('Contact') }}</a>
+        <a href="{{ route('public.faq') }}">{{ __('FAQ') }}</a>
+        <a href="{{ route('public.privacy') }}">{{ __('Privacy Policy') }}</a>
+      </div>
+      <div class="col-12 col-md-6 col-lg-4">
         <div class="lfoot-heading">{{ __('Account') }}</div>
         <a href="{{ route('signin') }}">{{ __('Sign In') }}</a>
         <a href="{{ route('register') }}">{{ __('Register Free') }}</a>
-      </div>
-      <div class="col-md-4 col-lg-4">
-        <div class="lfoot-heading">{{ __('Quick Stats') }}</div>
-        <div class="d-flex gap-4 flex-wrap">
-          <div>
-            <div style="font-size:1.6rem;font-weight:800;color:var(--white)">500+</div>
-            <div style="font-size:.8rem">{{ __('Messes') }}</div>
-          </div>
-          <div>
-            <div style="font-size:1.6rem;font-weight:800;color:var(--white)">10K+</div>
-            <div style="font-size:.8rem">{{ __('Members') }}</div>
-          </div>
-          <div>
-            <div style="font-size:1.6rem;font-weight:800;color:var(--white)">৳2M+</div>
-            <div style="font-size:.8rem">{{ __('Tracked') }}</div>
-          </div>
-        </div>
+        @auth
+          <a href="{{ route('mess.index') }}">{{ __('Dashboard') }}</a>
+        @endauth
         <div class="mt-3" style="background:rgba(254,159,67,.1);border:1px solid rgba(254,159,67,.2);border-radius:10px;padding:12px 16px">
           <div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:4px">{{ __('Start managing your mess today') }}</div>
           <a href="{{ route('register') }}" style="color:var(--orange);font-size:.875rem;font-weight:700">
@@ -924,7 +922,7 @@ const navToggle     = document.getElementById('navToggle');
 const navMobile     = document.getElementById('navMobile');
 const navToggleIcon = document.getElementById('navToggleIcon');
 navToggle.addEventListener('click', () => {
-  const open = navMobile.classList.toggle('show');
+  const open = navMobile.classList.toggle('open');
   navToggleIcon.className = open ? 'ti ti-x' : 'ti ti-menu-2';
 });
 

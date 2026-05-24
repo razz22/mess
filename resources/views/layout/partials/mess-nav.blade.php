@@ -41,6 +41,15 @@
         <li class="{{ Request::routeIs('admin.custom-subscriptions.*') ? 'active' : '' }}">
             <a href="{{ route('admin.custom-subscriptions.index') }}"><i class="ti ti-star fs-16 me-2"></i><span>{{ __('Custom Subscriptions') }}</span></a>
         </li>
+        <li class="{{ Request::routeIs('admin.blog.*') ? 'active' : '' }}">
+            <a href="{{ route('admin.blog.index') }}" class="d-flex align-items-center gap-1">
+                <i class="ti ti-news fs-16 me-2"></i><span>{{ __('Blog Posts') }}</span>
+                @php $pendingBlogs = \App\Models\Blog::where('status','pending')->count(); @endphp
+                @if($pendingBlogs > 0)
+                <span class="badge bg-info ms-auto" style="font-size:10px;">{{ $pendingBlogs }}</span>
+                @endif
+            </a>
+        </li>
     </ul>
 </li>
 @endif
@@ -180,6 +189,9 @@
         @endif
         <li class="{{ Request::routeIs('mess.leave.my') ? 'active' : '' }}">
             <a href="{{ route('mess.leave.my', $sma->id) }}"><i class="ti ti-logout fs-16 me-2"></i><span>{{ __('My Leave') }}</span></a>
+        </li>
+        <li class="{{ Request::routeIs('member.blog.*') ? 'active' : '' }}">
+            <a href="{{ route('member.blog.index') }}"><i class="ti ti-news fs-16 me-2"></i><span>{{ __('My Blog Posts') }}</span></a>
         </li>
     </ul>
 </li>
