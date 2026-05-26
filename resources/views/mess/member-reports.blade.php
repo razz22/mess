@@ -51,13 +51,13 @@
                             <td>{{ $report->created_at->format('d M Y') }}</td>
                             <td>
                                 <div class="d-flex align-items-center gap-2">
-                                    <div class="avatar avatar-sm">@if($report->reporter->avatar)<img src="{{ asset('storage/'.$report->reporter->avatar) }}" class="avatar-title rounded-circle" style="object-fit:cover;" alt="">@else<span class="avatar-title rounded-circle bg-info text-white">{{ strtoupper(substr($report->reporter->name, 0, 1)) }}</span>@endif</div>
+                                    @if($report->reporter->avatar)<img src="{{ asset('storage/'.$report->reporter->avatar) }}" class="rounded-circle" style="width:32px;height:32px;object-fit:cover;flex-shrink:0;" alt="">@else<span class="rounded-circle bg-info text-white d-flex align-items-center justify-content-center fw-semibold" style="width:32px;height:32px;font-size:12px;flex-shrink:0;">{{ strtoupper(substr($report->reporter->name, 0, 1)) }}</span>@endif
                                     {{ $report->reporter->name }}
                                 </div>
                             </td>
                             <td>
                                 <div class="d-flex align-items-center gap-2">
-                                    <div class="avatar avatar-sm">@if($report->reported->avatar)<img src="{{ asset('storage/'.$report->reported->avatar) }}" class="avatar-title rounded-circle" style="object-fit:cover;" alt="">@else<span class="avatar-title rounded-circle bg-danger text-white">{{ strtoupper(substr($report->reported->name, 0, 1)) }}</span>@endif</div>
+                                    @if($report->reported->avatar)<img src="{{ asset('storage/'.$report->reported->avatar) }}" class="rounded-circle" style="width:32px;height:32px;object-fit:cover;flex-shrink:0;" alt="">@else<span class="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center fw-semibold" style="width:32px;height:32px;font-size:12px;flex-shrink:0;">{{ strtoupper(substr($report->reported->name, 0, 1)) }}</span>@endif
                                     {{ $report->reported->name }}
                                 </div>
                             </td>

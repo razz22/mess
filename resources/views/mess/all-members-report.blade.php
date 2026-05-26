@@ -236,7 +236,7 @@
     <div class="rpt-footer">
         <span>Generated: {{ now()->format('d M Y, h:i A') }}</span>
         <span style="font-weight:600;">{{ $mess->name }} · {{ $monthLabel }}</span>
-        <span>{{ __('Powered by MessManager') }}</span>
+        <span>{{ __('Powered by Thaka Khawa') }}</span>
     </div>
 
 </div>{{-- /rpt-card --}}

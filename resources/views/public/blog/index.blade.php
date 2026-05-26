@@ -1,6 +1,6 @@
 @extends('public.layout')
-@section('title', __('Blog') . ' — MessManager')
-@section('meta-description', __('Read the latest articles, tips, and guides on mess management from the MessManager blog.'))
+@section('title', __('Blog') . ' — Thaka Khawa')
+@section('meta-description', __('Read the latest articles, tips, and guides on mess management from the Thaka Khawa blog.'))
 
 @section('extra-css')
 <style>
@@ -371,7 +371,7 @@
       <div class="col-lg-6" data-aos="fade-right">
         <div style="display:inline-flex;align-items:center;gap:7px;background:rgba(254,159,67,.15);border:1px solid rgba(254,159,67,.3);border-radius:50px;padding:5px 14px;margin-bottom:18px">
           <i class="ti ti-news" style="color:var(--orange);font-size:.85rem"></i>
-          <span style="color:var(--orange);font-size:.78rem;font-weight:700;letter-spacing:.3px">{{ __('MessManager Blog') }}</span>
+          <span style="color:var(--orange);font-size:.78rem;font-weight:700;letter-spacing:.3px">{{ __('Thaka Khawa Blog') }}</span>
         </div>
         <h1 style="font-size:clamp(1.9rem,3.8vw,2.9rem);font-weight:800;color:#fff;line-height:1.22;margin-bottom:14px">
           {{ __('Insights for Better Mess Living') }}

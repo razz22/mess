@@ -20,9 +20,19 @@
         @endif
 
         <!-- Month Filter -->
+        @php
+            $prevMonth = $month == 1 ? 12 : $month - 1;
+            $prevYear  = $month == 1 ? $year - 1 : $year;
+            $nextMonth = $month == 12 ? 1 : $month + 1;
+            $nextYear  = $month == 12 ? $year + 1 : $year;
+        @endphp
         <div class="card mb-4">
             <div class="card-body py-2">
-                <form method="GET" class="d-flex align-items-center gap-2 flex-wrap">
+                <form method="GET" action="{{ route('mess.report.monthly', $mess->id) }}" class="d-flex align-items-center gap-2 flex-wrap">
+                    <a href="{{ route('mess.report.monthly', $mess->id) }}?month={{ $prevMonth }}&year={{ $prevYear }}"
+                       class="btn btn-outline-secondary btn-sm" title="Previous month">
+                        <i class="ti ti-chevron-left"></i>
+                    </a>
                     <select name="month" class="form-select form-select-sm" style="width:130px" onchange="this.form.submit()">
                         @for($m = 1; $m <= 12; $m++)
                         <option value="{{ $m }}" {{ $m == $month ? 'selected' : '' }}>{{ date('F', mktime(0,0,0,$m,1)) }}</option>
@@ -33,6 +43,14 @@
                         <option value="{{ $y }}" {{ $y == $year ? 'selected' : '' }}>{{ $y }}</option>
                         @endfor
                     </select>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="ti ti-refresh me-1"></i>Load
+                    </button>
+                    <a href="{{ route('mess.report.monthly', $mess->id) }}?month={{ $nextMonth }}&year={{ $nextYear }}"
+                       class="btn btn-outline-secondary btn-sm" title="Next month">
+                        <i class="ti ti-chevron-right"></i>
+                    </a>
+                    <span class="text-muted small ms-1">{{ date('F Y', mktime(0,0,0,$month,1,$year)) }}</span>
                 </form>
             </div>
         </div>
@@ -169,7 +187,8 @@
                                     @endif
                                     <div>
                                         <div class="fw-semibold">{{ $m->user->name }}</div>
-                                        <span class="badge bg-{{ $m->role === 'owner' ? 'danger' : ($m->role === 'manager' ? 'warning' : 'secondary') }} fs-10">{{ ucfirst($m->role) }}</span>
+                                        @php $displayRole = $summary?->member_role ?? $m->role; @endphp
+                                        <span class="badge bg-{{ $displayRole === 'owner' ? 'danger' : ($displayRole === 'manager' ? 'warning' : 'secondary') }} fs-10">{{ ucfirst($displayRole) }}</span>
                                     </div>
                                 </div>
                             </td>
@@ -193,8 +212,8 @@
                             <td>
                                 <div class="d-flex align-items-center gap-1 flex-wrap">
                                     <span class="fw-semibold">৳{{ number_format($summary->total_expenses, 2) }}</span>
-                                    @if($isManager && $m->user_id !== $mess->owner_id)
-                                    {{-- Remove ALL expenses for this member (not for owner) --}}
+                                    @if($isManager)
+                                    {{-- Remove ALL expenses for this member --}}
                                     <button class="btn btn-xs {{ $excluded ? 'btn-success' : 'btn-outline-warning' }} py-0 px-1"
                                         id="toggle-btn-{{ $m->user->id }}"
                                         onclick="toggleShared({{ $m->user->id }}, {{ $excluded ? 'true' : 'false' }})"
@@ -217,10 +236,28 @@
                                     @endif
                                 </div>
                             </td>
-                            <td class="text-end fw-bold">৳{{ number_format($summary->total_payable, 2) }}</td>
-                            <td class="text-end text-success fw-bold">৳{{ number_format($summary->total_deposit, 2) }}</td>
+                            <td class="text-end fw-bold">
+                                ৳{{ number_format($summary->total_payable, 2) }}
+                                <div class="text-muted" style="font-size:10px;font-weight:normal;">
+                                    = ৳{{ number_format($summary->meal_cost, 2) }} + ৳{{ number_format($summary->total_expenses, 2) }}
+                                </div>
+                            </td>
+                            <td class="text-end text-success fw-bold">
+                                ৳{{ number_format($summary->total_deposit, 2) }}
+                                @if(($summary->carry_forward_in ?? 0) > 0)
+                                <div class="text-muted" style="font-size:10px;font-weight:normal;" title="Carry-forward from previous month">
+                                    +৳{{ number_format($summary->carry_forward_in, 2) }} carry-in
+                                </div>
+                                @endif
+                            </td>
+                            @php
+                                $effectiveDeposit = ($summary->total_deposit ?? 0) + ($summary->carry_forward_in ?? 0);
+                            @endphp
                             <td class="text-end fw-bold {{ $summary->due_amount > 0 ? 'text-danger' : 'text-success' }}">
                                 {{ $summary->due_amount > 0 ? '-' : '+' }}৳{{ number_format(abs($summary->due_amount), 2) }}
+                                <div class="text-muted" style="font-size:10px;font-weight:normal;">
+                                    ৳{{ number_format($effectiveDeposit, 2) }} − ৳{{ number_format($summary->total_payable, 2) }}
+                                </div>
                             </td>
                             <td>
                                 @if($summary->status === 'paid_out')
@@ -535,7 +572,12 @@ function showExtraResult(type, msg) {
 function openDepositModal(userId, userName) {
     document.getElementById('depositUserId').value      = userId;
     document.getElementById('depositMemberName').textContent = userName;
-    document.getElementById('depositDate').value        = new Date().toISOString().split('T')[0];
+    var mm = String(month).padStart(2, '0');
+    var today = new Date();
+    var isCurrentMonth = (today.getFullYear() === year && (today.getMonth() + 1) === month);
+    document.getElementById('depositDate').value = isCurrentMonth
+        ? today.toISOString().split('T')[0]
+        : (year + '-' + mm + '-01');
     var modal = new bootstrap.Modal(document.getElementById('depositModal'));
     modal.show();
 }

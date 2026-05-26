@@ -488,7 +488,7 @@ class MealController extends Controller
                 foreach ($memberIds as $userId) {
                     MealAttendance::firstOrCreate(
                         ['meal_schedule_id' => $schedule->id, 'user_id' => $userId],
-                        ['mess_id' => $mess->id, 'status' => 'on', 'marked_at' => now()]
+                        ['mess_id' => $mess->id, 'status' => 'on', 'quantity' => 1, 'full_qty' => 1, 'half_qty' => 0, 'marked_at' => now()]
                     );
                 }
             }

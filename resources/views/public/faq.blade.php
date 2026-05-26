@@ -1,6 +1,6 @@
 @extends('public.layout')
 @section('title', __('FAQ'))
-@section('meta-description', __('Frequently asked questions about MessManager — the smart mess management system.'))
+@section('meta-description', __('Frequently asked questions about Thaka Khawa — the smart mess management system.'))
 
 @section('public-content')
 
@@ -12,7 +12,7 @@
       <span>{{ __('FAQ') }}</span>
     </div>
     <h1 data-aos="fade-up">{{ __('Frequently Asked') }} <span style="color:var(--orange)">{{ __('Questions') }}</span></h1>
-    <p data-aos="fade-up" data-aos-delay="100">{{ __("Everything you need to know about MessManager. Can't find your answer?") }} <a href="{{ route('public.contact') }}" style="color:var(--orange)">{{ __('Contact us') }}</a>.</p>
+    <p data-aos="fade-up" data-aos-delay="100">{{ __("Everything you need to know about Thaka Khawa. Can't find your answer?") }} <a href="{{ route('public.contact') }}" style="color:var(--orange)">{{ __('Contact us') }}</a>.</p>
   </div>
 </section>
 
@@ -44,15 +44,15 @@
         @php
         $faqs = [
           ['cat'=>__('Getting Started'),'q'=>__('How do I create a mess?'),'a'=>__("After registering, go to your dashboard and click \"Create Mess\". Enter your mess name and address. You'll immediately get an 8-digit invite code to share with your housemates. The whole setup takes under 2 minutes.")],
-          ['cat'=>__('Getting Started'),'q'=>__('How do members join a mess?'),'a'=>__('Members register on MessManager and then click "Join Mess" from their dashboard. They enter the 8-digit invite code provided by the mess owner. After joining, the owner or manager can assign them a role.')],
+          ['cat'=>__('Getting Started'),'q'=>__('How do members join a mess?'),'a'=>__('Members register on Thaka Khawa and then click "Join Mess" from their dashboard. They enter the 8-digit invite code provided by the mess owner. After joining, the owner or manager can assign them a role.')],
           ['cat'=>__('Getting Started'),'q'=>__('What roles are available in a mess?'),'a'=>__('There are four roles: Owner (full control, billing), Manager (monthly rotating role with full operational access), Author (can post and manage certain content), and Member (basic access for meal marking and viewing reports).')],
-          ['cat'=>__('Billing'),'q'=>__('Is MessManager free?'),'a'=>__('Yes! MessManager offers a generous free plan for messes up to a certain member limit. Paid plans unlock higher member limits and premium features. No credit card is required to start.')],
+          ['cat'=>__('Billing'),'q'=>__('Is Thaka Khawa free?'),'a'=>__('Yes! Thaka Khawa offers a generous free plan for messes up to a certain member limit. Paid plans unlock higher member limits and premium features. No credit card is required to start.')],
           ['cat'=>__('Billing'),'q'=>__('Can I upgrade or downgrade my plan?'),'a'=>__('Absolutely. You can request an upgrade at any time from your mess settings. The owner submits an upgrade request and the admin approves it. Downgrades take effect at the end of your current billing period.')],
           ['cat'=>__('Meals'),'q'=>__('How does meal tracking work?'),'a'=>__("The system has daily meal schedules for breakfast, lunch, and dinner. Members are marked ON by default. They can turn meals off (meal-off) or the manager can toggle attendance. Each meal has a cut-off time — after that, the schedule is locked automatically.")],
           ['cat'=>__('Meals'),'q'=>__('What is the Meal Kanban board?'),'a'=>__("The Meal Kanban board lets the cook or manager plan daily meals visually. You add items to cook in the \"To Do\" column, then drag them to \"Cooking\" and finally \"Done\" — keeping every member informed in real-time about what's being prepared.")],
           ['cat'=>__('Members'),'q'=>__('Can I remove a member from my mess?'),'a'=>__('Yes. As the owner or manager, you can remove any member from the Members page. Their historical meal and expense data is preserved in reports, but they lose access to the mess immediately.')],
           ['cat'=>__('Members'),'q'=>__('How does the market duty rotation work?'),'a'=>__("You can assign a member as the market person for any day using the market calendar. They receive a shopping list, log their purchases, and complete the duty. Members can also request a duty exchange if they're unavailable.")],
-          ['cat'=>__('Expenses'),'q'=>__('How are monthly expenses split?'),'a'=>__("MessManager automatically calculates each member's share based on their meal count for the month. Fixed shared expenses (like electricity) are split equally. The system generates a complete breakdown showing total payable, deposit, and due amounts.")],
+          ['cat'=>__('Expenses'),'q'=>__('How are monthly expenses split?'),'a'=>__("Thaka Khawa automatically calculates each member's share based on their meal count for the month. Fixed shared expenses (like electricity) are split equally. The system generates a complete breakdown showing total payable, deposit, and due amounts.")],
           ['cat'=>__('Reports'),'q'=>__('How do I generate a monthly report?'),'a'=>__('Go to Reports → Monthly Report, select the month, and click Generate. The system calculates meal costs, shared expense splits, deposits, dues, and carry-forward amounts for every member automatically.')],
           ['cat'=>__('Reports'),'q'=>__('Can members see their own financial summary?'),'a'=>__('Yes. Each member can view their personal report showing meals attended, their cost share, total deposit, amount due or excess, and carry-forward to next month — with full transparency.')],
         ];

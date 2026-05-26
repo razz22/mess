@@ -52,15 +52,11 @@
                             <div class="fw-bold fs-4 text-{{ $i === 0 ? 'warning' : ($i === 1 ? 'secondary' : ($i === 2 ? 'danger' : 'muted')) }}" style="width:30px">
                                 {{ $i === 0 ? '🥇' : ($i === 1 ? '🥈' : ($i === 2 ? '🥉' : '#'.($i+1))) }}
                             </div>
-                            <div class="avatar avatar-sm">
-                                @if($entry->user->avatar)
-                                <img src="{{ asset('storage/'.$entry->user->avatar) }}" class="avatar-title rounded-circle" style="object-fit:cover;" alt="">
-                                @else
-                                <span class="avatar-title rounded-circle bg-{{ $i === 0 ? 'warning' : 'primary' }} text-white">
-                                    {{ strtoupper(substr($entry->user->name, 0, 1)) }}
-                                </span>
-                                @endif
-                            </div>
+                            @if($entry->user->avatar)
+                            <img src="{{ asset('storage/'.$entry->user->avatar) }}" class="rounded-circle flex-shrink-0" style="width:36px;height:36px;object-fit:cover;" alt="">
+                            @else
+                            <span class="rounded-circle flex-shrink-0 d-flex align-items-center justify-content-center fw-bold text-white bg-{{ $i === 0 ? 'warning' : 'primary' }}" style="width:36px;height:36px;font-size:14px;">{{ strtoupper(substr($entry->user->name, 0, 1)) }}</span>
+                            @endif
                             <div class="flex-fill">
                                 <div class="fw-semibold">{{ $entry->user->name }}</div>
                             </div>
@@ -140,7 +136,7 @@
                             <div class="col-md-9">
                                 @foreach($currentRotation->votes as $vote)
                                 <div class="d-flex align-items-center gap-2 mb-2">
-                                    <div class="avatar avatar-sm">@if($vote->voter->avatar)<img src="{{ asset('storage/'.$vote->voter->avatar) }}" class="avatar-title rounded-circle" style="object-fit:cover;" alt="">@else<span class="avatar-title rounded-circle bg-secondary text-white">{{ strtoupper(substr($vote->voter->name, 0, 1)) }}</span>@endif</div>
+                                    @if($vote->voter->avatar)<img src="{{ asset('storage/'.$vote->voter->avatar) }}" class="rounded-circle" style="width:32px;height:32px;object-fit:cover;flex-shrink:0;" alt="">@else<span class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center fw-semibold" style="width:32px;height:32px;font-size:12px;flex-shrink:0;">{{ strtoupper(substr($vote->voter->name, 0, 1)) }}</span>@endif
                                     <div>
                                         <span class="fw-semibold small">{{ $vote->voter->name }}</span>
                                         <div>@for($i = 1; $i <= 5; $i++)<i class="ti ti-star{{ $i <= $vote->rating ? '-filled text-warning' : ' text-muted' }}" style="font-size:11px"></i>@endfor</div>

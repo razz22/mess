@@ -172,7 +172,11 @@ class MessController extends Controller
         session(['active_mess_id' => $mess->id]);
 
         $member = Auth::user()->getMembershipIn($mess->id);
-        $currentManagers = $mess->currentManagers()->with('user')->get();
+        $currentManagers = $mess->currentManagers()
+            ->where('month', now()->month)
+            ->where('year', now()->year)
+            ->with('user')
+            ->get();
         $today = now()->toDateString();
 
         $todayMeals = $mess->mealSchedules()

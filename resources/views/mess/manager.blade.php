@@ -57,7 +57,7 @@
                                     @if($currentRotation->user->avatar)
                                     <img src="{{ asset('storage/'.$currentRotation->user->avatar) }}" class="rounded-circle" style="width:48px;height:48px;object-fit:cover;" alt="">
                                     @else
-                                    <span class="avatar-title rounded-circle bg-warning text-white fs-5">
+                                    <span class="rounded-circle bg-warning text-white d-flex align-items-center justify-content-center fw-bold" style="width:48px;height:48px;font-size:18px;">
                                         {{ strtoupper(substr($currentRotation->user->name, 0, 1)) }}
                                     </span>
                                     @endif
@@ -296,7 +296,7 @@
                                     @if($rotation->user->avatar)
                                     <img src="{{ asset('storage/'.$rotation->user->avatar) }}" class="rounded-circle" style="width:42px;height:42px;object-fit:cover;" alt="">
                                     @else
-                                    <span class="avatar-title rounded-circle bg-warning text-white fw-bold" style="width:42px;height:42px;font-size:1rem;">
+                                    <span class="rounded-circle bg-warning text-white fw-bold d-flex align-items-center justify-content-center" style="width:42px;height:42px;font-size:1rem;">
                                         {{ strtoupper(substr($rotation->user->name, 0, 1)) }}
                                     </span>
                                     @endif
@@ -362,9 +362,13 @@
                                 <div class="col-md-6">
                                     <div class="d-flex gap-2 bg-white rounded p-2 border h-100">
                                         <div class="flex-shrink-0">
-                                            <span class="avatar-title rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" style="width:30px;height:30px;font-size:.75rem;">
+                                            @if(!empty($vote->voter->avatar))
+                                            <img src="{{ asset('storage/'.$vote->voter->avatar) }}" class="rounded-circle" style="width:30px;height:30px;object-fit:cover;" alt="">
+                                            @else
+                                            <span class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center fw-semibold" style="width:30px;height:30px;font-size:.75rem;">
                                                 {{ strtoupper(substr($vote->voter->name ?? '?', 0, 1)) }}
                                             </span>
+                                            @endif
                                         </div>
                                         <div class="flex-grow-1">
                                             <div class="d-flex align-items-center justify-content-between">

@@ -389,7 +389,7 @@
     <div class="rpt-footer d-print-flex">
         <span>Generated: {{ now()->format('d M Y, h:i A') }}</span>
         <span style="font-weight:600;">{{ $mess->name }} · {{ $monthLabel }}</span>
-        <span>Powered by MessManager</span>
+        <span>Powered by Thaka Khawa</span>
     </div>
 
 </div>

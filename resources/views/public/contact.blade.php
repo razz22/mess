@@ -1,6 +1,6 @@
 @extends('public.layout')
 @section('title', __('Contact Us'))
-@section('meta-description', __("Get in touch with the MessManager team. We'd love to hear from you."))
+@section('meta-description', __("Get in touch with the Thaka Khawa team. We'd love to hear from you."))
 
 @section('public-content')
 
@@ -40,7 +40,7 @@
         <p style="color:var(--muted);line-height:1.8;margin-bottom:28px">{{ __("Fill out the form or reach us through any of the channels below. We'll get back to you as soon as possible.") }}</p>
 
         @foreach([
-          ['icon'=>'ti-mail','title'=>__('Email'),'val'=>'support@messmanager.app','color'=>'var(--orange)'],
+          ['icon'=>'ti-mail','title'=>__('Email'),'val'=>'support@thakakhawa.com','color'=>'var(--orange)'],
           ['icon'=>'ti-phone','title'=>__('Phone'),'val'=>'+880 1700-000000','color'=>'var(--green)'],
           ['icon'=>'ti-map-pin','title'=>__('Address'),'val'=>__('Dhaka, Bangladesh'),'color'=>'#60a5fa'],
           ['icon'=>'ti-clock','title'=>__('Support Hours'),'val'=>__('Mon–Fri, 9 AM – 6 PM'),'color'=>'#a78bfa'],

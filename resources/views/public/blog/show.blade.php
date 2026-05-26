@@ -148,7 +148,7 @@
           <div>
             <div style="font-weight:700;color:var(--white);margin-bottom:4px">{{ $blog->user->name }}</div>
             <div style="font-size:.8rem;color:rgba(255,255,255,.4);margin-bottom:8px">{{ __('Author') }} &bull; {{ $blog->published_at?->format('M j, Y') }}</div>
-            <div style="font-size:.875rem;color:rgba(255,255,255,.6)">{{ __('Member of the MessManager community sharing tips and experiences about shared living.') }}</div>
+            <div style="font-size:.875rem;color:rgba(255,255,255,.6)">{{ __('Member of the Thaka Khawa community sharing tips and experiences about shared living.') }}</div>
           </div>
         </div>
 
@@ -267,7 +267,7 @@
         <div style="background:var(--navy);border-radius:16px;padding:24px;text-align:center" data-aos="fade-left" data-aos-delay="80">
           <i class="ti ti-building-community" style="font-size:2.5rem;color:var(--orange);display:block;margin-bottom:12px"></i>
           <div style="font-weight:700;color:var(--white);margin-bottom:8px">{{ __('Manage Your Mess Better') }}</div>
-          <p style="color:rgba(255,255,255,.6);font-size:.875rem;margin-bottom:16px">{{ __('Join 500+ messes already using MessManager.') }}</p>
+          <p style="color:rgba(255,255,255,.6);font-size:.875rem;margin-bottom:16px">{{ __('Join 500+ messes already using Thaka Khawa.') }}</p>
           <a href="{{ route('register') }}" class="btn-orange" style="font-size:.875rem;padding:10px 18px;display:block;text-align:center"><i class="ti ti-rocket"></i> {{ __('Start Free') }}</a>
         </div>
         @endguest

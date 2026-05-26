@@ -56,10 +56,8 @@ class ReportController extends Controller
             }
         }
 
-        // Auto-generate summaries on every page load (managers only)
-        if (Auth::user()->isManagerOf($mess->id)) {
-            $this->doGenerate($mess, $month, $year);
-        }
+        // Always regenerate so any attendance/expense change is immediately reflected
+        $this->doGenerate($mess, $month, $year);
 
         // Load summaries
         $summaries = MemberMonthlySummary::where('mess_id', $mess->id)
@@ -87,13 +85,13 @@ class ReportController extends Controller
             ->count();
 
         // Meal attendance summary per member (sum quantity, not count rows)
-        $mealByMember = MealAttendance::whereHas('schedule', fn($q) =>
-                $q->where('mess_id', $mess->id)
-                    ->whereMonth('date', $month)
-                    ->whereYear('date', $year)
-            )
-            ->select('user_id', DB::raw('SUM(quantity) as meal_count'))
-            ->groupBy('user_id')
+        $mealByMember = DB::table('meal_attendances')
+            ->join('meal_schedules', 'meal_attendances.meal_schedule_id', '=', 'meal_schedules.id')
+            ->where('meal_schedules.mess_id', $mess->id)
+            ->whereMonth('meal_schedules.date', $month)
+            ->whereYear('meal_schedules.date', $year)
+            ->select('meal_attendances.user_id', DB::raw('SUM(meal_attendances.quantity) as meal_count'))
+            ->groupBy('meal_attendances.user_id')
             ->pluck('meal_count', 'user_id');
 
         $totalMealCount  = $mealByMember->sum();
@@ -132,16 +130,6 @@ class ReportController extends Controller
 
         $totalMembers = $mess->activeMembers()->count();
 
-        $categoriesForModal = $allCategories
-            ->filter(fn($c) => isset($nonMarketByCategory[$c->id]) && $nonMarketByCategory[$c->id] > 0)
-            ->map(fn($c) => [
-                'id'           => $c->id,
-                'name'         => $c->name,
-                'is_recurring' => (bool) $c->is_recurring,
-                'total'        => (float) $nonMarketByCategory[$c->id],
-                'per_head'     => $totalMembers > 0 ? round($nonMarketByCategory[$c->id] / $totalMembers, 2) : 0,
-            ])->values();
-
         // Category exclusions per member: [userId => [categoryId, ...]]
         $memberCategoryExclusions = MemberCategoryExclusion::where('mess_id', $mess->id)
             ->where('month', $month)
@@ -149,6 +137,27 @@ class ReportController extends Controller
             ->get()
             ->groupBy('user_id')
             ->map(fn($g) => $g->pluck('category_id')->toArray());
+
+        // Compute per_head using the same paying-count logic as doGenerate
+        $globallyExcludedIds = $summaries->filter(fn($s) => $s->exclude_from_shared)->keys()->toArray();
+        $allMemberIds        = $mess->activeMembers()->pluck('user_id');
+
+        $categoriesForModal = $allCategories
+            ->filter(fn($c) => isset($nonMarketByCategory[$c->id]) && $nonMarketByCategory[$c->id] > 0)
+            ->map(function ($c) use ($nonMarketByCategory, $allMemberIds, $globallyExcludedIds, $memberCategoryExclusions) {
+                $catTotal    = (float) $nonMarketByCategory[$c->id];
+                $payingCount = $allMemberIds->filter(function ($id) use ($globallyExcludedIds, $memberCategoryExclusions, $c) {
+                    if (in_array($id, $globallyExcludedIds)) return false;
+                    return !in_array($c->id, $memberCategoryExclusions[$id] ?? []);
+                })->count();
+                return [
+                    'id'           => $c->id,
+                    'name'         => $c->name,
+                    'is_recurring' => (bool) $c->is_recurring,
+                    'total'        => $catTotal,
+                    'per_head'     => $payingCount > 0 ? round($catTotal / $payingCount, 2) : 0,
+                ];
+            })->values();
 
         // Extra stats for top summary block
         $totalNonMarket = $totalExpenses - $totalMarket;
@@ -185,11 +194,6 @@ class ReportController extends Controller
             'month'   => 'required|integer|min:1|max:12',
             'year'    => 'required|integer',
         ]);
-
-        // Owner cannot be excluded from shared expenses
-        if ((int) $request->user_id === (int) $mess->owner_id) {
-            return response()->json(['success' => false, 'message' => 'The owner cannot be excluded from shared expenses.'], 422);
-        }
 
         // Ensure a summary row exists before toggling
         $summary = MemberMonthlySummary::firstOrCreate(
@@ -315,12 +319,18 @@ class ReportController extends Controller
     {
         $memberIds = $mess->activeMembers()->pluck('user_id');
 
-        // Load existing global exclusion flags (persisted per member per month)
-        $exclusions = MemberMonthlySummary::where('mess_id', $mess->id)
+        // Load existing summaries: preserve role + exclusion flags set in previous generations
+        $existingSummaries = MemberMonthlySummary::where('mess_id', $mess->id)
             ->where('month', $month)
             ->where('year', $year)
             ->whereIn('user_id', $memberIds)
-            ->pluck('exclude_from_shared', 'user_id');
+            ->get()
+            ->keyBy('user_id');
+
+        $exclusions = $existingSummaries->map(fn($s) => $s->exclude_from_shared);
+
+        // Current roles from mess_members (used only when no stored role exists yet)
+        $currentRoles = $mess->activeMembers()->pluck('role', 'user_id');
 
         // Load per-category exclusions: [userId => [categoryId, ...]]
         $categoryExclusions = MemberCategoryExclusion::where('mess_id', $mess->id)
@@ -338,13 +348,13 @@ class ReportController extends Controller
             ->whereYear('expense_date', $year)
             ->sum('amount');
 
-        $mealByMember = MealAttendance::whereHas('schedule', fn($q) =>
-                $q->where('mess_id', $mess->id)
-                    ->whereMonth('date', $month)
-                    ->whereYear('date', $year)
-            )
-            ->select('user_id', DB::raw('SUM(quantity) as meal_count'))
-            ->groupBy('user_id')
+        $mealByMember = DB::table('meal_attendances')
+            ->join('meal_schedules', 'meal_attendances.meal_schedule_id', '=', 'meal_schedules.id')
+            ->where('meal_schedules.mess_id', $mess->id)
+            ->whereMonth('meal_schedules.date', $month)
+            ->whereYear('meal_schedules.date', $year)
+            ->select('meal_attendances.user_id', DB::raw('SUM(meal_attendances.quantity) as meal_count'))
+            ->groupBy('meal_attendances.user_id')
             ->pluck('meal_count', 'user_id');
 
         $totalMealCount = $mealByMember->sum();
@@ -425,6 +435,10 @@ class ReportController extends Controller
         }
 
         foreach ($memberIds as $userId) {
+            // Preserve the stored role for past months; use current role when creating for the first time
+            $storedRole = $existingSummaries[$userId]->member_role ?? null;
+            $memberRole = $storedRole ?? ($currentRoles[$userId] ?? 'member');
+
             // Owner is never excluded from shared expenses
             $excluded = $userId === $mess->owner_id ? false : (bool)($exclusions[$userId] ?? false);
             $memberMeals = (float)($mealByMember[$userId] ?? 0);
@@ -462,23 +476,30 @@ class ReportController extends Controller
                 $carryIn = -$prevSummary->due_amount;
             }
 
-            // Total payable = Meal Cost (from Market Routine) + Expense Cost (shared non-meal expenses)
-            $totalPayable    = $mealCost + $memberShared;
-            $netAfterDeposit = $totalDeposit + $carryIn - $totalPayable;
-            $dueAmount       = -$netAfterDeposit;
+            // Round each component first so stored columns always add up exactly
+            $roundedMealCost = round($mealCost, 2);
+            $roundedShared   = round($memberShared, 2);
+            $roundedDeposit  = round($totalDeposit, 2);
+            $roundedCarryIn  = round(max(0, $carryIn), 2);
+
+            // Total payable = Meal Cost + Expense Cost (both pre-rounded so they add up in the table)
+            $totalPayable    = $roundedMealCost + $roundedShared;
+            $netAfterDeposit = $roundedDeposit + $roundedCarryIn - $totalPayable;
+            $dueAmount       = round(-$netAfterDeposit, 2);
             $carryOut        = $netAfterDeposit < 0 ? 0 : $netAfterDeposit;
 
             MemberMonthlySummary::updateOrCreate(
                 ['mess_id' => $mess->id, 'user_id' => $userId, 'month' => $month, 'year' => $year],
                 [
                     'total_meal_days'     => $memberMeals,
-                    'meal_cost'           => round($mealCost, 2),
-                    'total_expenses'      => round($memberShared, 2),
-                    'total_deposit'       => round($totalDeposit, 2),
-                    'carry_forward_in'    => round(max(0, $carryIn), 2),
-                    'total_payable'       => round($totalPayable, 2),
-                    'due_amount'          => round($dueAmount, 2),
+                    'meal_cost'           => $roundedMealCost,
+                    'total_expenses'      => $roundedShared,
+                    'total_deposit'       => $roundedDeposit,
+                    'carry_forward_in'    => $roundedCarryIn,
+                    'total_payable'       => $totalPayable,
+                    'due_amount'          => $dueAmount,
                     'carry_forward_out'   => round($carryOut, 2),
+                    'member_role'         => $memberRole,
                     'exclude_from_shared' => $excluded,
                     'generated_at'        => now(),
                 ]

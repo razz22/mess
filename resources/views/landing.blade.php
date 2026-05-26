@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="MessManager — Smart Mess Management System for shared living">
-<title>MessManager — Smart Mess Management Platform</title>
+<meta name="description" content="Thaka Khawa — Smart Mess Management System for shared living">
+<title>Thaka Khawa — Smart Mess Management Platform</title>
 <link rel="shortcut icon" type="image/x-icon" href="{{ URL::asset('/build/img/favicon.png') }}">
 <link rel="stylesheet" href="{{ URL::asset('build/css/bootstrap.min.css') }}">
 <!-- Tabler Icons — CDN primary, local fallback -->
@@ -431,7 +431,7 @@ img { max-width: 100%; }
     <div class="lnav-inner">
 
       <a href="{{ url('/') }}" class="lnav-logo me-5">
-        <img src="{{URL::asset('build/img/logo.svg')}}" alt="Mess Manager" style="height: 44px; max-width: 200px;">
+        <img src="{{URL::asset('build/img/logo.svg')}}" alt="Thaka Khawa" style="height: 44px; max-width: 200px;">
       </a>
 
       <ul class="lnav-links d-none d-lg-flex">
@@ -518,7 +518,7 @@ img { max-width: 100%; }
         </div>
         <h1>{{ __('Manage Your Mess Smarter & Easier') }}</h1>
         <p class="hero-sub">
-          {{ __('MessManager is the complete platform for shared living — track meals, split expenses, coordinate market duties, generate monthly reports, and more. All automated.') }}
+          {{ __('Thaka Khawa is the complete platform for shared living — track meals, split expenses, coordinate market duties, generate monthly reports, and more. All automated.') }}
         </p>
         <div class="hero-btns">
           <a href="{{ route('register') }}" class="btn-orange">
@@ -542,7 +542,7 @@ img { max-width: 100%; }
             <div class="hct-dot" style="background:#ff5f57"></div>
             <div class="hct-dot" style="background:#ffbd2e"></div>
             <div class="hct-dot" style="background:#28c840"></div>
-            <span style="color:rgba(255,255,255,.5);font-size:12px;margin-left:8px">MessManager — Dashboard</span>
+            <span style="color:rgba(255,255,255,.5);font-size:12px;margin-left:8px">Thaka Khawa — Dashboard</span>
           </div>
           <div class="hero-card-body">
             <div class="mock-stat-grid">
@@ -710,7 +710,7 @@ img { max-width: 100%; }
   <div class="container">
     <div class="row g-4">
       @foreach([
-        ['num'=>'500+', 'label'=>__('Messes actively using MessManager'),   'icon'=>'ti-building-community'],
+        ['num'=>'500+', 'label'=>__('Messes actively using Thaka Khawa'),   'icon'=>'ti-building-community'],
         ['num'=>'10K+', 'label'=>__('Members whose dues are auto-calculated'),'icon'=>'ti-users'],
         ['num'=>'৳2M+', 'label'=>__('Total expenses tracked on the platform'),'icon'=>'ti-coin'],
         ['num'=>'100%', 'label'=>__('Reports generated automatically every month'),'icon'=>'ti-report-analytics'],
@@ -836,7 +836,7 @@ img { max-width: 100%; }
     <div class="reveal">
       <div class="section-label mb-3" style="color:var(--orange)">Get Started Today</div>
       <h2>{{ __('Ready to Simplify Your Mess Life?') }}</h2>
-      <p class="mt-3 mb-5">{{ __('Join hundreds of messes already using MessManager to stay organized and conflict-free.') }}</p>
+      <p class="mt-3 mb-5">{{ __('Join hundreds of messes already using Thaka Khawa to stay organized and conflict-free.') }}</p>
       <div class="d-flex gap-3 justify-content-center flex-wrap">
         <a href="{{ route('register') }}" class="btn-orange" style="font-size:16px;padding:15px 36px">
           <i class="ti ti-rocket"></i> {{ __('Create Free Account') }}
@@ -860,7 +860,7 @@ img { max-width: 100%; }
     <div class="row g-4 g-lg-5">
       <div class="col-12 col-lg-4">
         <div class="lfoot-logo">
-          <img src="{{URL::asset('build/img/logo.svg')}}" alt="Mess Manager" style="height: 40px; max-width: 190px;">
+          <img src="{{URL::asset('build/img/logo.svg')}}" alt="Thaka Khawa" style="height: 40px; max-width: 190px;">
         </div>
         <p style="font-size:.875rem;line-height:1.7;max-width:300px">
           {{ __('Smart mess management for shared living. Track meals, expenses, and more — all in one beautiful platform.') }}
@@ -902,7 +902,7 @@ img { max-width: 100%; }
     </div>
     <hr class="lfoot-divider">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 lfoot-bottom">
-      <span>© {{ date('Y') }} MessManager. {{ __('All rights reserved.') }}</span>
+      <span>© {{ date('Y') }} Thaka Khawa. {{ __('All rights reserved.') }}</span>
       <span>{{ __('Built with ❤️ for mess communities') }}</span>
     </div>
   </div>

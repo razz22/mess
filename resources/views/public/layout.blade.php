@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="@yield('meta-description', 'MessManager — Smart Mess Management System')">
-<title>@yield('title', 'MessManager') — MessManager</title>
+<meta name="description" content="@yield('meta-description', 'Thaka Khawa — Smart Mess Management System')">
+<title>@yield('title', 'Thaka Khawa') — Thaka Khawa</title>
 <link rel="shortcut icon" type="image/x-icon" href="{{ URL::asset('/build/img/favicon.png') }}">
 <link rel="stylesheet" href="{{ URL::asset('build/css/bootstrap.min.css') }}">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.0/dist/tabler-icons.min.css">
@@ -141,7 +141,7 @@ img { max-width: 100%; }
   <div class="container">
     <div class="lnav-inner">
       <a href="{{ url('/') }}" class="lnav-logo me-5">
-        <img src="{{ URL::asset('build/img/logo.svg') }}" alt="Mess Manager" style="height: 44px; max-width: 200px;">
+        <img src="{{ URL::asset('build/img/logo.svg') }}" alt="Thaka Khawa" style="height: 44px; max-width: 200px;">
       </a>
 
       <ul class="lnav-links d-none d-lg-flex">
@@ -230,7 +230,7 @@ img { max-width: 100%; }
     <div class="row g-4 g-lg-5">
       <div class="col-12 col-lg-4">
         <div class="lfoot-logo">
-          <img src="{{ URL::asset('build/img/logo.svg') }}" alt="Mess Manager" style="height: 40px; max-width: 190px;">
+          <img src="{{ URL::asset('build/img/logo.svg') }}" alt="Thaka Khawa" style="height: 40px; max-width: 190px;">
 
         </div>
         <p style="font-size:.875rem;line-height:1.7;max-width:300px">
@@ -276,7 +276,7 @@ img { max-width: 100%; }
     </div>
     <hr class="lfoot-divider">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 lfoot-bottom">
-      <span>© {{ date('Y') }} MessManager. {{ __('All rights reserved.') }}</span>
+      <span>© {{ date('Y') }} Thaka Khawa. {{ __('All rights reserved.') }}</span>
       <div class="d-flex gap-3">
         <a href="{{ route('public.privacy') }}" style="color:rgba(255,255,255,.3);font-size:.8rem">{{ __('Privacy Policy') }}</a>
         <a href="{{ route('public.contact') }}" style="color:rgba(255,255,255,.3);font-size:.8rem">{{ __('Contact') }}</a>

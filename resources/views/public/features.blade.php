@@ -1,6 +1,6 @@
 @extends('public.layout')
 @section('title', __('Features'))
-@section('meta-description', __('Explore all the powerful features of MessManager — meal tracking, expenses, reports, market duties, and more.'))
+@section('meta-description', __('Explore all the powerful features of Thaka Khawa — meal tracking, expenses, reports, market duties, and more.'))
 
 @section('public-content')
 
@@ -114,7 +114,7 @@
   <div class="container" data-aos="zoom-in">
     <div class="section-label mb-3" style="color:var(--orange)">{{ __('Get Started Today') }}</div>
     <h2 style="font-size:clamp(1.8rem,3vw,2.4rem);font-weight:800;color:var(--white);margin-bottom:12px">{{ __('Ready to Transform Your Mess?') }}</h2>
-    <p style="color:rgba(255,255,255,.6);margin-bottom:32px;font-size:1.05rem">{{ __('Join 500+ messes already running smarter on MessManager.') }}</p>
+    <p style="color:rgba(255,255,255,.6);margin-bottom:32px;font-size:1.05rem">{{ __('Join 500+ messes already running smarter on Thaka Khawa.') }}</p>
     <div class="d-flex gap-3 justify-content-center flex-wrap">
       <a href="{{ route('register') }}" class="btn-orange" style="font-size:16px;padding:14px 32px"><i class="ti ti-rocket"></i> {{ __('Start Free Today') }}</a>
       <a href="{{ route('public.contact') }}" style="display:inline-flex;align-items:center;gap:8px;padding:14px 32px;border-radius:10px;border:2px solid rgba(255,255,255,.25);color:rgba(255,255,255,.8);font-weight:600;font-size:16px;transition:all .2s" onmouseover="this.style.borderColor='var(--orange)';this.style.color='var(--orange)'" onmouseout="this.style.borderColor='rgba(255,255,255,.25)';this.style.color='rgba(255,255,255,.8)'"><i class="ti ti-mail"></i> {{ __('Talk to Sales') }}</a>

@@ -343,6 +343,15 @@ document.addEventListener('keydown', function(e){
                 </a>
             </li> -->
 
+            <!-- Home Link -->
+            <li class="nav-item nav-item-box me-2">
+                <a href="{{ route('landing') }}" title="{{ __('Home') }}" class="d-flex align-items-center gap-1 px-1" style="font-size:12px;font-weight:600;color:inherit;text-decoration:none;">
+                    <i class="ti ti-home" style="font-size:18px;"></i>
+                    <span class="d-none d-lg-inline">{{ __('Home') }}</span>
+                </a>
+            </li>
+            <!-- /Home Link -->
+
             <!-- Language Switcher -->
             <li class="nav-item nav-item-box dropdown">
                 @php $hl = app()->getLocale(); @endphp
@@ -467,8 +476,8 @@ document.addEventListener('keydown', function(e){
             <a href="javascript:void(0);" class="nav-link dropdown-toggle" data-bs-toggle="dropdown"
                 aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
             <div class="dropdown-menu dropdown-menu-right">
-                <a class="dropdown-item" href="{{ route('profile') }}">My Profile</a>
-                <a class="dropdown-item" href="{{ route('signout') }}">Logout</a>
+                <a class="dropdown-item" href="{{ route('profile') }}">{{ __('My Profile') }}</a>
+                <a class="dropdown-item" href="{{ route('signout') }}">{{ __('Logout') }}</a>
             </div>
         </div>
         <!-- /Mobile Menu -->

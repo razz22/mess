@@ -1,6 +1,6 @@
 @extends('public.layout')
 @section('title', __('About Us'))
-@section('meta-description', __('Learn about MessManager — our mission, team, and the story behind the smart mess management platform.'))
+@section('meta-description', __('Learn about Thaka Khawa — our mission, team, and the story behind the smart mess management platform.'))
 
 @section('public-content')
 
@@ -12,7 +12,7 @@
       <i class="ti ti-chevron-right"></i>
       <span>{{ __('About Us') }}</span>
     </div>
-    <h1 data-aos="fade-up">{{ __('About') }} <span style="color:var(--orange)">MessManager</span></h1>
+    <h1 data-aos="fade-up">{{ __('About') }} <span style="color:var(--orange)">Thaka Khawa</span></h1>
     <p data-aos="fade-up" data-aos-delay="100">{{ __("We're on a mission to eliminate the chaos of shared living. No more disputes over meal counts, missing market receipts, or unclear monthly dues.") }}</p>
   </div>
 </section>
@@ -25,7 +25,7 @@
         <div class="section-label mb-2">{{ __('Our Mission') }}</div>
         <h2 class="section-title mb-4">{{ __('Simplifying Shared Living, One Mess at a Time') }}</h2>
         <p style="color:var(--muted);line-height:1.8">
-          {{ __('MessManager was born from a real problem — managing a shared mess is hard. Tracking who ate what, splitting grocery costs, handling monthly deposits, generating fair reports... all done manually on paper or WhatsApp groups.') }}
+          {{ __('Thaka Khawa was born from a real problem — managing a shared mess is hard. Tracking who ate what, splitting grocery costs, handling monthly deposits, generating fair reports... all done manually on paper or WhatsApp groups.') }}
         </p>
         <p style="color:var(--muted);line-height:1.8;margin-top:12px">
           {{ __('We built a complete digital platform so that mess owners, managers, and members can focus on what matters — living together harmoniously — while the app handles all the numbers automatically.') }}
@@ -94,7 +94,7 @@
   <div class="container">
     <div class="text-center mb-5" data-aos="fade-up">
       <div class="section-label mb-2">{{ __('The Team') }}</div>
-      <h2 class="section-title">{{ __('People Behind MessManager') }}</h2>
+      <h2 class="section-title">{{ __('People Behind Thaka Khawa') }}</h2>
       <p class="section-sub mt-3">{{ __('A small, passionate team dedicated to making shared living easier for everyone.') }}</p>
     </div>
     <div class="row g-4 justify-content-center">
@@ -131,7 +131,7 @@
       <div class="col-lg-8">
         @foreach([
           ['year'=>'2022','title'=>__('The Problem Identified'),'desc'=>__('Our founder struggled managing a 12-person mess manually. Disputes over meal counts and expenses led to the idea.'),'color'=>'var(--orange)'],
-          ['year'=>'2023','title'=>__('First Version Launched'),'desc'=>__('MessManager v1 launched with basic meal tracking and expense splitting for a small group of beta users.'),'color'=>'var(--green)'],
+          ['year'=>'2023','title'=>__('First Version Launched'),'desc'=>__('Thaka Khawa v1 launched with basic meal tracking and expense splitting for a small group of beta users.'),'color'=>'var(--green)'],
           ['year'=>'2024','title'=>__('Major Feature Expansion'),'desc'=>__('Added market routines, monthly reports, manager rotation, rewards system, and house rent management.'),'color'=>'#60a5fa'],
           ['year'=>'2025','title'=>__('500+ Messes & Growing'),'desc'=>__('Crossed 500 active messes and 10,000 members. Expanded to international users and added subscription plans.'),'color'=>'#a78bfa'],
           ['year'=>'2026','title'=>__('Platform & Community'),'desc'=>__('Launched the public blog, community features, and mobile-optimized experience for all users.'),'color'=>'var(--orange)'],

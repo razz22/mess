@@ -9,11 +9,11 @@
                 <div class="login-userset">
                     <div class="login-logo logo-normal">
                         <a href="{{ url('/') }}">
-                            <img src="{{URL::asset('build/img/logo.svg')}}" alt="Mess Manager">
+                            <img src="{{URL::asset('build/img/logo.svg')}}" alt="Thaka Khawa">
                         </a>
                     </div>
                     <a href="{{ url('/') }}" class="login-logo logo-white">
-                        <img src="{{URL::asset('build/img/logo-white.svg')}}" alt="Mess Manager">
+                        <img src="{{URL::asset('build/img/logo-white.svg')}}" alt="Thaka Khawa">
                     </a>
                     <div class="login-userheading">
                         <h3>{{ __('Create Account') }}</h3>

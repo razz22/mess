@@ -11,7 +11,7 @@ class MemberMonthlySummary extends Model
         'mess_id', 'user_id', 'month', 'year',
         'total_meal_days', 'meal_cost', 'total_expenses', 'market_expense',
         'total_deposit', 'carry_forward_in', 'total_payable',
-        'due_amount', 'carry_forward_out', 'status', 'exclude_from_shared', 'generated_at',
+        'due_amount', 'carry_forward_out', 'status', 'member_role', 'exclude_from_shared', 'generated_at',
     ];
 
     protected $casts = [

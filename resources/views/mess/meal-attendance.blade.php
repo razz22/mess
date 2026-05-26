@@ -216,15 +216,22 @@
                                 @php
                                     $sch       = $schedules[$mt->name] ?? null;
                                     $key       = $sch ? ($sch->id . '_' . $mem->user_id) : null;
-                                    $att       = $key ? ($allAttendances[$key]->first() ?? null) : null;
+                                    $att       = $key ? ($allAttendances->get($key)?->first() ?? null) : null;
                                     $canEditPast = $isOwner || $isSuperAdmin;
                                     $locked    = ($isPast && !$canEditPast) || !$sch || $sch->status === 'closed'
                                                  || (!$isManager && $mt->isExpired($date))
                                                  || (!$isManager && !$isMe);
                                     $canChange = $canEdit && !$locked;
                                     $isUnset   = $att === null;
-                                    $fullQty   = $att ? (int)$att->full_qty : ($canChange ? 1 : 0);
-                                    $halfQty   = $att ? (int)$att->half_qty : 0;
+                                    $attFull   = $att ? (int)$att->full_qty : null;
+                                    $attHalf   = $att ? (int)$att->half_qty : null;
+                                    // Fallback for legacy records where full/half weren't set but quantity was
+                                    if ($att && $attFull === 0 && $attHalf === 0 && $att->quantity > 0) {
+                                        $attFull = (int) floor($att->quantity);
+                                        $attHalf = (int) round(($att->quantity - floor($att->quantity)) * 2);
+                                    }
+                                    $fullQty   = $att ? $attFull : ($canChange ? 1 : 0);
+                                    $halfQty   = $att ? $attHalf : 0;
                                     $qty       = $fullQty + $halfQty * 0.5;
                                     $lockTitle = $locked ? (($isPast && !$canEditPast) ? 'Past date' : ($sch && $sch->status==='closed' ? 'Meal closed' : 'Time expired')) : '';
                                 @endphp
